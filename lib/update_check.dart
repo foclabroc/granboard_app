@@ -258,6 +258,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Plus tard')),
             FilledButton.icon(
+              autofocus: true, // télécommande TV : OK direct
               onPressed: _download,
               icon: const Icon(Icons.download_rounded, size: 18),
               label: const Text('Installer'),
@@ -277,6 +278,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Fermer')),
             FilledButton.icon(
+              autofocus: true, // télécommande TV : OK direct
               onPressed: _install,
               icon: const Icon(Icons.install_mobile_rounded, size: 18),
               label: const Text('Installer'),
@@ -287,6 +289,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Fermer')),
             FilledButton.icon(
+              autofocus: true, // télécommande TV : OK direct
               onPressed: _openPage,
               icon: const Icon(Icons.open_in_new_rounded, size: 18),
               label: const Text('GitHub'),
