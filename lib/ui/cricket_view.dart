@@ -14,29 +14,8 @@ import 'widgets.dart';
 /// Couleur de chaque joueur dans la partie : sa couleur de compte, sauf
 /// invité ou couleur déjà prise (on prend alors une couleur libre), pour que
 /// chaque colonne se distingue.
-List<Color> _playerColors(CricketGame g) {
-  final used = <int>{};
-  final out = <Color?>[];
-  for (final p in g.players) {
-    final c = isGuestId(p.id) ? null : PlayerStore.instance.colorOf(p.id);
-    if (c != null && used.add(c.toARGB32())) {
-      out.add(c);
-    } else {
-      out.add(null);
-    }
-  }
-  return [
-    for (final c in out)
-      c ??
-          (() {
-            final free = kPlayerColors.firstWhere(
-                (k) => !used.contains(k.toARGB32()),
-                orElse: () => kGuestColor);
-            used.add(free.toARGB32());
-            return free;
-          })()
-  ];
-}
+List<Color> _playerColors(CricketGame g) =>
+    PlayerStore.instance.distinctColors([for (final p in g.players) p.id]);
 
 Color _playerColor(CricketGame g, int i) => _playerColors(g)[i];
 

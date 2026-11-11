@@ -38,7 +38,7 @@ class RankingPage extends StatelessWidget {
             indicatorColor: Tv.gold,
             tabs: [
               for (final k in _kinds) Tab(text: k.$2),
-              const Tab(text: 'ENTRAÎNEMENT'),
+              const Tab(text: 'ENTRAÎNEMENT · FÊTE'),
             ],
           ),
         ),

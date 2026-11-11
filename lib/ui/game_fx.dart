@@ -61,14 +61,19 @@ class GameFx {
         }
         _haptic(false);
         final note = g.currentTurn.note;
-        final d = g.currentTurn.darts.isEmpty ? null : g.currentTurn.darts.last;
-        if (note != null && d != null && d.points != 0 && _bigNote(note)) {
+        final key = '${g.turns.length}:$note';
+        if (note == null || key == _lastNote) return;
+        _lastNote = key;
+        if (_badNote(note)) {
+          audio.play(Sfx.bust);
+          audio.sayLater(_speakable(note), 250);
+          _show(note.split(' :').first, Tv.red);
+        } else if (_bigNote(note)) {
           audio.play(Sfx.crowd);
           audio.sayLater(_speakable(note), 300);
-          _show(note.split(' +').first, Tv.gold);
-        } else if (note == 'BUST' || note == 'TROP !') {
-          audio.play(Sfx.bust);
-          audio.sayLater(note == 'BUST' ? 'Bust !' : 'Trop !', 250);
+          _show(note.split(' +').first.split(' :').first, Tv.gold);
+        } else {
+          audio.sayLater(_speakable(note), 250);
         }
       case MatchGame m:
         if (m.finished) {
@@ -98,10 +103,13 @@ class GameFx {
         audio.play(Sfx.next);
         final prev = g.turns.length > 1 ? g.turns[g.turns.length - 2] : null;
         final note = prev?.note;
+        final key = '${g.turns.length - 1}:$note';
         final before =
-            note != null && !_bigNote(note) ? '${_speakable(note)}. ' : '';
+            note != null && key != _lastNote ? '${_speakable(note)}. ' : '';
+        if (note != null) _lastNote = key;
+        final cible = g.settings.info.party ? '' : 'cible ';
         audio.sayLater(
-            '$before${g.currentPlayer.name}, cible ${_speakable(g.targetLabel)}',
+            '$before${g.currentPlayer.name}, $cible${_speakable(g.targetLabel)}',
             250);
       case MatchGame m:
         if (m.finished) {
@@ -120,6 +128,17 @@ class GameFx {
     }
   }
 
+  String? _lastNote;
+
+  static bool _badNote(String n) =>
+      n == 'BUST' ||
+      n.startsWith('TROP') ||
+      n.startsWith('OVER') ||
+      n.startsWith('LE MÉCHANT') ||
+      n.startsWith('GRENADE') ||
+      n.startsWith('CRÂNE') ||
+      n.contains('ÉLIMINÉ');
+
   /// Notes de manche qui méritent une annonce animée.
   static bool _bigNote(String n) =>
       n.startsWith('HAT') ||
@@ -129,7 +148,17 @@ class GameFx {
       n.startsWith('NAVIRE') ||
       n.startsWith('3 TRIPLES') ||
       n.startsWith('RÉUSSI') ||
-      n.startsWith('BONUS');
+      n.startsWith('BONUS') ||
+      n.startsWith('KICK') ||
+      n.startsWith('SHANGHAI') ||
+      n.startsWith('MISSION RÉUSSIE') ||
+      n.startsWith('ANIMAL') ||
+      n.contains('KILLER') ||
+      n.startsWith('ALIGNÉ') ||
+      n.contains('MÉLANGÉS') ||
+      n.startsWith('DIAMANT') ||
+      n.startsWith('LINGOT') ||
+      n.contains('REPRIS');
 
   /// Texte lisible par l'annonceur.
   static String _speakable(String s) => s

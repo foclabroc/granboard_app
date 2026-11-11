@@ -144,6 +144,28 @@ class PlayerStore extends ChangeNotifier {
   /// Couleurs reçues du téléphone (écran TV : il ne connaît pas les comptes).
   final Map<String, Color> remoteColors = {};
 
+  /// Couleurs de joueurs toutes différentes pour une partie : la couleur du
+  /// compte, sauf invité ou couleur déjà prise (on prend une couleur libre).
+  List<Color> distinctColors(List<String> ids) {
+    final used = <int>{};
+    final out = <Color?>[];
+    for (final id in ids) {
+      final c = isGuestId(id) ? null : colorOf(id);
+      out.add(c != null && used.add(c.toARGB32()) ? c : null);
+    }
+    return [
+      for (final c in out)
+        c ??
+            (() {
+              final free = kPlayerColors.firstWhere(
+                  (k) => !used.contains(k.toARGB32()),
+                  orElse: () => kGuestColor);
+              used.add(free.toARGB32());
+              return free;
+            })()
+    ];
+  }
+
   Color colorOf(String id) =>
       byId(id)?.color ?? remoteColors[id] ?? kGuestColor;
 

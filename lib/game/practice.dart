@@ -32,6 +32,19 @@ enum PracticeKind {
   checkout121,
   spider,
   pirates,
+  // Fête
+  funMission,
+  allFives,
+  beyondTop,
+  kickDown,
+  twoLine,
+  shanghai,
+  hyperBull,
+  hideAndSeek,
+  killer,
+  treasureHunt,
+  ticTacToe,
+  baseball,
 }
 
 /// Réglages proposés pour chaque jeu.
@@ -53,6 +66,11 @@ class PracticeInfo {
   /// Options (clé → libellé).
   final Map<String, String> options;
   final bool bull;
+
+  /// Jeu de fête (onglet FÊTE) plutôt qu'entraînement.
+  final bool party;
+  final int minPlayers;
+  final int maxPlayers;
   const PracticeInfo(this.name, this.help,
       {this.rounds,
       this.defaultRounds,
@@ -60,7 +78,27 @@ class PracticeInfo {
       this.defaultGoal,
       this.target = false,
       this.options = const {},
-      this.bull = false});
+      this.bull = false,
+      this.party = false,
+      this.minPlayers = 1,
+      this.maxPlayers = 8});
+}
+
+/// Grille affichée à la place de la cible (Two Line, Morpion, Cache-cache).
+class PracticeCell {
+  final String label;
+  final int? owner;
+  final bool star;
+  final bool open;
+  final String? sub;
+  const PracticeCell(this.label,
+      {this.owner, this.star = false, this.open = false, this.sub});
+}
+
+class PracticeGrid {
+  final int cols;
+  final List<PracticeCell> cells;
+  const PracticeGrid(this.cols, this.cells);
 }
 
 const kPracticeInfo = <PracticeKind, PracticeInfo>{
@@ -116,6 +154,75 @@ const kPracticeInfo = <PracticeKind, PracticeInfo>{
         'kids': 'Kids (12 manches, tout bull = 50)',
         'master': 'Master (50 seulement)'
       }),
+  // ─── Fête ───
+  PracticeKind.funMission: PracticeInfo('Fun Mission',
+      'Une mission par manche (un triple, 60 points, le bull…). À 2 : mission réussie = tu prends 1 vie à l\'adversaire (4 vies chacun), il faut toutes les prendre. Seul : réussie +1, ratée -1, atteins 8.',
+      party: true, maxPlayers: 2),
+  PracticeKind.allFives: PracticeInfo('All Fives',
+      'Si le total de tes 3 fléchettes est un multiple de 5, tu marques total ÷ 5. Atteins l\'objectif pile (dépasser = 0).',
+      goals: [51, 61, 71],
+      defaultGoal: 51,
+      party: true,
+      options: {
+        'nodt': 'Doubles / triples valent 0',
+        'miss': 'Points même avec une fléchette ratée'
+      }),
+  PracticeKind.beyondTop: PracticeInfo('Beyond Top',
+      'Fais plus que le joueur d\'avant (30 au départ) : 1 point par tranche de 10 au-dessus. Sinon une vie en moins (6 vies). 10 manches, ou le dernier survivant.',
+      party: true, minPlayers: 2),
+  PracticeKind.kickDown: PracticeInfo('Kick Down',
+      'Course de 0 à 301 (ou 501) pile. Tomber sur le score d\'un adversaire le renvoie à 0 ! Dépasser = OVER SCORE : tu perds des points.',
+      goals: [301, 501],
+      defaultGoal: 301,
+      party: true,
+      minPlayers: 2,
+      bull: true,
+      options: {
+        'double': 'Finir sur un double',
+        'p150': 'Pénalité -150 (sinon -100)',
+        'prand': 'Pénalité au hasard'
+      }),
+  PracticeKind.twoLine: PracticeInfo('Two Line',
+      'Bingo 5 × 5 : touche un numéro pour le prendre, touche les tiens pour marquer. Reprendre un numéro adverse : 2 simples ou 1 double le libèrent, 1 triple le prend. 2 lignes + plus de points = victoire. 2 bulls dans la manche = numéros mélangés.',
+      party: true, minPlayers: 2, maxPlayers: 2),
+  PracticeKind.shanghai: PracticeInfo('Shanghai',
+      'Manche 1 = le 1, manche 2 = le 2… Points = numéro × 1, 2 ou 3. Simple + double + triple dans la manche = SHANGHAI, victoire immédiate.',
+      rounds: [7, 10, 20],
+      defaultRounds: 7,
+      party: true,
+      options: {
+        'infinity': 'Infinity (Shanghai = numéro × 10, on continue)',
+        'half': 'Rien touché = score ÷ 2'
+      }),
+  PracticeKind.hyperBull: PracticeInfo('Hyper Bull',
+      'Tout l\'intérieur de l\'anneau des triples vaut 50, le bull 75, le centre 100 ; le reste compte normalement. 8 manches (2400 au maximum).',
+      party: true),
+  PracticeKind.hideAndSeek: PracticeInfo('Cache-cache',
+      '12 fenêtres numérotées cachent 6 animaux gentils et 1 méchant. Ouvre une fenêtre en touchant son numéro (simple 20, double 100, triple 150). 3 animaux dans la manche = +200, aucun = -100, aucun numéro = ÷ 2. Un bull cache un méchant de plus. 10 manches.',
+      party: true, minPlayers: 2),
+  PracticeKind.killer: PracticeInfo('Killer',
+      'Chacun a son numéro. Touche le tien pour gagner des vies (3 = KILLER), puis ceux des autres pour leur en retirer. À 0 vie, une touche de plus élimine. Le dernier en vie gagne.',
+      party: true,
+      minPlayers: 2,
+      options: {
+        'double': 'Doubles seulement',
+        'triple': 'Triples seulement',
+        'onehit': 'Killer en une touche'
+      }),
+  PracticeKind.treasureHunt: PracticeInfo('Treasure Hunt',
+      'Chaque numéro touché cache un trésor (coffre, diamant, lingot ×2, bouclier, couteau et épée pour voler) ou un piège (crânes, grenade ; bull = crâne, tour passé). Manches 3, 6, 9 : trésors ×2 ; 4, 7, 10 : effets inversés. 10 manches.',
+      party: true, maxPlayers: 4),
+  PracticeKind.ticTacToe: PracticeInfo('Morpion',
+      'Grille de numéros : 4 marques pour prendre une case (simple 1, double 2, triple 3). Aligne tes cases pour gagner ; toucher tes cases rapporte des points.',
+      party: true,
+      maxPlayers: 2,
+      options: {
+        'mark8': '8 marques par case',
+        'big': 'Grille 4 × 4 (4 alignées)'
+      }),
+  PracticeKind.baseball: PracticeInfo('Baseball',
+      '9 manches : manche 1 = le 1… Simple = 1 point, double = 2, triple = 3. Égalité = manches en plus (12 au plus).',
+      party: true),
 };
 
 class PracticeSettings {
@@ -220,6 +327,9 @@ class PracticeGame implements DartsGame {
 
   final List<String> _log = [];
   late List<PracticePlayer> _st;
+
+  /// État commun à la partie (grilles, fenêtres…), pour les règles.
+  final Map<String, dynamic> shared = {};
   late List<PracticeTurn> _turns;
   int _current = 0;
   int _round = 1;
@@ -385,7 +495,7 @@ class PracticeGame implements DartsGame {
     for (var k = 0; k < n; k++) {
       i = (i + 1) % n;
       if (i == 0) _round++;
-      if (!_st[i].done && !_st[i].out) break;
+      if (!_st[i].done && !_st[i].out && !rules.skipTurn(this, i)) break;
     }
     _current = i;
     final limit = roundLimit;
@@ -415,6 +525,7 @@ class PracticeGame implements DartsGame {
   // ─── Fonctionnement ───
 
   void _reset() {
+    shared.clear();
     _st = [for (final _ in players) PracticePlayer()];
     for (var i = 0; i < players.length; i++) {
       rules.init(this, i, _st[i]);
@@ -439,8 +550,13 @@ class PracticeGame implements DartsGame {
     }
     if (_st.every((x) => x.done || x.out)) {
       _finish(_st.every((x) => x.out) ? PracticeEnd.allOut : PracticeEnd.goal);
+      return;
     }
+    if (rules.over(this)) _finish(PracticeEnd.goal);
   }
+
+  /// Grille du jeu (null = cible classique).
+  PracticeGrid? get grid => rules.grid(this);
 
   void _finish(PracticeEnd e) {
     _end = e;
@@ -495,6 +611,18 @@ abstract class PracticeRules {
         PracticeKind.checkout121 => _Checkout121(s),
         PracticeKind.spider => _Spider(s),
         PracticeKind.pirates => _Pirates(s),
+        PracticeKind.funMission => _FunMission(s),
+        PracticeKind.allFives => _AllFives(s),
+        PracticeKind.beyondTop => _BeyondTop(s),
+        PracticeKind.kickDown => _KickDown(s),
+        PracticeKind.twoLine => _TwoLine(s),
+        PracticeKind.shanghai => _Shanghai(s),
+        PracticeKind.hyperBull => _HyperBull(s),
+        PracticeKind.hideAndSeek => _HideAndSeek(s),
+        PracticeKind.killer => _Killer(s),
+        PracticeKind.treasureHunt => _Treasure(s),
+        PracticeKind.ticTacToe => _TicTacToe(s),
+        PracticeKind.baseball => _Baseball(s),
       };
 
   void init(PracticeGame g, int p, PracticePlayer st) {}
@@ -513,6 +641,14 @@ abstract class PracticeRules {
 
   /// Le premier qui finit gagne tout de suite.
   bool get goalEndsGame => false;
+
+  /// Fin de partie propre au jeu (dernier survivant…).
+  bool over(PracticeGame g) => false;
+
+  /// Le joueur passe son tour (Treasure Hunt) ; consomme le « passe ».
+  bool skipTurn(PracticeGame g, int p) => false;
+
+  PracticeGrid? grid(PracticeGame g) => null;
 
   /// < 0 si a est mieux classé que b.
   int compare(PracticeGame g, int a, int b) =>
@@ -1336,5 +1472,961 @@ class _Pirates extends PracticeRules {
       st.v['chance'] = 2;
       st.done = true;
     }
+  }
+}
+
+// ═══ Jeux de fête ═══
+
+int _numOf(DartHit h) => h.isBull ? 25 : h.number;
+
+/// Nombres 1-20 mélangés (tirage fixe par graine).
+List<int> _shuffled(int seed, {int from = 1, int to = 20}) =>
+    [for (var i = from; i <= to; i++) i]..shuffle(Random(seed));
+
+class _Mission {
+  final String label;
+  final bool Function(List<DartHit?> hits) ok;
+  const _Mission(this.label, this.ok);
+}
+
+class _FunMission extends PracticeRules {
+  _FunMission(super.s);
+
+  _Mission missionFor(PracticeGame g, int p) {
+    final r = Random(s.seed * 101 + g.round * 13 + p);
+    final n = 1 + r.nextInt(20);
+    final a = 1 + r.nextInt(16);
+    int sum(List<DartHit?> h) => h.fold(0, (x, d) => x + _value(d, s.bull));
+    bool all(List<DartHit?> h) => h.length == 3 && h.every((d) => d != null);
+    final list = <_Mission>[
+      _Mission('UN TRIPLE', (h) => h.any((d) => d?.ring == Ring.triple)),
+      _Mission('UN DOUBLE', (h) => h.any((d) => d?.ring == Ring.double)),
+      _Mission('LE BULL', (h) => h.any((d) => d?.isBull ?? false)),
+      _Mission('60 POINTS OU PLUS', (h) => sum(h) >= 60),
+      _Mission('MOINS DE 30, SANS RATER', (h) => all(h) && sum(h) < 30),
+      _Mission('LE $n',
+          (h) => h.any((d) => d != null && !d.isBull && d.number == n)),
+      _Mission('3 NUMÉROS DIFFÉRENTS',
+          (h) => all(h) && {for (final d in h) _numOf(d!)}.length == 3),
+      _Mission('2 FOIS LE MÊME NUMÉRO', (h) {
+        final ns = [
+          for (final d in h)
+            if (d != null) _numOf(d)
+        ];
+        return ns.toSet().length < ns.length;
+      }),
+      _Mission('UN TOTAL PAIR, SANS RATER', (h) => all(h) && sum(h).isEven),
+      _Mission(
+          'UN NUMÉRO DE $a À ${a + 4}',
+          (h) => h.any((d) =>
+              d != null && !d.isBull && d.number >= a && d.number <= a + 4)),
+      _Mission('QUE DES SIMPLES, SANS RATER',
+          (h) => all(h) && h.every((d) => d!.multiplier == 1 && !d.isBull)),
+      _Mission('UN TOTAL DE 40 À 60', (h) => sum(h) >= 40 && sum(h) <= 60),
+    ];
+    return list[r.nextInt(list.length)];
+  }
+
+  bool get _solo => false;
+
+  @override
+  void init(PracticeGame g, int p, PracticePlayer st) {
+    st.lives = 4;
+    st.score = 4;
+  }
+
+  @override
+  int? roundLimit(PracticeGame g) => 30;
+  @override
+  String rulesLabel(PracticeGame g) =>
+      g.players.length == 1 ? 'Seul : atteins 8 vies' : '4 vies chacun';
+  @override
+  String target(PracticeGame g, int p) => missionFor(g, p).label;
+  @override
+  String scoreText(PracticeGame g, int p) => '${g.stateOf(p).lives}';
+  @override
+  String info(PracticeGame g, int p) => 'VIES · MISSIONS ${g.stateOf(p).hits}';
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    d.ok = d.hit != null;
+    d.points = _value(d.hit, s.bull);
+  }
+
+  @override
+  void onTurnEnd(PracticeGame g, int p, PracticeTurn t) {
+    final st = g.stateOf(p);
+    final hits = [for (final d in t.darts) d.hit];
+    final ok = missionFor(g, p).ok(hits);
+    if (g.players.length == 1 || _solo) {
+      if (ok) {
+        st.lives++;
+        st.hits++;
+        t.note = 'MISSION RÉUSSIE';
+      } else {
+        st.lives--;
+        t.note = 'MISSION RATÉE';
+      }
+      if (st.lives >= 8) st.done = true;
+      if (st.lives <= 0) st.out = true;
+    } else if (ok) {
+      final o = g.stateOf(1 - p);
+      st.hits++;
+      if (o.lives > 0) {
+        o.lives--;
+        st.lives++;
+      }
+      t.note = 'MISSION RÉUSSIE : +1 VIE';
+      if (o.lives <= 0) o.out = true;
+    } else {
+      t.note = 'MISSION RATÉE';
+    }
+    for (var i = 0; i < g.players.length; i++) {
+      g.stateOf(i).score = g.stateOf(i).lives;
+    }
+  }
+
+  @override
+  bool over(PracticeGame g) =>
+      g.players.length > 1 &&
+      g.players.indexed.where((e) => !g.stateOf(e.$1).out).length <= 1;
+}
+
+class _AllFives extends PracticeRules {
+  _AllFives(super.s);
+  @override
+  bool get goalEndsGame => true;
+  @override
+  int? roundLimit(PracticeGame g) => 50;
+  @override
+  String rulesLabel(PracticeGame g) => 'Objectif ${s.goalOrDefault} pile';
+  @override
+  String target(PracticeGame g, int p) => 'TOTAL MULTIPLE DE 5';
+  @override
+  String scoreText(PracticeGame g, int p) =>
+      '${g.stateOf(p).score}/${s.goalOrDefault}';
+  @override
+  String info(PracticeGame g, int p) =>
+      'RESTE ${s.goalOrDefault - g.stateOf(p).score}';
+
+  int _val(DartHit? h) {
+    if (h == null) return 0;
+    if (s.has('nodt') && (h.multiplier >= 2 || h.ring == Ring.innerBull)) {
+      return 0;
+    }
+    return _value(h, s.bull);
+  }
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    d.ok = d.hit != null;
+  }
+
+  @override
+  void onTurnEnd(PracticeGame g, int p, PracticeTurn t) {
+    final st = g.stateOf(p);
+    final total = t.darts.fold(0, (a, d) => a + _val(d.hit));
+    final allIn = t.darts.every((d) => d.hit != null);
+    if ((!allIn && !s.has('miss')) || total == 0 || total % 5 != 0) {
+      t.note = '$total : PAS UN MULTIPLE DE 5';
+      return;
+    }
+    final pts = total ~/ 5;
+    if (st.score + pts > s.goalOrDefault) {
+      t.note = 'TROP ! (+$pts)';
+      return;
+    }
+    st.score += pts;
+    if (t.darts.isNotEmpty) t.darts.last.points = pts;
+    t.note = '$total ÷ 5 = +$pts';
+    if (st.score == s.goalOrDefault) st.done = true;
+  }
+}
+
+class _BeyondTop extends PracticeRules {
+  _BeyondTop(super.s);
+
+  int targetFor(PracticeGame g) {
+    final ts = g.turns;
+    if (ts.length < 2) return 30;
+    return ts[ts.length - 2].points;
+  }
+
+  @override
+  void init(PracticeGame g, int p, PracticePlayer st) => st.lives = 6;
+  @override
+  int? roundLimit(PracticeGame g) => 10;
+  @override
+  String rulesLabel(PracticeGame g) => '6 vies · 10 manches';
+  @override
+  String target(PracticeGame g, int p) => 'PLUS DE ${targetFor(g)}';
+  @override
+  String info(PracticeGame g, int p) => 'VIES ${g.stateOf(p).lives}/6';
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    d.ok = d.hit != null;
+    d.points = _value(d.hit, s.bull);
+  }
+
+  @override
+  void onTurnEnd(PracticeGame g, int p, PracticeTurn t) {
+    final st = g.stateOf(p);
+    final target = _parse(t.target);
+    if (t.points > target) {
+      final pts = (t.points - target) ~/ 10;
+      st.score += pts;
+      t.note = 'BATTU ! +$pts';
+    } else {
+      st.lives--;
+      t.note = 'PAS BATTU : -1 VIE';
+      if (st.lives <= 0) st.out = true;
+    }
+  }
+
+  static int _parse(String label) =>
+      int.tryParse(label.replaceAll(RegExp(r'[^0-9]'), '')) ?? 30;
+
+  @override
+  bool over(PracticeGame g) =>
+      g.players.length > 1 &&
+      List.generate(g.players.length, (i) => i)
+              .where((i) => !g.stateOf(i).out)
+              .length <=
+          1;
+
+  @override
+  int compare(PracticeGame g, int a, int b) {
+    final oa = g.stateOf(a).out ? 1 : 0, ob = g.stateOf(b).out ? 1 : 0;
+    if (oa != ob) return oa - ob;
+    return g.stateOf(b).score.compareTo(g.stateOf(a).score);
+  }
+}
+
+class _KickDown extends PracticeRules {
+  _KickDown(super.s);
+
+  @override
+  bool get goalEndsGame => true;
+  @override
+  int? roundLimit(PracticeGame g) => 40;
+  @override
+  String rulesLabel(PracticeGame g) =>
+      '0 → ${s.goalOrDefault}${s.has('double') ? ' · fin en double' : ''}';
+  @override
+  String target(PracticeGame g, int p) => 'ATTEINDRE ${s.goalOrDefault}';
+  @override
+  String info(PracticeGame g, int p) =>
+      'RESTE ${s.goalOrDefault - g.stateOf(p).score}';
+  @override
+  void onTurnStart(PracticeGame g, int p) =>
+      g.stateOf(p).v['start'] = g.stateOf(p).score;
+
+  int _penalty(PracticeGame g) {
+    if (s.has('prand')) {
+      return const [
+        50,
+        100,
+        150,
+        200
+      ][Random(s.seed + g.turns.length).nextInt(4)];
+    }
+    return s.has('p150') ? 150 : 100;
+  }
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final h = d.hit;
+    if (h == null) return;
+    final st = g.stateOf(p);
+    final goal = s.goalOrDefault;
+    final v = _value(h, s.bull);
+    final next = st.score + v;
+    final isDouble = h.ring == Ring.double || h.ring == Ring.innerBull;
+    final over = next > goal ||
+        (s.has('double') && (goal - next == 1 || (next == goal && !isDouble)));
+    if (over) {
+      final pen = _penalty(g);
+      st.score = max(0, (st.v['start'] ?? 0) - pen);
+      d.points = -pen;
+      t.note = 'OVER SCORE -$pen';
+      t.maxDarts = t.darts.length;
+      return;
+    }
+    d.ok = true;
+    d.points = v;
+    st.score = next;
+    if (next == goal) {
+      st.done = true;
+      return;
+    }
+    // KICK DOWN : même score qu'un adversaire = il retombe à 0
+    final kicked = <String>[];
+    for (var i = 0; i < g.players.length; i++) {
+      if (i == p) continue;
+      final o = g.stateOf(i);
+      if (o.score == next && next > 0) {
+        o.score = 0;
+        kicked.add(g.players[i].name);
+      }
+    }
+    if (kicked.isNotEmpty) t.note = 'KICK DOWN : ${kicked.join(', ')} à 0 !';
+  }
+}
+
+class _TwoLine extends PracticeRules {
+  _TwoLine(super.s);
+  static const _stars = {0, 4, 12, 20, 24};
+
+  /// Numéro de chaque case (0 = étoile).
+  List<int> cells(PracticeGame g) {
+    final mix = (g.shared['mix'] as int?) ?? 0;
+    final nums = _shuffled(s.seed * 7 + mix * 131);
+    var k = 0;
+    return [for (var i = 0; i < 25; i++) _stars.contains(i) ? 0 : nums[k++]];
+  }
+
+  Map<int, int> own(PracticeGame g) =>
+      (g.shared['own'] ??= <int, int>{}) as Map<int, int>;
+  Map<int, int> dmg(PracticeGame g) =>
+      (g.shared['dmg'] ??= <int, int>{}) as Map<int, int>;
+
+  int lines(PracticeGame g, int p) {
+    final c = cells(g);
+    final o = own(g);
+    bool mine(int i) => c[i] == 0 || o[c[i]] == p;
+    final ls = <List<int>>[
+      for (var r = 0; r < 5; r++) [for (var x = 0; x < 5; x++) r * 5 + x],
+      for (var x = 0; x < 5; x++) [for (var r = 0; r < 5; r++) r * 5 + x],
+      [0, 6, 12, 18, 24],
+      [4, 8, 12, 16, 20],
+    ];
+    return ls.where((l) => l.every(mine)).length;
+  }
+
+  @override
+  int? roundLimit(PracticeGame g) => 30;
+  @override
+  String rulesLabel(PracticeGame g) => '2 lignes + plus de points';
+  @override
+  String target(PracticeGame g, int p) => 'PRENDS DES NUMÉROS';
+  @override
+  String info(PracticeGame g, int p) => 'LIGNES ${lines(g, p)}/2';
+  @override
+  List<DartHit> zones(PracticeGame g, int p) => const [];
+  @override
+  PracticeGrid grid(PracticeGame g) {
+    final o = own(g);
+    return PracticeGrid(5, [
+      for (final n in cells(g))
+        n == 0
+            ? const PracticeCell('★', star: true)
+            : PracticeCell('$n',
+                owner: o[n], sub: (dmg(g)[n] ?? 0) > 0 ? '½' : null),
+    ]);
+  }
+
+  @override
+  void onTurnStart(PracticeGame g, int p) => g.shared['bulls'] = 0;
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final h = d.hit;
+    if (h == null) return;
+    final st = g.stateOf(p);
+    if (h.isBull) {
+      final b = (g.shared['bulls'] as int? ?? 0) + 1;
+      g.shared['bulls'] = b;
+      if (b == 2) {
+        g.shared['mix'] = (g.shared['mix'] as int? ?? 0) + 1;
+        t.note = 'NUMÉROS MÉLANGÉS !';
+        d.ok = true;
+      }
+      return;
+    }
+    final n = h.number;
+    final o = own(g);
+    final owner = o[n];
+    d.ok = true;
+    if (owner == null) {
+      o[n] = p;
+      t.note = '$n PRIS';
+    } else if (owner == p) {
+      d.points = n;
+      st.score += n;
+    } else if (h.ring == Ring.triple) {
+      o[n] = p;
+      dmg(g).remove(n);
+      t.note = '$n REPRIS !';
+    } else if (h.ring == Ring.double) {
+      o.remove(n);
+      dmg(g).remove(n);
+      t.note = '$n LIBÉRÉ';
+    } else {
+      final k = (dmg(g)[n] ?? 0) + 1;
+      if (k >= 2) {
+        o.remove(n);
+        dmg(g).remove(n);
+        t.note = '$n LIBÉRÉ';
+      } else {
+        dmg(g)[n] = k;
+      }
+    }
+    if (lines(g, p) >= 2 && st.score > g.stateOf(1 - p).score) st.done = true;
+  }
+
+  @override
+  bool get goalEndsGame => true;
+
+  @override
+  int compare(PracticeGame g, int a, int b) {
+    if (g.stateOf(a).done != g.stateOf(b).done) {
+      return g.stateOf(a).done ? -1 : 1;
+    }
+    final l = lines(g, b).compareTo(lines(g, a));
+    return l != 0 ? l : g.stateOf(b).score.compareTo(g.stateOf(a).score);
+  }
+}
+
+class _Shanghai extends PracticeRules {
+  _Shanghai(super.s);
+  @override
+  bool get goalEndsGame => true;
+  @override
+  int? roundLimit(PracticeGame g) => s.roundsOrDefault;
+  @override
+  String target(PracticeGame g, int p) => '${g.round}';
+  @override
+  List<DartHit> zones(PracticeGame g, int p) => _numberZones(g.round);
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final h = d.hit;
+    if (h == null || h.isBull || h.number != g.round) return;
+    d.ok = true;
+    d.points = h.score;
+    g.stateOf(p).score += d.points;
+    final rings = {
+      for (final x in t.darts)
+        if (x.ok) x.hit!.multiplier
+    };
+    if (rings.containsAll(const {1, 2, 3})) {
+      if (s.has('infinity')) {
+        final bonus = g.round * 10;
+        g.stateOf(p).score += bonus;
+        d.points += bonus;
+        t.note = 'SHANGHAI +$bonus';
+      } else {
+        t.note = 'SHANGHAI !';
+        g.stateOf(p).done = true;
+      }
+    }
+  }
+
+  @override
+  void onTurnEnd(PracticeGame g, int p, PracticeTurn t) {
+    if (s.has('half') && t.okCount == 0) {
+      final st = g.stateOf(p);
+      st.score ~/= 2;
+      t.note = '÷ 2';
+    }
+  }
+
+  @override
+  int compare(PracticeGame g, int a, int b) {
+    if (g.stateOf(a).done != g.stateOf(b).done) {
+      return g.stateOf(a).done ? -1 : 1;
+    }
+    return g.stateOf(b).score.compareTo(g.stateOf(a).score);
+  }
+}
+
+class _HyperBull extends PracticeRules {
+  _HyperBull(super.s);
+  @override
+  int? roundLimit(PracticeGame g) => 8;
+  @override
+  String target(PracticeGame g, int p) => 'LE PLUS PRÈS DU CENTRE';
+  @override
+  List<DartHit> zones(PracticeGame g, int p) => [
+        for (var n = 1; n <= 20; n++) DartHit(n, 1, Ring.singleInner),
+        ..._numberZones(25),
+      ];
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final h = d.hit;
+    if (h == null) return;
+    d.points = switch (h.ring) {
+      Ring.innerBull => 100,
+      Ring.outerBull => 75,
+      Ring.singleInner => 50,
+      _ => h.score,
+    };
+    d.ok = d.points >= 50;
+    g.stateOf(p).score += d.points;
+  }
+}
+
+class _HideAndSeek extends PracticeRules {
+  _HideAndSeek(super.s);
+
+  List<int> windows() => _shuffled(s.seed * 3 + 1).take(12).toList()..sort();
+
+  /// Fenêtre → animal (valeur > 0 gentil, < 0 méchant).
+  Map<int, int> animals(PracticeGame g) {
+    if (g.shared['animals'] == null) {
+      final r = Random(s.seed * 5 + 2);
+      final w = windows()..shuffle(r);
+      g.shared['animals'] = <int, int>{
+        for (var i = 0; i < 6; i++) w[i]: 10 + r.nextInt(17) * 10,
+        w[6]: -150,
+      };
+    }
+    return g.shared['animals'] as Map<int, int>;
+  }
+
+  Set<int> opened(PracticeGame g) => (g.shared['open'] ??= <int>{}) as Set<int>;
+
+  int niceLeft(PracticeGame g) => animals(g)
+      .entries
+      .where((e) => e.value > 0 && !opened(g).contains(e.key))
+      .length;
+
+  @override
+  int? roundLimit(PracticeGame g) => 10;
+  @override
+  String target(PracticeGame g, int p) => 'OUVRE UNE FENÊTRE';
+  @override
+  String info(PracticeGame g, int p) => 'ANIMAUX ${g.stateOf(p).hits}';
+  @override
+  List<DartHit> zones(PracticeGame g, int p) => [
+        for (final n in windows())
+          if (!opened(g).contains(n)) ..._numberZones(n)
+      ];
+  @override
+  PracticeGrid grid(PracticeGame g) {
+    final a = animals(g);
+    final o = opened(g);
+    final who = (g.shared['who'] as Map<int, int>?) ?? const {};
+    return PracticeGrid(4, [
+      for (final n in windows())
+        PracticeCell('$n',
+            open: o.contains(n),
+            owner: who[n],
+            sub: !o.contains(n)
+                ? '?'
+                : a[n] == null
+                    ? 'VIDE'
+                    : a[n]! > 0
+                        ? '🐾 +${a[n]}'
+                        : '👹 ${a[n]}'),
+    ]);
+  }
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final h = d.hit;
+    if (h == null) return;
+    final st = g.stateOf(p);
+    final a = animals(g);
+    final o = opened(g);
+    if (h.isBull) {
+      // Un méchant de plus caché derrière une fenêtre fermée (5 au plus)
+      final angry = a.values.where((v) => v < 0).length;
+      final free = [
+        for (final n in windows())
+          if (!o.contains(n) && !a.containsKey(n)) n
+      ];
+      if (angry < 5 && free.isNotEmpty) {
+        a[free[Random(s.seed + g.turns.length).nextInt(free.length)]] = -150;
+        t.note = 'UN MÉCHANT DE PLUS !';
+      }
+      return;
+    }
+    final n = h.number;
+    if (!windows().contains(n) || o.contains(n)) return;
+    o.add(n);
+    ((g.shared['who'] ??= <int, int>{}) as Map<int, int>)[n] = p;
+    d.ok = true;
+    d.points = switch (h.multiplier) { 3 => 150, 2 => 100, _ => 20 };
+    final animal = a[n];
+    if (animal != null) {
+      d.points += animal;
+      if (animal > 0) {
+        st.hits++;
+        st.v['found'] = (st.v['found'] ?? 0) + 1;
+        t.note = 'ANIMAL TROUVÉ +$animal';
+      } else {
+        t.note = 'LE MÉCHANT ! $animal';
+      }
+    }
+    st.score += d.points;
+  }
+
+  @override
+  void onTurnStart(PracticeGame g, int p) => g.stateOf(p).v['found'] = 0;
+
+  @override
+  void onTurnEnd(PracticeGame g, int p, PracticeTurn t) {
+    final st = g.stateOf(p);
+    final found = st.v['found'] ?? 0;
+    if (t.okCount == 0) {
+      st.score ~/= 2;
+      t.note = 'RIEN TOUCHÉ : ÷ 2';
+    } else if (found >= 3) {
+      st.score += 200;
+      t.note = '3 ANIMAUX : +200';
+    } else if (found == 0) {
+      st.score -= 100;
+      t.note = 'AUCUN ANIMAL : -100';
+    }
+  }
+
+  @override
+  bool over(PracticeGame g) => niceLeft(g) == 0;
+}
+
+class _Killer extends PracticeRules {
+  _Killer(super.s);
+
+  int numberOf(PracticeGame g, int p) => _shuffled(s.seed * 11 + 5)[p % 20];
+  int get _need => s.has('onehit') ? 1 : 3;
+  bool killer(PracticeGame g, int p) => g.stateOf(p).v['killer'] == 1;
+
+  @override
+  void init(PracticeGame g, int p, PracticePlayer st) => st.lives = 0;
+  @override
+  int? roundLimit(PracticeGame g) => 40;
+  @override
+  String rulesLabel(PracticeGame g) => [
+        if (s.has('double')) 'Doubles',
+        if (s.has('triple')) 'Triples',
+        if (s.has('onehit')) 'Killer en une touche',
+        'Dernier en vie',
+      ].join(' · ');
+  @override
+  String target(PracticeGame g, int p) => killer(g, p)
+      ? 'KILLER : VISE LES AUTRES'
+      : 'TON NUMÉRO : ${numberOf(g, p)}';
+  @override
+  String scoreText(PracticeGame g, int p) => '${g.stateOf(p).lives}';
+  @override
+  String info(PracticeGame g, int p) =>
+      'N° ${numberOf(g, p)} · VIES${killer(g, p) ? ' · KILLER' : ''}';
+  @override
+  List<DartHit> zones(PracticeGame g, int p) => killer(g, p)
+      ? [
+          for (var i = 0; i < g.players.length; i++)
+            if (i != p && !g.stateOf(i).out) ..._numberZones(numberOf(g, i))
+        ]
+      : _numberZones(numberOf(g, p));
+
+  int _count(DartHit h) {
+    if (s.has('double')) return h.ring == Ring.double ? 1 : 0;
+    if (s.has('triple')) return h.ring == Ring.triple ? 1 : 0;
+    return h.multiplier;
+  }
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final h = d.hit;
+    if (h == null || h.isBull) return;
+    final k = _count(h);
+    if (k == 0) return;
+    final st = g.stateOf(p);
+    if (h.number == numberOf(g, p)) {
+      d.ok = true;
+      if (killer(g, p)) {
+        st.lives = max(0, st.lives - k);
+        t.note = 'AÏE, TON PROPRE NUMÉRO !';
+        if (st.lives < _need) st.v['killer'] = 0;
+      } else {
+        st.lives = min(3, st.lives + k);
+        if (st.lives >= _need) {
+          st.v['killer'] = 1;
+          t.note = '${g.players[p].name.toUpperCase()} EST KILLER !';
+        }
+      }
+      d.points = k;
+      return;
+    }
+    if (!killer(g, p)) return;
+    for (var i = 0; i < g.players.length; i++) {
+      final o = g.stateOf(i);
+      if (i == p || o.out || numberOf(g, i) != h.number) continue;
+      d.ok = true;
+      if (o.lives == 0) {
+        o.out = true;
+        t.note = '${g.players[i].name.toUpperCase()} ÉLIMINÉ !';
+      } else {
+        o.lives = max(0, o.lives - k);
+        if (o.lives < _need) o.v['killer'] = 0;
+        t.note = '${g.players[i].name} -$k';
+      }
+    }
+  }
+
+  @override
+  bool over(PracticeGame g) =>
+      List.generate(g.players.length, (i) => i)
+          .where((i) => !g.stateOf(i).out)
+          .length <=
+      1;
+
+  @override
+  int compare(PracticeGame g, int a, int b) {
+    final oa = g.stateOf(a).out ? 1 : 0, ob = g.stateOf(b).out ? 1 : 0;
+    if (oa != ob) return oa - ob;
+    return g.stateOf(b).lives.compareTo(g.stateOf(a).lives);
+  }
+}
+
+class _Treasure extends PracticeRules {
+  _Treasure(super.s);
+
+  @override
+  int? roundLimit(PracticeGame g) => 10;
+  @override
+  String rulesLabel(PracticeGame g) => 'Manches 3-6-9 ×2 · 4-7-10 inversées';
+  @override
+  String target(PracticeGame g, int p) => const [3, 6, 9].contains(g.round)
+      ? 'TRÉSORS × 2'
+      : const [4, 7, 10].contains(g.round)
+          ? 'EFFETS INVERSÉS'
+          : 'CREUSE UN NUMÉRO';
+  @override
+  String info(PracticeGame g, int p) =>
+      g.stateOf(p).v['shield'] == 1 ? 'BOUCLIER' : '';
+
+  @override
+  bool skipTurn(PracticeGame g, int p) {
+    final st = g.stateOf(p);
+    if (st.v['skip'] == 1) {
+      st.v['skip'] = 0;
+      return true;
+    }
+    return false;
+  }
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final h = d.hit;
+    if (h == null) return;
+    final st = g.stateOf(p);
+    final dbl = const [3, 6, 9].contains(g.round);
+    final inv = const [4, 7, 10].contains(g.round);
+    if (h.isBull) {
+      t.note = 'CRÂNE DU BULL : TOUR PASSÉ';
+      if (g.players.length == 1) {
+        st.done = true;
+      } else {
+        st.v['skip'] = 1;
+      }
+      t.maxDarts = t.darts.length;
+      return;
+    }
+    final digs = (g.shared['dig'] ??= <int, int>{}) as Map<int, int>;
+    final k = digs[h.number] = (digs[h.number] ?? 0) + 1;
+    final r = Random(s.seed * 977 + h.number * 31 + k).nextInt(100);
+    d.ok = true;
+    var delta = 0;
+    String what;
+    if (r < 30) {
+      final n = 1 + r % 5;
+      delta = n * 100;
+      what = '$n COFFRE${n > 1 ? 'S' : ''}';
+    } else if (r < 35) {
+      delta = 1000;
+      what = 'DIAMANT';
+    } else if (r < 38) {
+      delta = inv ? -(st.score ~/ 2) : st.score; // lingot : score × 2
+      what = inv ? 'LINGOT INVERSÉ ÷ 2' : 'LINGOT D\'OR × 2';
+      st.score += delta;
+      d.points = delta;
+      t.note = what;
+      return;
+    } else if (r < 53) {
+      delta = -100;
+      what = 'CRÂNE BLANC';
+    } else if (r < 63) {
+      delta = -300;
+      what = 'CRÂNE VIOLET';
+    } else if (r < 69) {
+      delta = -500;
+      what = 'CRÂNE ROUGE';
+    } else if (r < 72) {
+      delta = -1000;
+      what = 'GRENADE';
+    } else if (r < 80) {
+      st.v['shield'] = 1;
+      t.note = 'BOUCLIER';
+      return;
+    } else if (r < 92) {
+      final steal = r < 88 ? 300 : 600;
+      // Vol au joueur qui a le plus de points
+      var victim = -1;
+      for (var i = 0; i < g.players.length; i++) {
+        if (i == p) continue;
+        if (victim < 0 || g.stateOf(i).score > g.stateOf(victim).score) {
+          victim = i;
+        }
+      }
+      final name = steal == 300 ? 'COUTEAU' : 'ÉPÉE';
+      if (victim < 0) {
+        delta = steal;
+        what = name;
+      } else {
+        final amount = inv ? -steal : steal;
+        g.stateOf(victim).score -= amount;
+        st.score += amount;
+        d.points = amount;
+        t.note = inv
+            ? '$name INVERSÉ : ${g.players[victim].name} +$steal'
+            : '$name : -$steal à ${g.players[victim].name}';
+        return;
+      }
+    } else {
+      t.note = 'RIEN';
+      return;
+    }
+    if (dbl) delta *= 2;
+    if (inv) delta = -delta;
+    if (delta < 0 && st.v['shield'] == 1) {
+      st.v['shield'] = 0;
+      t.note = '$what : BOUCLIER !';
+      return;
+    }
+    st.score += delta;
+    d.points = delta;
+    t.note = '$what ${delta >= 0 ? '+' : ''}$delta';
+  }
+}
+
+class _TicTacToe extends PracticeRules {
+  _TicTacToe(super.s);
+
+  int get size => s.has('big') ? 4 : 3;
+  int get need => s.has('mark8') ? 8 : 4;
+  List<int> numbers() => _shuffled(s.seed * 19 + 3).take(size * size).toList();
+
+  Map<int, int> owners(PracticeGame g) =>
+      (g.shared['own'] ??= <int, int>{}) as Map<int, int>;
+  Map<String, int> marks(PracticeGame g) =>
+      (g.shared['marks'] ??= <String, int>{}) as Map<String, int>;
+
+  bool hasLine(PracticeGame g, int p) {
+    final o = owners(g);
+    final ns = numbers();
+    bool mine(int r, int c) => o[ns[r * size + c]] == p;
+    for (var i = 0; i < size; i++) {
+      if (List.generate(size, (c) => mine(i, c)).every((x) => x)) return true;
+      if (List.generate(size, (r) => mine(r, i)).every((x) => x)) return true;
+    }
+    return List.generate(size, (i) => mine(i, i)).every((x) => x) ||
+        List.generate(size, (i) => mine(i, size - 1 - i)).every((x) => x);
+  }
+
+  @override
+  bool get goalEndsGame => true;
+  @override
+  int? roundLimit(PracticeGame g) => 25;
+  @override
+  String rulesLabel(PracticeGame g) => '$size × $size · $need marques par case';
+  @override
+  String target(PracticeGame g, int p) => 'PRENDS UNE CASE';
+  @override
+  String info(PracticeGame g, int p) =>
+      '${p == 0 ? 'X' : 'O'} · ${owners(g).values.where((x) => x == p).length} CASES';
+  @override
+  List<DartHit> zones(PracticeGame g, int p) => [
+        for (final n in numbers())
+          if (owners(g)[n] == null || owners(g)[n] == p) ..._numberZones(n)
+      ];
+  @override
+  PracticeGrid grid(PracticeGame g) {
+    final o = owners(g);
+    final m = marks(g);
+    return PracticeGrid(size, [
+      for (final n in numbers())
+        PracticeCell('$n',
+            owner: o[n],
+            open: o[n] != null,
+            sub: o[n] != null
+                ? (o[n] == 0 ? 'X' : 'O')
+                : [
+                    for (var p = 0; p < g.players.length; p++)
+                      if ((m['$n:$p'] ?? 0) > 0)
+                        '${p == 0 ? 'X' : 'O'} ${m['$n:$p']}/$need'
+                  ].join('  ')),
+    ]);
+  }
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final h = d.hit;
+    if (h == null || h.isBull || !numbers().contains(h.number)) return;
+    final n = h.number;
+    final o = owners(g);
+    final st = g.stateOf(p);
+    if (o[n] == p) {
+      d.ok = true;
+      d.points = h.score;
+      st.score += d.points;
+      return;
+    }
+    if (o[n] != null) return;
+    d.ok = true;
+    final key = '$n:$p';
+    final m = marks(g)[key] = (marks(g)[key] ?? 0) + h.multiplier;
+    if (m >= need) {
+      o[n] = p;
+      st.hits++;
+      t.note = 'CASE $n PRISE';
+      if (hasLine(g, p)) {
+        st.done = true;
+        t.note = 'ALIGNÉ !';
+      }
+    }
+  }
+
+  @override
+  bool over(PracticeGame g) => owners(g).length == size * size;
+
+  @override
+  int compare(PracticeGame g, int a, int b) {
+    if (g.stateOf(a).done != g.stateOf(b).done) {
+      return g.stateOf(a).done ? -1 : 1;
+    }
+    return g.stateOf(b).score.compareTo(g.stateOf(a).score);
+  }
+}
+
+class _Baseball extends PracticeRules {
+  _Baseball(super.s);
+
+  bool _tied(PracticeGame g) {
+    final scores = [
+      for (var i = 0; i < g.players.length; i++) g.stateOf(i).score
+    ];
+    final best = scores.reduce(max);
+    return g.players.length > 1 && scores.where((x) => x == best).length > 1;
+  }
+
+  @override
+  int? roundLimit(PracticeGame g) {
+    if (g.round <= 9) return 9;
+    return _tied(g) && g.round <= 12 ? g.round : g.round - 1;
+  }
+
+  @override
+  String rulesLabel(PracticeGame g) => '9 manches';
+  @override
+  String target(PracticeGame g, int p) => '${g.round}';
+  @override
+  List<DartHit> zones(PracticeGame g, int p) => _numberZones(g.round);
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final h = d.hit;
+    if (h == null || h.isBull || h.number != g.round) return;
+    d.ok = true;
+    d.points = h.multiplier;
+    g.stateOf(p).score += d.points;
   }
 }

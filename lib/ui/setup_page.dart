@@ -44,6 +44,7 @@ class _SetupPageState extends State<SetupPage> {
   int? _cLimit = 20;
   // Entraînement
   PracticeKind _pKind = PracticeKind.countUp;
+  PracticeKind _fKind = PracticeKind.funMission;
   int? _pRounds;
   int? _pGoal;
   int _pTarget = 20;
@@ -80,6 +81,8 @@ class _SetupPageState extends State<SetupPage> {
         _cTeams = j['cteams'] as bool? ?? false;
         _cLimit = j.containsKey('climit') ? j['climit'] as int? : 20;
         _mLegs = j['mlegs'] as int? ?? 3;
+        _fKind = PracticeKind.values.firstWhere((k) => k.name == j['fkind'],
+            orElse: () => PracticeKind.funMission);
         _pKind = PracticeKind.values.firstWhere((k) => k.name == j['pkind'],
             orElse: () => PracticeKind.countUp);
         _pRounds = j['prounds'] as int?;
@@ -130,6 +133,7 @@ class _SetupPageState extends State<SetupPage> {
           'climit': _cLimit,
           'mlegs': _mLegs,
           'pkind': _pKind.name,
+          'fkind': _fKind.name,
           'prounds': _pRounds,
           'pgoal': _pGoal,
           'ptarget': _pTarget,
@@ -158,12 +162,16 @@ class _SetupPageState extends State<SetupPage> {
 
   bool get _cricketOn => _kind == 'cricket';
   bool get _matchOn => _kind == 'match';
-  bool get _practiceOn => _kind == 'practice';
+  bool get _practiceOn => _kind == 'practice' || _kind == 'party';
+  bool get _partyOn => _kind == 'party';
 
-  PracticeInfo get _pInfo => kPracticeInfo[_pKind]!;
+  PracticeKind get _curKind => _partyOn ? _fKind : _pKind;
+  set _curKind(PracticeKind k) => _partyOn ? _fKind = k : _pKind = k;
+
+  PracticeInfo get _pInfo => kPracticeInfo[_curKind]!;
 
   PracticeSettings get _practice => PracticeSettings(
-        _pKind,
+        _curKind,
         rounds: _pInfo.rounds != null &&
                 _pInfo.rounds!.contains(_pRounds ?? _pInfo.defaultRounds)
             ? _pRounds ?? _pInfo.defaultRounds
@@ -234,6 +242,15 @@ class _SetupPageState extends State<SetupPage> {
 
   String? get _problem {
     if (_selected.isEmpty) return 'Ajoute au moins un joueur';
+    if (_practiceOn) {
+      final i = _pInfo;
+      if (_selected.length < i.minPlayers) {
+        return '${i.name} : ${i.minPlayers} joueurs minimum';
+      }
+      if (_selected.length > i.maxPlayers) {
+        return '${i.name} : ${i.maxPlayers} joueur${i.maxPlayers > 1 ? 's' : ''} maximum';
+      }
+    }
     if (_teams) {
       final a = _selected.where((id) => _teamOf(id) == 0).length;
       final b = _selected.length - a;
@@ -308,11 +325,20 @@ class _SetupPageState extends State<SetupPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: SegmentedButton<String>(
                     showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(value: 'x01', label: Text('01')),
-                      ButtonSegment(value: 'cricket', label: Text('CRICKET')),
-                      ButtonSegment(value: 'match', label: Text('MATCH')),
-                      ButtonSegment(value: 'practice', label: Text('ENTRAÎN.')),
+                    style: SegmentedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 4)),
+                    segments: [
+                      for (final (v, l) in const [
+                        ('x01', '01'),
+                        ('cricket', 'CRICKET'),
+                        ('match', 'MATCH'),
+                        ('practice', 'ENTRAÎN.'),
+                        ('party', 'FÊTE'),
+                      ])
+                        ButtonSegment(
+                            value: v,
+                            label: FittedBox(
+                                fit: BoxFit.scaleDown, child: Text(l))),
                     ],
                     selected: {_kind},
                     onSelectionChanged: (v) => setState(() => _kind = v.first),
@@ -431,8 +457,8 @@ class _SetupPageState extends State<SetupPage> {
     final rounds = _pRounds ?? info.defaultRounds;
     final goal = _pGoal ?? info.defaultGoal;
     return [
-      const TvSection('Jeu d\'entraînement',
-          padding: EdgeInsets.fromLTRB(16, 8, 16, 8)),
+      TvSection(_partyOn ? 'Jeu de fête' : 'Jeu d\'entraînement',
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8)),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Wrap(
@@ -440,15 +466,16 @@ class _SetupPageState extends State<SetupPage> {
           runSpacing: 6,
           children: [
             for (final k in PracticeKind.values)
-              ChoiceChip(
-                label: Text(kPracticeInfo[k]!.name.toUpperCase()),
-                selected: _pKind == k,
-                onSelected: (_) => setState(() {
-                  _pKind = k;
-                  _pRounds = null;
-                  _pGoal = null;
-                }),
-              ),
+              if (kPracticeInfo[k]!.party == _partyOn)
+                ChoiceChip(
+                  label: Text(kPracticeInfo[k]!.name.toUpperCase()),
+                  selected: _curKind == k,
+                  onSelected: (_) => setState(() {
+                    _curKind = k;
+                    _pRounds = null;
+                    _pGoal = null;
+                  }),
+                ),
           ],
         ),
       ),
@@ -472,7 +499,7 @@ class _SetupPageState extends State<SetupPage> {
       if (info.rounds != null)
         ListTile(
           title: Text(
-              _pKind == PracticeKind.checkout121
+              _curKind == PracticeKind.checkout121
                   ? 'Fléchettes par tentative'
                   : 'Manches',
               style: Tv.title(17)),
@@ -482,7 +509,7 @@ class _SetupPageState extends State<SetupPage> {
               for (final n in info.rounds!)
                 DropdownMenuItem(
                     value: n,
-                    child: Text(_pKind == PracticeKind.countUp && n == 33
+                    child: Text(_curKind == PracticeKind.countUp && n == 33
                         ? '33 (99 fléchettes)'
                         : '$n')),
             ],

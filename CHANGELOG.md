@@ -8,7 +8,8 @@
 - MATCH : 3 à 13 legs, jeu de chaque leg au choix (01 ou Cricket), le joueur qui commence change à chaque leg, résultats aux legs avec moyenne et MPR
 - Stats en ligne du Cricket : MPR (marques par manche), victoires, meilleure manche ; classements « Cricket MPR » et « Victoires Cricket » ; la note et la moyenne restent calculées sur le 01
 - Entraînement : Count Up (et défi 99 fléchettes), Target 20, Target Bull, Choix de cible, Target Hat, Target Horse, Half It, Delta Shoot, Rotation, Shoot Force, Oniren, CR Count Up, CR Multiple, Bob's 27, Finition 121, Spider, Pirates ; zones à viser en surbrillance sur la cible, annonces (÷ 2, hat trick, araignée abattue, navire coulé…)
-- Meilleurs scores d'entraînement en ligne : classement par jeu (onglet « Entraînement ») et meilleurs scores sur le profil
+- Fête : Fun Mission, All Fives, Beyond Top, Kick Down, Two Line, Shanghai, Hyper Bull, Cache-cache, Killer, Treasure Hunt, Morpion, Baseball (grilles à l'écran pour Two Line, Morpion et Cache-cache)
+- Meilleurs scores d'entraînement et de fête en ligne : classement par jeu (onglet « Entraînement ») et meilleurs scores sur le profil
 - Tout s'affiche aussi sur l'écran TV
 
 ## v0.5.1

@@ -10,7 +10,7 @@ import 'theme.dart';
 import 'widgets.dart';
 
 Color _colorOf(PracticeGame g, int i) =>
-    PlayerStore.instance.colorOf(g.players[i].id);
+    PlayerStore.instance.distinctColors([for (final p in g.players) p.id])[i];
 
 /// Partie d'entraînement : cible animée (zones à viser) | joueur en cours
 /// (+ boutons) | scores. Partagé par le téléphone et l'écran TV.
@@ -39,18 +39,21 @@ class PracticeLayout extends StatelessWidget {
             LayoutBuilder(
               builder: (context, c) => Padding(
                 padding: const EdgeInsets.all(6),
-                child: AnimatedDartboard(
-                  size: c.maxHeight - 12,
-                  hits: [
-                    for (final d in t.darts.length > 3
-                        ? t.darts.sublist(t.darts.length - 3)
-                        : t.darts)
-                      if (d.hit != null) d.hit!
-                  ],
-                  targets: game.finished ? const [] : game.targetZones,
-                  win: game.finished,
-                  dartColor: _colorOf(game, game.current),
-                ),
+                child: game.grid != null
+                    ? _GridView(
+                        game: game, grid: game.grid!, size: c.maxHeight - 12)
+                    : AnimatedDartboard(
+                        size: c.maxHeight - 12,
+                        hits: [
+                          for (final d in t.darts.length > 3
+                              ? t.darts.sublist(t.darts.length - 3)
+                              : t.darts)
+                            if (d.hit != null) d.hit!
+                        ],
+                        targets: game.finished ? const [] : game.targetZones,
+                        win: game.finished,
+                        dartColor: _colorOf(game, game.current),
+                      ),
               ),
             ),
             Expanded(
@@ -70,6 +73,78 @@ class PracticeLayout extends StatelessWidget {
         Positioned.fill(
             child: IgnorePointer(child: GameSplash(key: splashKey))),
       ],
+    );
+  }
+}
+
+/// Grille (Two Line, Morpion, Cache-cache) à la place de la cible.
+class _GridView extends StatelessWidget {
+  final PracticeGame game;
+  final PracticeGrid grid;
+  final double size;
+  const _GridView({required this.game, required this.grid, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = (grid.cells.length / grid.cols).ceil();
+    final cell = size / grid.cols;
+    final h = size * rows / grid.cols;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Center(
+        child: SizedBox(
+          width: size,
+          height: h,
+          child: GridView.count(
+            crossAxisCount: grid.cols,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            children: [
+              for (final c in grid.cells)
+                Builder(builder: (context) {
+                  final color = c.owner == null
+                      ? null
+                      : _colorOf(
+                          game, c.owner!.clamp(0, game.players.length - 1));
+                  return Container(
+                    margin: EdgeInsets.all(cell * 0.04),
+                    decoration: BoxDecoration(
+                      color: c.star
+                          ? Tv.gold.withValues(alpha: 0.25)
+                          : color?.withValues(alpha: 0.75) ??
+                              (c.open ? Tv.panel2 : Tv.panel),
+                      borderRadius: BorderRadius.circular(cell * 0.12),
+                      border: Border.all(
+                          color: color ?? (c.star ? Tv.gold : Tv.line),
+                          width: 1.5),
+                    ),
+                    padding: EdgeInsets.all(cell * 0.05),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (c.star)
+                            Icon(Icons.star_rounded,
+                                color: Tv.gold, size: cell * 0.5)
+                          else
+                            Text(c.label,
+                                style:
+                                    Tv.title(cell * 0.42, color: Colors.white)),
+                          if (c.sub != null && c.sub!.isNotEmpty)
+                            Text(c.sub!,
+                                style: Tv.title(cell * 0.2,
+                                    color: Colors.white70)),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
