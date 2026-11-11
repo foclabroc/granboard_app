@@ -5,15 +5,40 @@ import 'package:flutter/material.dart';
 import '../audio.dart';
 import '../game/cricket.dart';
 import '../players.dart';
-import 'dartboard.dart';
 import 'game_fx.dart';
 import 'game_page.dart' show GamePage;
 import 'setup_page.dart' show kTeamColors, kTeamNames;
 import 'theme.dart';
 import 'widgets.dart';
 
-Color _playerColor(CricketGame g, int i) =>
-    PlayerStore.instance.colorOf(g.players[i].id);
+/// Couleur de chaque joueur dans la partie : sa couleur de compte, sauf
+/// invité ou couleur déjà prise (on prend alors une couleur libre), pour que
+/// chaque colonne se distingue.
+List<Color> _playerColors(CricketGame g) {
+  final used = <int>{};
+  final out = <Color?>[];
+  for (final p in g.players) {
+    final c = isGuestId(p.id) ? null : PlayerStore.instance.colorOf(p.id);
+    if (c != null && used.add(c.toARGB32())) {
+      out.add(c);
+    } else {
+      out.add(null);
+    }
+  }
+  return [
+    for (final c in out)
+      c ??
+          (() {
+            final free = kPlayerColors.firstWhere(
+                (k) => !used.contains(k.toARGB32()),
+                orElse: () => kGuestColor);
+            used.add(free.toARGB32());
+            return free;
+          })()
+  ];
+}
+
+Color _playerColor(CricketGame g, int i) => _playerColors(g)[i];
 
 /// Couleur d'un côté : équipe ou joueur.
 Color sideColor(CricketGame g, int side) => g.settings.teams
@@ -24,9 +49,11 @@ String sideName(CricketGame g, int side) => g.settings.teams
     ? kTeamNames[side % kTeamNames.length]
     : g.players[side].name;
 
-/// Partie de Cricket : cible animée | joueur en cours (+ boutons) | tableau
-/// des marques. Partagé par le téléphone et l'écran TV.
-class CricketLayout extends StatelessWidget {
+/// Partie de Cricket, façon GranBoard : historique du joueur | tableau des
+/// marques (numéros au centre, une colonne par joueur / équipe de chaque
+/// côté) | MPR + fléchettes de la manche (+ boutons), et la barre des
+/// joueurs en bas. Partagé par le téléphone et l'écran TV.
+class CricketLayout extends StatefulWidget {
   final CricketGame game;
   final GlobalKey<GameSplashState> splashKey;
   final Widget? actionBar;
@@ -34,59 +61,141 @@ class CricketLayout extends StatelessWidget {
       {super.key, required this.game, required this.splashKey, this.actionBar});
 
   @override
+  State<CricketLayout> createState() => _CricketLayoutState();
+}
+
+class _CricketLayoutState extends State<CricketLayout>
+    with SingleTickerProviderStateMixin {
+  // Grandes marques de la manche, affichées après la 3e fléchette
+  late final _anim = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1700));
+  List<int> _bigMarks = const [];
+  Color _bigColor = Tv.gold;
+  int _seen = 0;
+
+  CricketGame get game => widget.game;
+
+  @override
+  void initState() {
+    super.initState();
+    _seen = game.actionLog.length;
+  }
+
+  @override
+  void didUpdateWidget(CricketLayout old) {
+    super.didUpdateWidget(old);
+    final n = game.actionLog.length;
+    if (n > _seen) {
+      final t = game.currentTurn;
+      final last = game.actionLog.last;
+      if (last != 'n' && t.darts.length == 3) {
+        final marks = [for (final d in t.darts) _dartMarks(d)];
+        if (marks.any((m) => m > 0)) {
+          _bigMarks = marks;
+          _bigColor = sideColor(game, game.sideOf(game.current));
+          _anim.forward(from: 0);
+        }
+      }
+    }
+    _seen = n;
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final t = game.currentTurn;
     return Stack(
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            LayoutBuilder(
-              builder: (context, c) => Padding(
-                padding: const EdgeInsets.all(6),
-                child: AnimatedDartboard(
-                  size: c.maxHeight - 12,
-                  hits: [
-                    for (final d in t.darts)
-                      if (d.hit != null) d.hit!
+        LayoutBuilder(builder: (context, c) {
+          final barH = (c.maxHeight * 0.2).clamp(52.0, 96.0);
+          final sideW = (c.maxWidth * 0.17).clamp(110.0, 220.0);
+          return Column(
+            children: [
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(width: sideW, child: _History(game: game)),
+                    Expanded(child: _MarksArena(game: game)),
+                    SizedBox(
+                        width: sideW,
+                        child: _RightPanel(
+                            game: game, actionBar: widget.actionBar)),
                   ],
-                  win: game.finished,
-                  dartColor: _playerColor(game, game.current),
                 ),
               ),
+              SizedBox(height: barH, child: _PlayersBar(game: game)),
+            ],
+          );
+        }),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: AnimatedBuilder(
+              animation: _anim,
+              builder: (context, _) {
+                final v = _anim.value;
+                if (v == 0 || v == 1) return const SizedBox.shrink();
+                final fade = v < 0.8 ? 1.0 : 1 - (v - 0.8) / 0.2;
+                return LayoutBuilder(builder: (context, c) {
+                  final size = math.min(c.maxHeight * 0.55, c.maxWidth / 3.6);
+                  return Container(
+                    color: Colors.black.withValues(alpha: 0.35 * fade),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        for (var i = 0; i < _bigMarks.length; i++)
+                          Builder(builder: (context) {
+                            // Chaque marque arrive à son tour
+                            final st = ((v - i * 0.1) / 0.18).clamp(0.0, 1.0);
+                            final sc = Curves.easeOutBack.transform(st);
+                            return Opacity(
+                              opacity: (st * fade).clamp(0.0, 1.0),
+                              child: Transform.scale(
+                                scale: 0.3 + 0.7 * sc,
+                                child: SizedBox.square(
+                                  dimension: size,
+                                  child: CustomPaint(
+                                    painter: MarkPainter(
+                                        _bigMarks[i], _bigColor,
+                                        weight: 0.13),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                      ],
+                    ),
+                  );
+                });
+              },
             ),
-            Expanded(
-              flex: 4,
-              child: Column(
-                children: [
-                  Expanded(child: _CurrentPanel(game: game)),
-                  if (actionBar != null) actionBar!,
-                ],
-              ),
-            ),
-            Expanded(flex: 5, child: CricketBoard(game: game)),
-          ],
+          ),
         ),
         Positioned.fill(
-            child: IgnorePointer(child: GameSplash(key: splashKey))),
+            child: IgnorePointer(child: GameSplash(key: widget.splashKey))),
       ],
     );
   }
 }
 
-class _CurrentPanel extends StatelessWidget {
+/// Marques « brutes » d'une fléchette pour l'historique (0 = rien d'utile).
+int _dartMarks(CricketDart d) => d.marks.clamp(0, 3);
+
+/// Gauche : statut + manches du joueur en cours (R1 / / /, R2 Ⓧ Ⓧ…).
+class _History extends StatelessWidget {
   final CricketGame game;
-  const _CurrentPanel({required this.game});
+  const _History({required this.game});
 
   @override
   Widget build(BuildContext context) {
     final g = game;
-    final p = g.currentPlayer;
     final side = g.sideOf(g.current);
-    final color = _playerColor(g, g.current);
-    final t = g.currentTurn;
     final v = g.variant;
-
     String status = '';
     Color statusColor = Tv.muted;
     if (g.finished) {
@@ -94,115 +203,86 @@ class _CurrentPanel extends StatelessWidget {
       status = '🏆 $names ${g.winners.length > 1 ? 'gagnent' : 'gagne'} !';
       statusColor = Tv.goldLight;
     } else if (g.turnOver) {
-      status = 'Retire tes fléchettes · « Suivant »';
+      status = 'Retire tes fléchettes\npuis « Suivant »';
     } else if (g.isSpoiler(side)) {
-      status = 'SPOILER : tu ne peux plus gagner';
+      status = 'SPOILER :\nne peut plus gagner';
       statusColor = Tv.red;
     } else if (g.allClosed(side) && v.scoring) {
       status = v.cutThroat
-          ? 'Tout fermé : attends d\'avoir le moins de points'
-          : 'Tout fermé : marque des points pour passer devant';
+          ? 'Tout fermé : il faut\nle moins de points'
+          : 'Tout fermé : marque\npour passer devant';
       statusColor = Tv.goldLight;
     } else if (v.hidden) {
       final left = g.targets.where((x) => !x.revealed).length;
-      status = left == 0
-          ? ''
-          : '$left cible${left > 1 ? 's' : ''} cachée${left > 1 ? 's' : ''}';
+      if (left > 0) {
+        status =
+            '$left cible${left > 1 ? 's' : ''} cachée${left > 1 ? 's' : ''}';
+        statusColor = Tv.ice;
+      }
     }
-
-    final scoreText = v.scoring
-        ? '${g.scoreOf(side)}'
-        : '${g.closedMarks(side)}/${g.targets.length * 3}';
-
+    final turns = [
+      for (final t in g.turns)
+        if (t.player == g.current) t
+    ];
     return Container(
-      margin: const EdgeInsets.fromLTRB(4, 6, 4, 4),
+      margin: const EdgeInsets.fromLTRB(6, 6, 0, 6),
       decoration: BoxDecoration(
-        gradient: Tv.panelGradient,
-        borderRadius: BorderRadius.circular(16),
-        border: const Border(top: BorderSide(color: Tv.gold, width: 4)),
+        color: Colors.black.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(10),
       ),
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(width: 5, height: 20, color: color),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(p.name.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Tv.title(24)),
-              ),
-              if (g.settings.teams) ...[
-                const SizedBox(width: 6),
-                Text(kTeamNames[p.team].split(' ').last,
-                    style: Tv.title(18, color: kTeamColors[p.team])),
-              ],
-            ],
-          ),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.contain,
-                    alignment: Alignment.centerLeft,
-                    child: Text(scoreText,
-                        style: Tv.title(96, color: Colors.white)),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Flexible(
-                  flex: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                        v.scoring
-                            ? (v.cutThroat ? 'PTS\n(− = MIEUX)' : 'PTS')
-                            : 'MARQUES',
-                        style: Tv.label(11)),
-                  ),
-                ),
-              ],
+          if (status.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(status,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Tv.title(13, color: statusColor)),
             ),
-          ),
-          Text(status,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Tv.title(16, color: statusColor)),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              for (var i = 0; i < 3; i++)
-                Expanded(
-                    child: _DartSlot(
-                        dart: i < t.darts.length ? t.darts[i] : null)),
-              Container(
-                width: 64,
-                height: 48,
-                margin: const EdgeInsets.only(left: 4),
-                decoration: BoxDecoration(
-                  gradient: Tv.goldGradient,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                alignment: Alignment.center,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('MARQUES',
-                          style: Tv.label(10, color: Colors.black87)),
-                      Text('${t.marks}',
-                          style: Tv.title(22, color: Colors.black)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(height: 4),
+          Expanded(
+            child: LayoutBuilder(builder: (context, c) {
+              const rowH = 30.0;
+              final fit = (c.maxHeight / rowH).floor().clamp(1, 99);
+              final shown = turns.length > fit
+                  ? turns.sublist(turns.length - fit)
+                  : turns;
+              return Column(
+                children: [
+                  for (final t in shown)
+                    Container(
+                      height: rowH,
+                      decoration: const BoxDecoration(
+                          border: Border(bottom: BorderSide(color: Tv.line))),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                              width: 30,
+                              child: Text('R${t.round}',
+                                  style: Tv.title(14,
+                                      color: identical(t, g.currentTurn)
+                                          ? Tv.gold
+                                          : Colors.white))),
+                          for (final d in t.darts)
+                            SizedBox.square(
+                              dimension: 22,
+                              child: _dartMarks(d) == 0
+                                  ? Center(
+                                      child: Text('–',
+                                          style: Tv.title(14, color: Tv.muted)))
+                                  : CustomPaint(
+                                      painter: MarkPainter(
+                                          _dartMarks(d), Colors.white)),
+                            ),
+                        ],
+                      ),
+                    ),
+                ],
+              );
+            }),
           ),
         ],
       ),
@@ -210,190 +290,344 @@ class _CurrentPanel extends StatelessWidget {
   }
 }
 
-class _DartSlot extends StatelessWidget {
-  final CricketDart? dart;
-  const _DartSlot({required this.dart});
-
-  @override
-  Widget build(BuildContext context) {
-    final d = dart;
-    final h = d?.hit;
-    final useful = d != null && d.marks > 0;
-    Color c = Colors.black26;
-    if (d != null) c = useful ? Tv.green : Tv.panel2;
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.all(4),
-      margin: const EdgeInsets.symmetric(horizontal: 3),
-      decoration: BoxDecoration(
-        color: c,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: d == null ? Tv.line : Colors.white24),
-      ),
-      alignment: Alignment.center,
-      child: d == null
-          ? Text('—', style: Tv.title(20, color: Tv.line))
-          : FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(h == null ? 'RATÉ' : h.label,
-                      style: Tv.title(22,
-                          color: useful ? Colors.white : Tv.muted)),
-                  if (useful)
-                    Text(
-                        d.points > 0
-                            ? '+${d.marks} · ${d.points} PT'
-                            : '+${d.marks}',
-                        style: Tv.label(10, color: Colors.white)),
-                ],
-              ),
-            ),
-    );
-  }
-}
-
-/// Tableau des marques : une ligne par cible, une colonne par joueur / équipe.
-class CricketBoard extends StatelessWidget {
+/// Centre : numéros au milieu, colonnes des joueurs / équipes de chaque côté.
+class _MarksArena extends StatelessWidget {
   final CricketGame game;
-  const CricketBoard({super.key, required this.game});
+  const _MarksArena({required this.game});
 
   @override
   Widget build(BuildContext context) {
     final g = game;
     final sides = g.sides;
+    final left = sides.take((sides.length + 1) ~/ 2).toList();
+    final right = sides.skip(left.length).toList();
     final cur = g.sideOf(g.current);
-    return Container(
-      margin: const EdgeInsets.fromLTRB(4, 6, 8, 6),
-      decoration: BoxDecoration(
-        gradient: Tv.panelGradient,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Tv.line),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: LayoutBuilder(builder: (context, c) {
-        final rows = g.targets.length + 1;
-        final rowH = c.maxHeight / rows;
-        final labelW = math.min(56.0, c.maxWidth * 0.2);
-        final colW = (c.maxWidth - labelW) / sides.length;
-        // Colonnes étroites (beaucoup de joueurs) : nom abrégé, lisible
-        final maxChars = math.max(3, (colW / 9).floor());
-        String shortName(String n) =>
-            n.length <= maxChars ? n : n.substring(0, maxChars);
-        Widget cell(int side, Widget child, {bool header = false}) => Container(
-              width: colW,
-              height: rowH,
-              decoration: BoxDecoration(
-                color: side == cur && !g.finished
-                    ? Tv.gold.withValues(alpha: header ? 0.22 : 0.08)
-                    : null,
-                border: const Border(left: BorderSide(color: Tv.line)),
-              ),
-              alignment: Alignment.center,
-              child: child,
-            );
-        return Column(
-          children: [
-            // En-tête : nom + score
-            SizedBox(
-              height: rowH,
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: labelW,
-                    child:
-                        Center(child: Text('R${g.round}', style: Tv.label(11))),
+    return LayoutBuilder(builder: (context, c) {
+      final rows = g.targets.length;
+      const pad = 6.0;
+      final rowH = (c.maxHeight - pad * 2 - 4) / rows;
+      final numW = math.min(64.0, math.max(40.0, rowH * 1.25));
+      final perSide = math.max(left.length, right.length);
+      final colW = math.min(rowH * (perSide <= 2 ? 1.5 : 1.15),
+          (c.maxWidth - numW - 16) / (perSide * 2) - 4);
+      final mark = math.min(rowH, colW) * 0.78;
+
+      Widget column(int s) {
+        final color = sideColor(g, s);
+        final active = s == cur && !g.finished;
+        return Container(
+          width: colW,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            color: active
+                ? color.withValues(alpha: 0.16)
+                : Colors.black.withValues(alpha: 0.25),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+                color: color.withValues(alpha: active ? 1 : 0.55),
+                width: active ? 2 : 1.2),
+          ),
+          child: Column(
+            children: [
+              for (var t = 0; t < rows; t++)
+                SizedBox(
+                  height: rowH,
+                  child: Center(
+                    child: SizedBox.square(
+                      dimension: mark,
+                      child: CustomPaint(
+                        painter: MarkPainter(
+                            g.marksOf(s, t), g.dead(t) ? Tv.muted : color),
+                      ),
+                    ),
                   ),
-                  for (final s in sides)
-                    cell(
-                        s,
-                        header: true,
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                        width: 4,
-                                        height: 12,
-                                        color: sideColor(g, s)),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                        shortName(sideName(g, s)).toUpperCase(),
-                                        style: Tv.title(13)),
-                                  ],
-                                ),
-                                Text(
-                                    g.variant.scoring
-                                        ? '${g.scoreOf(s)}'
-                                        : '${g.closedMarks(s)}',
-                                    style: Tv.title(20,
-                                        color: g.isSpoiler(s)
-                                            ? Tv.red
-                                            : Tv.goldLight)),
-                              ],
-                            ),
-                          ),
-                        )),
-                ],
-              ),
-            ),
-            for (var t = 0; t < g.targets.length; t++)
-              Container(
-                height: rowH,
-                decoration: BoxDecoration(
-                  color: g.dead(t) ? Colors.black45 : null,
-                  border: const Border(top: BorderSide(color: Tv.line)),
                 ),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: labelW,
-                      child: Center(
+            ],
+          ),
+        );
+      }
+
+      Widget numbers() => SizedBox(
+            width: numW,
+            child: Column(
+              children: [
+                for (var t = 0; t < rows; t++)
+                  SizedBox(
+                    height: rowH,
+                    child: Center(
+                      child: Container(
+                        width: numW - 6,
+                        height: rowH - 6,
+                        decoration: BoxDecoration(
+                          color: Tv.panel2,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        alignment: Alignment.center,
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
                             !g.targets[t].revealed
                                 ? '?'
                                 : g.variant == CricketVariant.tripleOnly
-                                    ? 'T${g.targets[t].label}'
-                                    : g.targets[t].label,
-                            style: Tv.title(rowH * 0.55,
+                                    ? 'T${g.targets[t].number}'
+                                    : g.targets[t].number == 25
+                                        ? 'B'
+                                        : '${g.targets[t].number}',
+                            style: Tv.title(rowH * 0.62,
                                 color: g.dead(t)
                                     ? Tv.muted
                                     : !g.targets[t].revealed
                                         ? Tv.ice
-                                        : Tv.gold),
+                                        : Colors.white),
                           ),
                         ),
                       ),
                     ),
-                    for (final s in sides)
-                      cell(
-                        s,
-                        SizedBox.square(
-                          dimension: math.min(rowH, colW) * 0.72,
-                          child: CustomPaint(
-                            painter: MarkPainter(
-                              g.marksOf(s, t),
-                              g.dead(t) ? Tv.muted : sideColor(g, s),
-                            ),
+                  ),
+              ],
+            ),
+          );
+
+      final rowW = (left.length + right.length) * (colW + 4) + numW;
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: pad),
+        child: Center(
+          child: SizedBox(
+            width: rowW,
+            child: Stack(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (final s in left) column(s),
+                    numbers(),
+                    for (final s in right) column(s),
+                  ],
+                ),
+                // Numéro fermé par tout le monde : barré d'un trait gris
+                for (var t = 0; t < rows; t++)
+                  if (g.dead(t))
+                    Positioned(
+                      left: colW * 0.3,
+                      right: colW * 0.3,
+                      top: rowH * t + rowH / 2 - 2,
+                      height: 4,
+                      child: IgnorePointer(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Tv.muted.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+  }
+}
+
+/// Droite : MPR du joueur, fléchettes de la manche, boutons (téléphone).
+class _RightPanel extends StatelessWidget {
+  final CricketGame game;
+  final Widget? actionBar;
+  const _RightPanel({required this.game, this.actionBar});
+
+  @override
+  Widget build(BuildContext context) {
+    final g = game;
+    final t = g.currentTurn;
+    final mpr = g.statsOf(g.current).mpr;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 6, 6, 6),
+      child: Column(
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text('MPR ', style: Tv.title(14, color: Tv.text)),
+                  Text(mpr.toStringAsFixed(2), style: Tv.title(28)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Expanded(
+            child: Column(
+              children: [
+                for (var i = 0; i < 3; i++)
+                  Expanded(
+                    child: _DartBox(
+                        dart: i < t.darts.length ? t.darts[i] : null,
+                        next: i == t.darts.length && !g.turnOver),
+                  ),
+              ],
+            ),
+          ),
+          if (actionBar != null) ...[
+            const SizedBox(height: 4),
+            actionBar!,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DartBox extends StatelessWidget {
+  final CricketDart? dart;
+  final bool next;
+  const _DartBox({required this.dart, required this.next});
+
+  @override
+  Widget build(BuildContext context) {
+    final d = dart;
+    final h = d?.hit;
+    final useful = d != null && d.marks > 0;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: 3),
+      decoration: BoxDecoration(
+        color: d == null ? Colors.black.withValues(alpha: 0.3) : Tv.panel2,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+            color: useful
+                ? Tv.green
+                : next
+                    ? Tv.gold.withValues(alpha: 0.6)
+                    : Tv.line,
+            width: useful ? 2 : 1),
+      ),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(2),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: d == null
+            ? Icon(Icons.arrow_upward_rounded,
+                color: next ? Tv.gold : Tv.muted, size: 26)
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(h == null ? '–' : '${h.score}',
+                      style: Tv.title(28,
+                          color: useful ? Colors.white : Tv.muted)),
+                  Text(
+                      h == null
+                          ? 'RATÉ'
+                          : useful && d.points > 0
+                              ? '${h.label} · +${d.points}'
+                              : h.label,
+                      style: Tv.label(11, color: useful ? Tv.green : Tv.muted)),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+/// Bas : score et joueurs de chaque côté ; bandeau à la couleur du joueur
+/// en cours, avec son nom.
+class _PlayersBar extends StatelessWidget {
+  final CricketGame game;
+  const _PlayersBar({required this.game});
+
+  @override
+  Widget build(BuildContext context) {
+    final g = game;
+    final cur = g.sideOf(g.current);
+    final curColor = sideColor(g, cur);
+    return LayoutBuilder(builder: (context, c) {
+      final h = c.maxHeight;
+      final av = (h * 0.34).clamp(18.0, 34.0);
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.transparent,
+              curColor.withValues(alpha: 0.35),
+              curColor.withValues(alpha: 0.85),
+            ],
+            stops: const [0, 0.45, 1],
+          ),
+        ),
+        child: Row(
+          children: [
+            for (final s in g.sides)
+              Expanded(
+                child: Builder(builder: (context) {
+                  final active = s == cur && !g.finished;
+                  final won = g.winners.any((i) => g.sideOf(i) == s);
+                  final score = g.variant.scoring
+                      ? '${g.scoreOf(s)}'
+                      : '${g.closedMarks(s)}';
+                  return Opacity(
+                    opacity: active || g.finished ? 1 : 0.75,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.bottomCenter,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(won ? '🏆 $score' : score,
+                              style: Tv.title(h * 0.3,
+                                  color: g.isSpoiler(s)
+                                      ? Tv.red
+                                      : active
+                                          ? Colors.white
+                                          : Tv.goldLight)),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              for (final i in g.membersOf(s))
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 2),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(1.5),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: i == g.current && !g.finished
+                                          ? Colors.white
+                                          : Colors.transparent,
+                                    ),
+                                    child: PlayerAvatar(
+                                        name: g.players[i].name,
+                                        color: _playerColor(g, i),
+                                        size: i == g.current ? av * 1.2 : av),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          SizedBox(
+                            height: h * 0.26,
+                            child: active
+                                ? FittedBox(
+                                    child: Text(g.currentPlayer.name,
+                                        style: Tv.title(18)),
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
               ),
           ],
-        );
-      }),
-    );
+        ),
+      );
+    });
   }
 }
 
@@ -401,7 +635,10 @@ class CricketBoard extends StatelessWidget {
 class MarkPainter extends CustomPainter {
   final int marks;
   final Color color;
-  MarkPainter(this.marks, this.color);
+
+  /// Épaisseur du trait (part de la taille).
+  final double weight;
+  MarkPainter(this.marks, this.color, {this.weight = 0.12});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -409,7 +646,7 @@ class MarkPainter extends CustomPainter {
     final w = size.width;
     final p = Paint()
       ..color = color
-      ..strokeWidth = math.max(2, w * 0.12)
+      ..strokeWidth = math.max(2, w * weight)
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
     final a = w * 0.22, b = w * 0.78;

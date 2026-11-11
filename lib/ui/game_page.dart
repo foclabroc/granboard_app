@@ -164,6 +164,8 @@ class _GamePageState extends State<GamePage> {
       onMiss: () => _dart(null),
       onNext: _next,
       onResults: _results,
+      compact: game is CricketGame ||
+          (game is MatchGame && (game as MatchGame).leg is CricketGame),
     );
     return PopScope(
       canPop: false,
@@ -667,15 +669,69 @@ class _ActionBar extends StatelessWidget {
   final VoidCallback onMiss;
   final VoidCallback onNext;
   final VoidCallback onResults;
+
+  /// Version serrée (colonne de droite du Cricket) : 2 petits boutons puis
+  /// le bouton principal en dessous.
+  final bool compact;
   const _ActionBar(
       {required this.game,
       required this.onUndo,
       required this.onMiss,
       required this.onNext,
-      required this.onResults});
+      required this.onResults,
+      this.compact = false});
+
+  String get _nextLabel => game is MatchGame && (game as MatchGame).betweenLegs
+      ? 'LEG SUIVANT'
+      : 'SUIVANT';
 
   @override
   Widget build(BuildContext context) {
+    if (compact) {
+      return SizedBox(
+        height: 48,
+        child: Row(
+          children: [
+            Expanded(
+              child: _BarButton(
+                  icon: Icons.undo,
+                  label: 'ANNULER',
+                  compact: true,
+                  onTap: game.canUndo ? onUndo : null),
+            ),
+            const SizedBox(width: 3),
+            if (!game.finished) ...[
+              Expanded(
+                child: _BarButton(
+                    icon: Icons.block,
+                    label: 'RATÉ',
+                    compact: true,
+                    onTap: game.turnOver ? null : onMiss),
+              ),
+              const SizedBox(width: 3),
+              Expanded(
+                flex: 2,
+                child: _BarButton(
+                    icon: Icons.skip_next,
+                    label: _nextLabel,
+                    primary: true,
+                    compact: true,
+                    onTap: onNext),
+              ),
+            ] else
+              Expanded(
+                flex: 3,
+                child: _BarButton(
+                    icon: Icons.emoji_events,
+                    label: 'RÉSULTATS',
+                    primary: true,
+                    compact: true,
+                    onTap: onResults),
+              ),
+          ],
+        ),
+      );
+    }
     return Container(
       decoration: const BoxDecoration(
         color: Tv.panel,
@@ -706,10 +762,7 @@ class _ActionBar extends StatelessWidget {
                   flex: 2,
                   child: _BarButton(
                       icon: Icons.skip_next,
-                      label:
-                          game is MatchGame && (game as MatchGame).betweenLegs
-                              ? 'LEG SUIVANT'
-                              : 'SUIVANT',
+                      label: _nextLabel,
                       primary: true,
                       onTap: onNext),
                 ),
@@ -736,11 +789,13 @@ class _BarButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
   final bool primary;
+  final bool compact;
   const _BarButton(
       {required this.icon,
       required this.label,
       required this.onTap,
-      this.primary = false});
+      this.primary = false,
+      this.compact = false});
 
   @override
   Widget build(BuildContext context) {
@@ -753,7 +808,7 @@ class _BarButton extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: Ink(
-        height: 60,
+        height: compact ? 48 : 60,
         decoration: BoxDecoration(
           gradient: primary && enabled ? Tv.goldGradient : null,
           color: primary && !enabled ? Tv.goldDark : null,
@@ -766,11 +821,13 @@ class _BarButton extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: fg, size: primary ? 26 : 22),
+              Icon(icon, color: fg, size: compact ? 18 : (primary ? 26 : 22)),
               FittedBox(
                 fit: BoxFit.scaleDown,
-                child:
-                    Text(label, style: Tv.title(primary ? 20 : 15, color: fg)),
+                child: Text(label,
+                    style: Tv.title(
+                        compact ? (primary ? 15 : 10) : (primary ? 20 : 15),
+                        color: fg)),
               ),
             ],
           ),

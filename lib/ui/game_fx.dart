@@ -196,7 +196,6 @@ class GameFx {
       } else if (m >= 5) {
         audio.play(Sfx.ton);
         audio.sayLater('$m marques !', 400);
-        _show('$m MARQUES', Tv.gold);
       } else {
         audio.sayLater(
             m == 0

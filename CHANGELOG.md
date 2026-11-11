@@ -3,7 +3,7 @@
 ## v0.6.0
 
 - Cricket : Standard, Cut Throat, Caché, Cut Throat caché, Wildcard, No Score, Triple Only, en individuel ou en équipes (Team Cricket, marques et points communs), limite de manches réglable (20 par défaut)
-- Tableau des marques ( / , X , Ⓧ ) à côté de la cible, cibles cachées « ? » découvertes en les touchant, numéros Wildcard qui changent à chaque manche, SPOILER en Cut Throat
+- Écran Cricket façon GranBoard : numéros au centre, une colonne par joueur (ou équipe) de chaque côté à sa couleur, numéros fermés par tous barrés, manches du joueur à gauche, MPR et fléchettes à droite, scores et joueurs en bas, grandes marques animées après la 3e fléchette ; cibles cachées « ? » découvertes en les touchant, numéros Wildcard qui changent à chaque manche, SPOILER en Cut Throat
 - Annonces Cricket : marques de la manche, 5 marques et plus, White Horse
 - MATCH : 3 à 13 legs, jeu de chaque leg au choix (01 ou Cricket), le joueur qui commence change à chaque leg, résultats aux legs avec moyenne et MPR
 - Stats en ligne du Cricket : MPR (marques par manche), victoires, meilleure manche ; classements « Cricket MPR » et « Victoires Cricket » ; la note et la moyenne restent calculées sur le 01
