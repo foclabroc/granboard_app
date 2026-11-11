@@ -156,22 +156,54 @@ class GranBoardDecoder {
     '4.0': (25, Ring.innerBull),
   };
 
-  static BoardEvent decode(List<int> bytes) {
-    final s = String.fromCharCodes(bytes).trim();
-    if (!s.endsWith('@')) return UnknownEvent(s);
+  /// Texte brut d'une trame (clé des tables de calibration).
+  static String frameKey(List<int> bytes) => String.fromCharCodes(bytes).trim();
 
-    final code = s.substring(0, s.length - 1);
-    if (code == 'BTN') return const ButtonEvent();
-
-    final entry = _codes[code];
-    if (entry == null) return UnknownEvent(s);
-
-    final (number, ring) = entry;
+  static DartHit hitFor(int number, Ring ring) {
     final multiplier = switch (ring) {
       Ring.triple => 3,
       Ring.double || Ring.innerBull => 2,
       _ => 1,
     };
-    return HitEvent(DartHit(number, multiplier, ring));
+    return DartHit(number, multiplier, ring);
+  }
+
+  /// [custom] : table calibrée pour une cible précise (trame brute → zone).
+  /// Sans table, on utilise celle de la GranBoard Dash.
+  static BoardEvent decode(List<int> bytes, {Map<String, DartHit>? custom}) {
+    final s = frameKey(bytes);
+    if (s == 'BTN@') return const ButtonEvent();
+
+    if (custom != null) {
+      final h = custom[s];
+      return h == null ? UnknownEvent(s) : HitEvent(h);
+    }
+
+    if (!s.endsWith('@')) return UnknownEvent(s);
+    final entry = _codes[s.substring(0, s.length - 1)];
+    if (entry == null) return UnknownEvent(s);
+    final (number, ring) = entry;
+    return HitEvent(hitFor(number, ring));
+  }
+}
+
+/// Table de calibration sérialisable (trame brute → numéro + anneau).
+class BoardTable {
+  static String encode(Map<String, DartHit> t) => [
+        for (final e in t.entries)
+          '${e.key}\t${e.value.number}\t${e.value.ring.index}'
+      ].join('\n');
+
+  static Map<String, DartHit> decode(String raw) {
+    final out = <String, DartHit>{};
+    for (final line in raw.split('\n')) {
+      final p = line.split('\t');
+      if (p.length != 3) continue;
+      final n = int.tryParse(p[1]);
+      final r = int.tryParse(p[2]);
+      if (n == null || r == null || r < 0 || r >= Ring.values.length) continue;
+      out[p[0]] = GranBoardDecoder.hitFor(n, Ring.values[r]);
+    }
+    return out;
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:granboard_proto/board_service.dart';
 import 'package:granboard_proto/game/x01.dart';
 import 'package:granboard_proto/players.dart';
+import 'package:granboard_proto/ui/calibration_page.dart';
 import 'package:granboard_proto/ui/game_page.dart';
 import 'package:granboard_proto/ui/players_page.dart';
 import 'package:granboard_proto/ui/setup_page.dart';
@@ -83,5 +84,33 @@ void main() {
     await tester.tap(find.text('Sophie'));
     await tester.pumpAndSettle();
     expect(find.text('Dernières parties'), findsOneWidget);
+  });
+
+  testWidgets('Calibration : avance, refuse un doublon, passe', (tester) async {
+    await phone(tester);
+    final board = BoardService.instance;
+    await tester.pumpWidget(app(const CalibrationPage()));
+    await tester.pumpAndSettle();
+    expect(find.text('VISE : SIMPLE INTÉRIEUR 20'), findsOneWidget);
+
+    board.injectFrame('7.7@'.codeUnits);
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('VISE : TRIPLE 20'), findsOneWidget);
+
+    board.injectFrame('7.7@'.codeUnits); // doublon : refusé
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('VISE : TRIPLE 20'), findsOneWidget);
+
+    board.injectFrame('BTN@'.codeUnits); // bouton ignoré
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('VISE : TRIPLE 20'), findsOneWidget);
+
+    await tester.tap(find.text('PASSER'));
+    await tester.pump();
+    expect(find.text('VISE : SIMPLE EXTÉRIEUR 20'), findsOneWidget);
+    await tester.pumpAndSettle();
   });
 }

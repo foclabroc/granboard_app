@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../audio.dart';
 import '../board_service.dart';
 import '../update_check.dart';
+import 'calibration_page.dart';
 import 'connect_page.dart';
 import 'dartboard.dart';
 import 'diagnostic_page.dart';
@@ -86,6 +87,7 @@ class _HomePageState extends State<HomePage>
                   board: board,
                   onChoose: () => _open(const ConnectPage()),
                   onDiagnostic: () => _open(const DiagnosticPage()),
+                  onCalibrate: () => _open(const CalibrationPage()),
                 ),
               ),
               const SizedBox(height: 16),
@@ -156,10 +158,12 @@ class _BoardBar extends StatelessWidget {
   final BoardService board;
   final VoidCallback onChoose;
   final VoidCallback onDiagnostic;
+  final VoidCallback onCalibrate;
   const _BoardBar(
       {required this.board,
       required this.onChoose,
-      required this.onDiagnostic});
+      required this.onDiagnostic,
+      required this.onCalibrate});
 
   @override
   Widget build(BuildContext context) {
@@ -194,7 +198,8 @@ class _BoardBar extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('CIBLE', style: Tv.label(11)),
+                Text(board.hasCustomTable ? 'CIBLE · CALIBRÉE' : 'CIBLE',
+                    style: Tv.label(11)),
                 Text(text,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -216,10 +221,18 @@ class _BoardBar extends StatelessWidget {
           PopupMenuButton<String>(
             onSelected: (v) {
               if (v == 'diag') onDiagnostic();
+              if (v == 'cal') onCalibrate();
+              if (v == 'std') board.saveCustomTable(null);
               if (v == 'off') board.disconnect();
             },
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'diag', child: Text('Diagnostic')),
+              if (board.isConnected)
+                const PopupMenuItem(
+                    value: 'cal', child: Text('Calibrer cette cible')),
+              if (board.hasCustomTable)
+                const PopupMenuItem(
+                    value: 'std', child: Text('Revenir à la table standard')),
               if (board.isConnected)
                 const PopupMenuItem(value: 'off', child: Text('Déconnecter')),
             ],

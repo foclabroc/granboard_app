@@ -56,6 +56,11 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
+                  Text(
+                      BoardService.instance.hasCustomTable
+                          ? 'Table : calibrée pour cette cible'
+                          : 'Table : standard (GranBoard Dash)',
+                      style: const TextStyle(fontSize: 12)),
                   Text(last?.event.label ?? '—',
                       style: const TextStyle(
                           fontSize: 48, fontWeight: FontWeight.bold)),

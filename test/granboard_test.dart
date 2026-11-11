@@ -48,4 +48,22 @@ void main() {
     }
     expect(seen.length, 82);
   });
+
+  test('Table calibrée (autre modèle de cible)', () {
+    final table = {
+      '5.5@': GranBoardDecoder.hitFor(20, Ring.triple),
+      'X9': GranBoardDecoder.hitFor(25, Ring.innerBull),
+    };
+    final back = BoardTable.decode(BoardTable.encode(table));
+    expect(back.length, 2);
+    final t20 = GranBoardDecoder.decode('5.5@'.codeUnits, custom: back);
+    expect((t20 as HitEvent).hit.score, 60);
+    final bull = GranBoardDecoder.decode('X9'.codeUnits, custom: back);
+    expect((bull as HitEvent).hit.score, 50);
+    // Le bouton reste reconnu, une trame non calibrée est inconnue
+    expect(GranBoardDecoder.decode('BTN@'.codeUnits, custom: back),
+        isA<ButtonEvent>());
+    expect(GranBoardDecoder.decode('3.4@'.codeUnits, custom: back),
+        isA<UnknownEvent>());
+  });
 }

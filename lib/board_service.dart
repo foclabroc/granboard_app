@@ -31,6 +31,7 @@ class BoardService extends ChangeNotifier {
 
   static const _prefId = 'board_last_id';
   static const _prefName = 'board_last_name';
+  static const _prefTable = 'board_table_'; // + identifiant de la cible
 
   final _events = StreamController<BoardEvent>.broadcast();
   final _frames = StreamController<RawFrame>.broadcast();
@@ -49,6 +50,31 @@ class BoardService extends ChangeNotifier {
   String? lastName;
 
   bool get isConnected => status == BoardStatus.connected;
+
+  /// Table calibrée de la cible connectée (null = table standard Dash).
+  Map<String, DartHit>? customTable;
+  bool get hasCustomTable => customTable != null;
+
+  Future<void> _loadTable(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('$_prefTable$id');
+    customTable = raw == null ? null : BoardTable.decode(raw);
+  }
+
+  /// Enregistre la calibration pour la cible connectée (ou en mémoire seule).
+  Future<void> saveCustomTable(Map<String, DartHit>? table) async {
+    customTable = table;
+    final id = device?.remoteId.str ?? lastId;
+    if (id != null) {
+      final prefs = await SharedPreferences.getInstance();
+      if (table == null) {
+        await prefs.remove('$_prefTable$id');
+      } else {
+        await prefs.setString('$_prefTable$id', BoardTable.encode(table));
+      }
+    }
+    notifyListeners();
+  }
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
@@ -110,6 +136,7 @@ class BoardService extends ChangeNotifier {
         }
       }
 
+      await _loadTable(d.remoteId.str);
       status = BoardStatus.connected;
       lastId = d.remoteId.str;
       lastName = deviceName;
@@ -147,7 +174,7 @@ class BoardService extends ChangeNotifier {
 
   void _onData(List<int> bytes) {
     if (bytes.isEmpty) return;
-    final e = GranBoardDecoder.decode(bytes);
+    final e = GranBoardDecoder.decode(bytes, custom: customTable);
     _frames.add(RawFrame(DateTime.now(), bytes, e));
     _events.add(e);
   }

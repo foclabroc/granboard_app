@@ -56,9 +56,22 @@ class _GamePageState extends State<GamePage> {
         _dart(hit);
       case ButtonEvent():
         _next();
-      case UnknownEvent():
-        break;
+      case UnknownEvent(:final raw):
+        _unknown(raw);
     }
+  }
+
+  bool _unknownShown = false;
+
+  /// Zone non reconnue : la cible n'est sans doute pas calibrée.
+  void _unknown(String raw) {
+    if (_unknownShown) return;
+    _unknownShown = true;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      duration: const Duration(seconds: 6),
+      content: Text('Zone inconnue ("$raw"). Si ta cible n\'est pas une '
+          'GranBoard Dash, calibre-la : Accueil › ⋮ › Calibrer cette cible.'),
+    ));
   }
 
   void _dart(DartHit? hit) {

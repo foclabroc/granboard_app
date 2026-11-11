@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.1
+
+- Calibration des cibles : Accueil › ⋮ › « Calibrer cette cible » (pour les GranBoard autres que la Dash, ex. 3s). La table est mémorisée pour chaque cible, et peut être copiée pour être intégrée à l'appli.
+- Message en partie quand une zone n'est pas reconnue
+
 ## v0.3.0
 
 - Nouveau look façon retransmission TV : noir et or, police sport, nouvelle icône
