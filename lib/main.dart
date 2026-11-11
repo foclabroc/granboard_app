@@ -1,27 +1,12 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-/// Ordre des zones a viser pendant la calibration.
-final List<String> kTargets = [
-  for (int n = 1; n <= 20; n++) ...[
-    'S$n intérieur',
-    'T$n',
-    'S$n extérieur',
-    'D$n',
-  ],
-  'Bull 25',
-  'Bull 50',
-  'Bouton',
-];
-
-const _prefsKey = 'granboard_mapping';
+import 'granboard.dart';
 
 void main() => runApp(const GranProtoApp());
 
@@ -164,11 +149,9 @@ class _ScanPageState extends State<ScanPage> {
 
 class LogEntry {
   final DateTime time;
-  final String source;
-  final String hex;
-  final String ascii;
-  final String? label;
-  LogEntry(this.time, this.source, this.hex, this.ascii, this.label);
+  final String text;
+  final bool isData;
+  LogEntry(this.time, this.text, {this.isData = true});
 }
 
 class BoardPage extends StatefulWidget {
@@ -183,19 +166,14 @@ class BoardPage extends StatefulWidget {
 class _BoardPageState extends State<BoardPage> {
   final _subs = <StreamSubscription>[];
   final _log = <LogEntry>[];
-  Map<String, String> _mapping = {};
 
   String _status = 'Connexion…';
   String? _lastHit;
   String? _lastRaw;
 
-  bool _calibrating = false;
-  int _calIndex = 0;
-
   @override
   void initState() {
     super.initState();
-    _loadMapping();
     _connect();
   }
 
@@ -207,23 +185,6 @@ class _BoardPageState extends State<BoardPage> {
     widget.device.disconnect();
     super.dispose();
   }
-
-  // ── Mapping (stockage local) ──
-
-  Future<void> _loadMapping() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_prefsKey);
-    if (raw != null && mounted) {
-      setState(() => _mapping = Map<String, String>.from(jsonDecode(raw)));
-    }
-  }
-
-  Future<void> _saveMapping() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefsKey, jsonEncode(_mapping));
-  }
-
-  // ── BLE ──
 
   Future<void> _connect() async {
     try {
@@ -241,7 +202,7 @@ class _BoardPageState extends State<BoardPage> {
       int listened = 0;
 
       for (final s in services) {
-        _info('SERVICE', s.uuid.str);
+        _info('SERVICE ${s.uuid.str}');
         for (final c in s.characteristics) {
           final p = c.properties;
           final props = [
@@ -251,10 +212,10 @@ class _BoardPageState extends State<BoardPage> {
             if (p.notify) 'notify',
             if (p.indicate) 'indicate',
           ].join(',');
-          _info('  CHAR', '${c.uuid.str}  [$props]');
+          _info('  CHAR ${c.uuid.str}  [$props]');
 
           if (p.notify || p.indicate) {
-            _subs.add(c.onValueReceived.listen((v) => _onData(c, v)));
+            _subs.add(c.onValueReceived.listen(_onData));
             await c.setNotifyValue(true);
             listened++;
           }
@@ -269,70 +230,27 @@ class _BoardPageState extends State<BoardPage> {
     }
   }
 
-  void _info(String source, String text) {
+  void _info(String text) {
     if (!mounted) return;
-    setState(() => _log.insert(0, LogEntry(DateTime.now(), source, text, '', null)));
+    setState(() => _log.insert(0, LogEntry(DateTime.now(), text, isData: false)));
   }
 
-  void _onData(BluetoothCharacteristic c, List<int> v) {
+  void _onData(List<int> v) {
     if (v.isEmpty || !mounted) return;
 
     final hex = v.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
     final ascii =
         String.fromCharCodes(v.map((b) => (b >= 32 && b < 127) ? b : 46));
-
-    String? label = _mapping[hex];
-
-    if (_calibrating && _calIndex < kTargets.length) {
-      label = kTargets[_calIndex];
-      _mapping.removeWhere((_, t) => t == label); // évite les doublons
-      _mapping[hex] = label;
-      _calIndex++;
-      if (_calIndex >= kTargets.length) _calibrating = false;
-      _saveMapping();
-    }
+    final label = GranBoardDecoder.decode(v).label;
 
     HapticFeedback.lightImpact();
     setState(() {
-      _lastHit = label ?? '?';
+      _lastHit = label;
       _lastRaw = '$hex   |   "$ascii"';
-      _log.insert(0, LogEntry(DateTime.now(), c.uuid.str, hex, ascii, label));
+      _log.insert(0, LogEntry(DateTime.now(), '"$ascii"  →  $label'));
       if (_log.length > 400) _log.removeLast();
     });
   }
-
-  // ── Calibration ──
-
-  void _startCalibration() {
-    final firstMissing =
-        kTargets.indexWhere((t) => !_mapping.containsValue(t));
-    setState(() {
-      _calibrating = true;
-      _calIndex = firstMissing == -1 ? 0 : firstMissing;
-    });
-  }
-
-  void _skip() {
-    setState(() {
-      _calIndex++;
-      if (_calIndex >= kTargets.length) _calibrating = false;
-    });
-  }
-
-  Future<void> _export() async {
-    final txt = const JsonEncoder.withIndent('  ').convert(_mapping);
-    await Clipboard.setData(ClipboardData(text: txt));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Mapping copié (${_mapping.length} zones)')));
-  }
-
-  Future<void> _clearMapping() async {
-    setState(() => _mapping = {});
-    await _saveMapping();
-  }
-
-  // ── UI ──
 
   @override
   Widget build(BuildContext context) {
@@ -342,17 +260,10 @@ class _BoardPageState extends State<BoardPage> {
       appBar: AppBar(
         title: Text(widget.name),
         actions: [
-          PopupMenuButton<String>(
-            onSelected: (v) {
-              if (v == 'export') _export();
-              if (v == 'clearMap') _clearMapping();
-              if (v == 'clearLog') setState(_log.clear);
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'export', child: Text('Copier le mapping (JSON)')),
-              PopupMenuItem(value: 'clearMap', child: Text('Effacer le mapping')),
-              PopupMenuItem(value: 'clearLog', child: Text('Vider le log')),
-            ],
+          IconButton(
+            tooltip: 'Vider le log',
+            icon: const Icon(Icons.delete_sweep),
+            onPressed: () => setState(_log.clear),
           ),
         ],
       ),
@@ -381,68 +292,25 @@ class _BoardPageState extends State<BoardPage> {
             ),
           ),
 
-          // Calibration
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: _calibrating
-                ? Card(
-                    color: cs.primaryContainer,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        children: [
-                          Text('Vise : ${kTargets[_calIndex]}',
-                              style: const TextStyle(
-                                  fontSize: 26, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 6),
-                          LinearProgressIndicator(
-                              value: _calIndex / kTargets.length),
-                          Text('${_calIndex + 1} / ${kTargets.length}'),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              TextButton(
-                                  onPressed: _skip,
-                                  child: const Text('Passer')),
-                              TextButton(
-                                  onPressed: () =>
-                                      setState(() => _calibrating = false),
-                                  child: const Text('Arrêter')),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                : FilledButton.icon(
-                    onPressed: _startCalibration,
-                    icon: const Icon(Icons.tune),
-                    label: Text(
-                        'Calibrer (${_mapping.length}/${kTargets.length} zones)'),
-                  ),
-          ),
-
+          const SizedBox(height: 12),
           const Divider(height: 1),
 
-          // Log brut
+          // Log
           Expanded(
             child: ListView.builder(
               itemCount: _log.length,
               itemBuilder: (_, i) {
                 final e = _log[i];
                 final t = e.time.toIso8601String().substring(11, 23);
-                final isData = e.ascii.isNotEmpty;
                 return Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                   child: Text(
-                    isData
-                        ? '$t  ${e.hex}  "${e.ascii}"  ${e.label ?? ''}'
-                        : '$t  ${e.source}  ${e.hex}',
+                    '$t  ${e.text}',
                     style: TextStyle(
                       fontFamily: 'monospace',
                       fontSize: 12,
-                      color: isData ? null : cs.outline,
+                      color: e.isData ? null : cs.outline,
                     ),
                   ),
                 );

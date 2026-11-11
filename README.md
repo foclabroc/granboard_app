@@ -1,17 +1,14 @@
-# granboard_proto
+# GranBoard App
 
-A new Flutter project.
+Appli Flutter (Android) de fléchettes pour cible électronique **GranBoard**, connectée en Bluetooth LE.
 
-## Getting Started
+## Utilisation
 
-This project is a starting point for a Flutter application.
+1. Ferme l'appli GranBoard officielle (la cible n'accepte qu'une connexion BLE).
+2. **Scanner** → touche la cible (en vert).
+3. Lance une fléchette : la zone et le score s'affichent (`T20 (60)`, `D16 (32)`, `BULL (50)`…).
 
-A few resources to get you started if this is your first Flutter project:
+## Build
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- En local : `flutter run`
+- APK : onglet **Actions → APK → Run workflow**, l'APK est dans les artefacts du run.
