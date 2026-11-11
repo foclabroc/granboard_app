@@ -69,4 +69,18 @@ void main() {
     expect(GranBoardDecoder.decode('3.4@'.codeUnits, custom: back),
         isA<UnknownEvent>());
   });
+
+  test('3s : octets invisibles ignorés et bordure OUT@', () {
+    final t20 = GranBoardDecoder.decode([...'3.4@'.codeUnits, 0]);
+    expect((t20 as HitEvent).hit.score, 60);
+    final d16 =
+        GranBoardDecoder.decode([0x0d, 0x0a, ...'11.6@'.codeUnits, 0x0a]);
+    expect((d16 as HitEvent).hit.score, 32);
+    expect(GranBoardDecoder.decode('OUT@'.codeUnits), isA<MissEvent>());
+    expect(
+        GranBoardDecoder.decode([...'BTN@'.codeUnits, 0]), isA<ButtonEvent>());
+    // Une table enregistrée avec un octet nul reste valable
+    final back = BoardTable.decode('3.4@\u0000\t20\t1');
+    expect(back.keys.single, '3.4@');
+  });
 }

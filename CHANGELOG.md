@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.3
+
+- GranBoard 3s reconnue sans calibration : mêmes codes que la Dash, la bordure extérieure compte comme fléchette ratée
+- Les caractères invisibles envoyés par certaines cibles sont ignorés
+
 ## v0.3.2
 
 - Calibration : étape « bordure extérieure » à la fin (GranBoard 3s). Une fléchette dans la bordure compte automatiquement comme ratée (0 point).
