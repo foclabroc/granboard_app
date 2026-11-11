@@ -32,6 +32,8 @@ jobs:
           fi
           mkdir -p ~/.android
           echo "$KEY" | base64 -d > ~/.android/debug.keystore
+          # signature explicite (ne dépend pas de l'emplacement par défaut de la clé debug)
+          printf 'storeFile=%s\nstorePassword=android\nkeyAlias=androiddebugkey\nkeyPassword=android\n' "$HOME/.android/debug.keystore" > android/key.properties
 
       - uses: actions/setup-java@v5
         with:

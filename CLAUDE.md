@@ -33,7 +33,7 @@ Appli Flutter (Android) de fléchettes, connectée en Bluetooth LE à une cible 
 ## Stack
 
 - `flutter_blue_plus` (1.x, pas de paramètre `license` sur `connect`), `permission_handler`, `shared_preferences`, `path_provider`, `url_launcher`, `open_filex`.
-- Android : permissions BLE + `INTERNET` + `REQUEST_INSTALL_PACKAGES` dans `AndroidManifest.xml` ; `build.gradle.kts` = template Flutter/AGP 9 d'origine (ne pas réécrire avec `kotlinOptions`, refusé par AGP 9).
+- Android : permissions BLE + `INTERNET` + `REQUEST_INSTALL_PACKAGES` dans `AndroidManifest.xml` ; `build.gradle.kts` = template Flutter/AGP 9 d'origine (ne pas réécrire avec `kotlinOptions`, refusé par AGP 9) + signature release via `android/key.properties` (écrit par la CI, gitignoré) comme Pixel Trade, sinon clé debug du PC. Sans ça, la CI signe avec une clé debug générée et la vérification d'empreinte échoue.
 - Package Android : `com.example.granboard_proto`.
 
 ## Règles de travail
