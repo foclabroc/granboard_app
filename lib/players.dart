@@ -98,6 +98,33 @@ class PlayerStore extends ChangeNotifier {
 
   static const _keyAccounts = 'accounts_v1';
   static const _keyPending = 'pending_games_v1';
+  static const _keyWelcome = 'welcome_done_v1';
+
+  /// Accueil du premier lancement déjà passé (profil principal créé ou
+  /// « plus tard »).
+  bool welcomed = false;
+
+  /// Profil principal du téléphone (son propriétaire) : toujours le premier.
+  PlayerProfile? get owner => players.isEmpty ? null : players.first;
+
+  bool isOwner(PlayerProfile p) => identical(owner, p);
+
+  /// Fait de ce compte le profil principal.
+  Future<void> setOwner(PlayerProfile p) async {
+    players
+      ..remove(p)
+      ..insert(0, p);
+    await _save();
+  }
+
+  Future<void> setWelcomed() async {
+    welcomed = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyWelcome, true);
+    } catch (_) {}
+    notifyListeners();
+  }
 
   final List<PlayerProfile> players = [];
 
@@ -111,6 +138,7 @@ class PlayerStore extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     players.clear();
     pending.clear();
+    welcomed = prefs.getBool(_keyWelcome) ?? false;
     try {
       for (final p
           in jsonDecode(prefs.getString(_keyAccounts) ?? '[]') as List) {

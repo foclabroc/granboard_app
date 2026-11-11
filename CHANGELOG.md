@@ -13,6 +13,7 @@
 - Nouveaux jeux : Cricket Mickey Mouse (20 à 12, Doubles, Triples, Bull), Golf (9 ou 18 trous), Scram (2 joueurs : l'un ferme, l'autre marque, puis on échange), Football (le bull prend le ballon, les doubles sont des buts), Patate chaude (toucher le numéro passe la bombe avant que la mèche s'éteigne)
 - Nouvel accueil en grille de jeux : 6 tuiles de même taille (01, Cricket, Match, Entraînement, Fête, En ligne « bientôt ») ; en haut : état de la cible, bouton « Joueurs » (ajouter, gérer les comptes), TV, classements, sons et joueur
 - Style de la cible au choix : Classique ou Pub en bois (menu ⋮ de l'accueil), aussi sur l'écran TV
+- Premier lancement : création du profil principal du téléphone (ou « J'ai déjà un compte », ou plus tard) ; il s'affiche en haut de l'accueil, et un autre compte peut devenir profil principal depuis sa fiche
 - Joueurs invités en couleurs différentes
 - Photo de profil (appareil photo ou galerie, recadrée au carré) : affichée en partie, dans les résultats, les classements et sur l'écran TV
 - Son du tour : chaque joueur choisit un son (fanfare, klaxon, laser, gong, coq… 12 au choix) ou enregistre sa voix (3 s) ; il est joué quand c'est son tour, puis l'annonceur dit son nom (aussi sur la TV)

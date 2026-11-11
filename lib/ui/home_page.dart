@@ -19,6 +19,7 @@ import 'setup_page.dart';
 import 'sound_settings.dart';
 import 'theme.dart';
 import 'tv_sheet.dart';
+import 'welcome_page.dart';
 import 'widgets.dart';
 
 /// Accueil en grille : une tuile par famille de jeux (la grande tuile 01
@@ -49,6 +50,16 @@ class _HomePageState extends State<HomePage>
     AudioService.instance.startMusic();
     TvLink.instance.pushLobby();
     _loadStart();
+    // Premier lancement : profil principal
+    final store = PlayerStore.instance;
+    if (!store.welcomed && store.players.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).push(MaterialPageRoute(
+              fullscreenDialog: true, builder: (_) => const WelcomePage()));
+        }
+      });
+    }
     // Reconnexion automatique à la dernière cible
     if (board.lastId != null && !board.isConnected) {
       WidgetsBinding.instance.addPostFrameCallback((_) => board.reconnect());
@@ -160,14 +171,22 @@ class _HomePageState extends State<HomePage>
                   height: 46,
                   child: Row(
                     children: [
-                      ShaderMask(
-                        shaderCallback: (r) => Tv.goldGradient.createShader(r),
-                        child: Text('GRANBOARD',
-                            style: Tv.title(30, color: Colors.white)
-                                .copyWith(letterSpacing: 2)),
+                      Flexible(
+                        flex: 0,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: ShaderMask(
+                            shaderCallback: (r) =>
+                                Tv.goldGradient.createShader(r),
+                            child: Text('GRANBOARD',
+                                style: Tv.title(30, color: Colors.white)
+                                    .copyWith(letterSpacing: 2)),
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Flexible(
+                        flex: 3,
                         child: ListenableBuilder(
                           listenable: board,
                           builder: (context, _) => _BoardPill(
@@ -179,18 +198,25 @@ class _HomePageState extends State<HomePage>
                         ),
                       ),
                       const SizedBox(width: 8),
-                      ListenableBuilder(
-                        listenable: PlayerStore.instance,
-                        builder: (context, _) => TextButton.icon(
-                          style: TextButton.styleFrom(
-                            foregroundColor: Tv.text,
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                      Flexible(
+                        flex: 2,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: ListenableBuilder(
+                            listenable: PlayerStore.instance,
+                            builder: (context, _) => TextButton.icon(
+                              style: TextButton.styleFrom(
+                                foregroundColor: Tv.text,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 10),
+                              ),
+                              onPressed: () => _open(const PlayersPage()),
+                              icon: const Icon(Icons.group_add, size: 22),
+                              label: Text(
+                                  'JOUEURS (${PlayerStore.instance.players.length})',
+                                  style: Tv.title(16)),
+                            ),
                           ),
-                          onPressed: () => _open(const PlayersPage()),
-                          icon: const Icon(Icons.group_add, size: 22),
-                          label: Text(
-                              'JOUEURS (${PlayerStore.instance.players.length})',
-                              style: Tv.title(16)),
                         ),
                       ),
                       ListenableBuilder(
@@ -438,15 +464,14 @@ class _Tile extends StatelessWidget {
   }
 }
 
-/// Pastille du joueur (1er compte) avec sa classe ; ouvre « Joueurs ».
+/// Pastille du profil principal avec sa classe ; ouvre « Joueurs ».
 class _MeChip extends StatelessWidget {
   final VoidCallback onTap;
   const _MeChip({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final ps = PlayerStore.instance.players;
-    final me = ps.isEmpty ? null : ps.first;
+    final me = PlayerStore.instance.owner;
     final rating = me?.rating;
     return InkWell(
       borderRadius: BorderRadius.circular(20),
@@ -508,6 +533,7 @@ class _BoardPill extends StatelessWidget {
     };
     return Container(
       height: 36,
+      constraints: const BoxConstraints(minWidth: 96),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(18),

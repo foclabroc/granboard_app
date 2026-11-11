@@ -92,10 +92,16 @@ class _PlayerCard extends StatelessWidget {
                       Text(
                         p.expired
                             ? 'À RECONNECTER'
-                            : '${p.games} PARTIE${p.games > 1 ? 'S' : ''} · '
-                                '${p.wins} VICTOIRE${p.wins > 1 ? 'S' : ''}',
-                        style:
-                            Tv.label(11, color: p.expired ? Tv.red : Tv.muted),
+                            : PlayerStore.instance.isOwner(p)
+                                ? 'PROFIL PRINCIPAL'
+                                : '${p.games} PARTIE${p.games > 1 ? 'S' : ''} · '
+                                    '${p.wins} VICTOIRE${p.wins > 1 ? 'S' : ''}',
+                        style: Tv.label(11,
+                            color: p.expired
+                                ? Tv.red
+                                : PlayerStore.instance.isOwner(p)
+                                    ? Tv.gold
+                                    : Tv.muted),
                       ),
                     ],
                   ),
@@ -283,6 +289,14 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                                 overflow: TextOverflow.ellipsis),
                           );
                         },
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+                    if (!store.isOwner(p)) ...[
+                      OutlinedButton.icon(
+                        onPressed: () => store.setOwner(p),
+                        icon: const Icon(Icons.star_outline),
+                        label: const Text('PROFIL PRINCIPAL'),
                       ),
                       const SizedBox(height: 6),
                     ],
