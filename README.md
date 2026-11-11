@@ -5,8 +5,9 @@ Appli Flutter (Android) de fléchettes pour cible électronique **GranBoard**, c
 ## Utilisation
 
 1. Ferme l'appli GranBoard officielle (la cible n'accepte qu'une connexion BLE).
-2. **Scanner** → touche la cible (en vert).
-3. Lance une fléchette : la zone et le score s'affichent (`T20 (60)`, `D16 (32)`, `BULL (50)`…).
+2. **Choisir une cible** → touche la GranBoard (en vert). Ensuite, l'appli s'y reconnecte toute seule.
+3. **Nouvelle partie** : 301 / 501 / 701 / 901 ou Freeze en équipes, règles In / Out / Bull, limite de manches, joueurs.
+4. Le bouton de la cible (ou « Suivant ») passe au joueur suivant ; « Raté » pour une fléchette hors cible ; « Annuler » revient en arrière.
 
 ## Build
 

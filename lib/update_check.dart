@@ -15,11 +15,12 @@ import 'package:url_launcher/url_launcher.dart';
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Version de l'application (identique au pubspec.yaml, sans le « +N »).
-const kAppVersion = '0.1.0';
+const kAppVersion = '0.2.0';
 
 const _apiLatest =
     'https://api.github.com/repos/foclabroc/granboard_app/releases/latest';
-const _releasesPage = 'https://github.com/foclabroc/granboard_app/releases/latest';
+const _releasesPage =
+    'https://github.com/foclabroc/granboard_app/releases/latest';
 
 class AppUpdate {
   final String latest; // ex. « 0.2.0 »
@@ -68,8 +69,10 @@ Future<AppUpdate?> checkAppUpdate({bool throwOnError = false}) async {
 
 /// Compare « 1.10.0 » et « 1.9.2 » segment par segment (> 0 si a > b).
 int _compare(String a, String b) {
-  final pa = a.split(RegExp(r'[.+-]')).map((p) => int.tryParse(p) ?? 0).toList();
-  final pb = b.split(RegExp(r'[.+-]')).map((p) => int.tryParse(p) ?? 0).toList();
+  final pa =
+      a.split(RegExp(r'[.+-]')).map((p) => int.tryParse(p) ?? 0).toList();
+  final pb =
+      b.split(RegExp(r'[.+-]')).map((p) => int.tryParse(p) ?? 0).toList();
   for (var i = 0; i < 3; i++) {
     final x = i < pa.length ? pa[i] : 0, y = i < pb.length ? pb[i] : 0;
     if (x != y) return x - y;
@@ -157,8 +160,8 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       _progress = 0;
       _info = '';
     });
-    final client = _client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 15);
+    final client =
+        _client = HttpClient()..connectionTimeout = const Duration(seconds: 15);
     try {
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/granboard_update.apk');
@@ -226,7 +229,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Version installée : $kAppVersion'),
+            const Text('Version installée : $kAppVersion'),
             Text('Nouvelle version : ${widget.update.latest}',
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             if (_step == 1) ...[

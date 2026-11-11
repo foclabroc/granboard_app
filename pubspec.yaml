@@ -1,7 +1,7 @@
 name: granboard_proto
-description: Prototype de connexion BLE a une GranBoard
+description: Appli de flechettes pour cible GranBoard
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.2.0+2
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -15,6 +15,7 @@ dependencies:
   path_provider: ^2.1.0
   url_launcher: ^6.2.0
   open_filex: ^4.3.2
+  wakelock_plus: ^1.8.0
 
 dev_dependencies:
   flutter_test:
