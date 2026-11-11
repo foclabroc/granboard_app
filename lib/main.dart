@@ -7,6 +7,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'granboard.dart';
+import 'update_check.dart';
 
 void main() => runApp(const GranProtoApp());
 
@@ -23,7 +24,7 @@ class GranProtoApp extends StatelessWidget {
         brightness: Brightness.dark,
         useMaterial3: true,
       ),
-      home: const ScanPage(),
+      home: UpdateGate(key: updateGateKey, child: const ScanPage()),
     );
   }
 }
@@ -90,6 +91,15 @@ class _ScanPageState extends State<ScanPage> {
     }
   }
 
+  Future<void> _checkUpdate() async {
+    final r = await updateGateKey.currentState?.check(manual: true);
+    if (!mounted || r == 1) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(r == 2
+            ? 'Impossible de joindre GitHub'
+            : 'À jour (v$kAppVersion)')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final sorted = [..._results]..sort((a, b) {
@@ -98,7 +108,16 @@ class _ScanPageState extends State<ScanPage> {
       });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('GranBoard – Scan')),
+      appBar: AppBar(
+        title: const Text('GranBoard – Scan'),
+        actions: [
+          IconButton(
+            tooltip: 'Vérifier les mises à jour',
+            icon: const Icon(Icons.system_update),
+            onPressed: _checkUpdate,
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _scanning ? FlutterBluePlus.stopScan : _scan,
         icon: Icon(_scanning ? Icons.stop : Icons.bluetooth_searching),

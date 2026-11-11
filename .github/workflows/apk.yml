@@ -1,47 +1,97 @@
-name: APK
+# GranBoard — APK Android compilé par GitHub (bouton « Run workflow » dans l'onglet Actions)
+# L'APK est signé avec TA clé debug (secret DEBUG_KEYSTORE_B64, même valeur que
+# Pixel Trade), donc il s'installe par-dessus l'appli déjà installée.
+# Résultat : granboard.V<version>.apk dans « Artifacts », et dans la release
+# v<version> si « publier » est coché (c'est elle que l'appli détecte pour se mettre à jour).
+name: APK Android
 
-# Lancé à la main : onglet Actions → APK → Run workflow
 on:
   workflow_dispatch:
+    inputs:
+      publier:
+        description: "Créer / compléter la release v<version> avec l'APK"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  apk:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      - name: Clé de signature
+        env:
+          KEY: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::Secret DEBUG_KEYSTORE_B64 manquant (Settings > Secrets and variables > Actions)"
+            exit 1
+          fi
+          mkdir -p ~/.android
+          echo "$KEY" | base64 -d > ~/.android/debug.keystore
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "21"
 
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
-      # Ta clé debug (secret DEBUG_KEYSTORE, en base64) pour que chaque APK
-      # ait la même signature que tes builds locaux → mise à jour sans désinstaller
-      - name: Clé debug
-        env:
-          DEBUG_KEYSTORE: ${{ secrets.DEBUG_KEYSTORE }}
-        run: |
-          if [ -z "$DEBUG_KEYSTORE" ]; then
-            echo "::error::Secret DEBUG_KEYSTORE manquant"
-            exit 1
-          fi
-          mkdir -p ~/.android
-          echo "$DEBUG_KEYSTORE" | base64 -d > ~/.android/debug.keystore
-
       - run: flutter pub get
       - run: flutter test
-      - run: flutter build apk --release
 
-      - name: Version
+      - name: "Compilation (3 essais, le NDK se télécharge parfois mal)"
+        run: |
+          for i in 1 2 3; do
+            flutter build apk --release && exit 0
+            echo "::warning::Essai $i échoué, nettoyage du NDK et nouvel essai"
+            rm -rf "$ANDROID_HOME"/ndk
+            sleep 10
+          done
+          exit 1
+
+      - name: Vérification de la signature (même clé que l'appli installée)
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-release.apk | tee certs.txt
+          grep -qi "457526b68d8f904b3c1dca7a82bfd4508106131f822d4a1c276f667e7fe38ffb" certs.txt \
+            || { echo "::error::L'APK n'est pas signé avec ta clé : il ne s'installerait pas par-dessus l'appli"; exit 1; }
+
+      - name: Version et nom de l'APK
         id: v
-        run: echo "version=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')" >> "$GITHUB_OUTPUT"
+        run: |
+          V=$(grep '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+          C=$(grep "kAppVersion = " lib/update_check.dart | sed "s/.*'\(.*\)'.*/\1/")
+          if [ "$V" != "$C" ]; then
+            echo "::error::pubspec.yaml ($V) et kAppVersion ($C) ne correspondent pas"
+            exit 1
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          cp build/app/outputs/flutter-apk/app-release.apk "granboard.V$V.apk"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: granboard-${{ steps.v.outputs.version }}
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: granboard.V${{ steps.v.outputs.version }}
+          path: granboard.V${{ steps.v.outputs.version }}.apk
+
+      - name: Release
+        if: ${{ inputs.publier }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=${{ steps.v.outputs.version }}
+          # notes de version = la section « ## vX.Y.Z » du CHANGELOG
+          awk -v v="## v$V" 'index($0, v) == 1 {on=1; next} on && /^## v/ {exit} on {print}' CHANGELOG.md > notes.md
+          { echo; echo "---"; echo "📲 **Installation** : télécharge \`granboard.V$V.apk\` ci-dessous et ouvre-le sur ton téléphone Android."; } >> notes.md
+          if gh release view "v$V" >/dev/null 2>&1; then
+            gh release edit "v$V" --notes-file notes.md
+          else
+            gh release create "v$V" --title "GranBoard v$V" --notes-file notes.md --latest
+          fi
+          gh release upload "v$V" "granboard.V$V.apk" --clobber
