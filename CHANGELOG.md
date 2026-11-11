@@ -11,7 +11,7 @@
 - Fête : Fun Mission, All Fives, Beyond Top, Kick Down, Two Line, Shanghai, Hyper Bull, Cache-cache, Killer, Treasure Hunt, Morpion, Baseball (grilles à l'écran pour Two Line, Morpion et Cache-cache)
 - Meilleurs scores d'entraînement et de fête en ligne : classement par jeu (onglet « Entraînement ») et meilleurs scores sur le profil
 - Nouveaux jeux : Cricket Mickey Mouse (20 à 12, Doubles, Triples, Bull), Golf (9 ou 18 trous), Scram (2 joueurs : l'un ferme, l'autre marque, puis on échange), Football (le bull prend le ballon, les doubles sont des buts), Patate chaude (toucher le numéro passe la bombe avant que la mèche s'éteigne)
-- Nouvel accueil en grille de jeux : grande tuile 01, Cricket, Match, Entraînement, Fête ; état de la cible, TV, classements, sons et joueur en haut
+- Nouvel accueil en grille de jeux : 6 tuiles de même taille (01, Cricket, Match, Entraînement, Fête, En ligne « bientôt ») ; état de la cible, TV, classements, sons et joueur en haut
 - Style de la cible au choix : Classique ou Pub en bois (menu ⋮ de l'accueil), aussi sur l'écran TV
 - Joueurs invités en couleurs différentes
 - Tout s'affiche aussi sur l'écran TV

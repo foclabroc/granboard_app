@@ -225,99 +225,86 @@ class _HomePageState extends State<HomePage>
                   ),
                 ),
                 const SizedBox(height: 8),
-                // ─── Tuiles des jeux ───
+                // ─── Tuiles des jeux (3 × 2) ───
                 Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  child: Column(
                     children: [
                       Expanded(
-                        flex: 14,
-                        child: _Tile(
-                          colors: const [Color(0xFF3A2805), Color(0xFF1A1205)],
-                          kicker: 'X01 · FREEZE',
-                          title: '$_start',
-                          big: true,
-                          footer: 'NOUVELLE PARTIE',
-                          spin: _spin,
-                          onTap: () => _open(const SetupPage(kind: 'x01')),
-                        ),
+                        child: _row([
+                          _Tile(
+                            colors: const [
+                              Color(0xFF3A2805),
+                              Color(0xFF1A1205)
+                            ],
+                            kicker: 'X01 · FREEZE',
+                            title: '$_start',
+                            gold: true,
+                            spin: _spin,
+                            onTap: () => _open(const SetupPage(kind: 'x01')),
+                          ),
+                          _Tile(
+                            colors: const [
+                              Color(0xFF0E3B24),
+                              Color(0xFF07170F)
+                            ],
+                            kicker: '8 VARIANTES',
+                            title: 'CRICKET',
+                            icon: Icons.grid_view_rounded,
+                            onTap: () =>
+                                _open(const SetupPage(kind: 'cricket')),
+                          ),
+                          _Tile(
+                            colors: const [
+                              Color(0xFF3A1214),
+                              Color(0xFF16080A)
+                            ],
+                            kicker: '01 + CRICKET',
+                            title: 'MATCH',
+                            icon: Icons.emoji_events,
+                            onTap: () => _open(const SetupPage(kind: 'match')),
+                          ),
+                        ]),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(height: 10),
                       Expanded(
-                        flex: 20,
-                        child: Column(
-                          children: [
-                            Expanded(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(
-                                    child: _Tile(
-                                      colors: const [
-                                        Color(0xFF0E3B24),
-                                        Color(0xFF07170F)
-                                      ],
-                                      kicker: '8 VARIANTES',
-                                      title: 'CRICKET',
-                                      icon: Icons.grid_view_rounded,
-                                      onTap: () => _open(
-                                          const SetupPage(kind: 'cricket')),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: _Tile(
-                                      colors: const [
-                                        Color(0xFF3A1214),
-                                        Color(0xFF16080A)
-                                      ],
-                                      kicker: '01 + CRICKET',
-                                      title: 'MATCH',
-                                      icon: Icons.emoji_events,
-                                      onTap: () =>
-                                          _open(const SetupPage(kind: 'match')),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Expanded(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(
-                                    child: _Tile(
-                                      colors: const [
-                                        Color(0xFF0D2534),
-                                        Color(0xFF061018)
-                                      ],
-                                      kicker: '$_practiceCount JEUX',
-                                      title: 'ENTRAÎNEMENT',
-                                      icon: Icons.fitness_center,
-                                      onTap: () => _open(
-                                          const SetupPage(kind: 'practice')),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: _Tile(
-                                      colors: const [
-                                        Color(0xFF2A1240),
-                                        Color(0xFF10071A)
-                                      ],
-                                      kicker: '$_partyCount JEUX',
-                                      title: 'FÊTE',
-                                      icon: Icons.celebration,
-                                      onTap: () =>
-                                          _open(const SetupPage(kind: 'party')),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                        child: _row([
+                          _Tile(
+                            colors: const [
+                              Color(0xFF0D2534),
+                              Color(0xFF061018)
+                            ],
+                            kicker: '$_practiceCount JEUX',
+                            title: 'ENTRAÎNEMENT',
+                            icon: Icons.fitness_center,
+                            onTap: () =>
+                                _open(const SetupPage(kind: 'practice')),
+                          ),
+                          _Tile(
+                            colors: const [
+                              Color(0xFF2A1240),
+                              Color(0xFF10071A)
+                            ],
+                            kicker: '$_partyCount JEUX',
+                            title: 'FÊTE',
+                            icon: Icons.celebration,
+                            onTap: () => _open(const SetupPage(kind: 'party')),
+                          ),
+                          _Tile(
+                            colors: const [
+                              Color(0xFF1E2228),
+                              Color(0xFF0C0E11)
+                            ],
+                            kicker: 'BIENTÔT',
+                            title: 'EN LIGNE',
+                            icon: Icons.public,
+                            soon: true,
+                            onTap: () => ScaffoldMessenger.of(context)
+                              ..hideCurrentSnackBar()
+                              ..showSnackBar(const SnackBar(
+                                  content: Text(
+                                      'Jeu en ligne : un joueur chez lui avec sa cible, bientôt !'))),
+                          ),
+                        ]),
                       ),
                     ],
                   ),
@@ -331,14 +318,25 @@ class _HomePageState extends State<HomePage>
   }
 }
 
+/// Une ligne de tuiles de même taille.
+Widget _row(List<Widget> tiles) => Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < tiles.length; i++) ...[
+          if (i > 0) const SizedBox(width: 10),
+          Expanded(child: tiles[i]),
+        ],
+      ],
+    );
+
 /// Tuile d'une famille de jeux.
 class _Tile extends StatelessWidget {
   final List<Color> colors;
   final String kicker;
   final String title;
   final IconData? icon;
-  final bool big;
-  final String? footer;
+  final bool gold;
+  final bool soon;
   final Animation<double>? spin;
   final VoidCallback onTap;
   const _Tile(
@@ -347,8 +345,8 @@ class _Tile extends StatelessWidget {
       required this.title,
       required this.onTap,
       this.icon,
-      this.big = false,
-      this.footer,
+      this.gold = false,
+      this.soon = false,
       this.spin});
 
   @override
@@ -368,7 +366,7 @@ class _Tile extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           onTap: onTap,
           child: LayoutBuilder(builder: (context, c) {
-            final boardSize = c.maxWidth * 0.85;
+            final boardSize = c.maxHeight * 0.95;
             return ClipRRect(
               borderRadius: BorderRadius.circular(18),
               child: Stack(
@@ -399,25 +397,20 @@ class _Tile extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(kicker,
-                            style: Tv.label(12, color: Colors.white70)),
+                            style: Tv.label(12,
+                                color: soon ? Tv.gold : Colors.white70)),
                         const Spacer(),
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(title,
-                              style: Tv.title(big ? 110 : 38,
-                                  color: big ? Tv.goldLight : Colors.white)),
+                              style: Tv.title(38,
+                                  color: gold
+                                      ? Tv.goldLight
+                                      : soon
+                                          ? Colors.white54
+                                          : Colors.white)),
                         ),
-                        if (footer != null)
-                          Row(
-                            children: [
-                              Text(footer!,
-                                  style: Tv.title(16, color: Tv.text)),
-                              const SizedBox(width: 2),
-                              const Icon(Icons.chevron_right,
-                                  color: Tv.gold, size: 20),
-                            ],
-                          ),
                       ],
                     ),
                   ),
