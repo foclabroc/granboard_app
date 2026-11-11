@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../players.dart';
+import 'account_page.dart';
+import 'theme.dart';
 import 'widgets.dart';
 
+/// Joueurs mémorisés sur ce téléphone.
 class PlayersPage extends StatelessWidget {
   const PlayersPage({super.key});
 
@@ -12,39 +15,34 @@ class PlayersPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('JOUEURS')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final name = await askName(context);
-          if (name != null) await store.add(name);
-        },
+        onPressed: () => showAccountPage(context),
         icon: const Icon(Icons.person_add),
-        label: const Text('Ajouter'),
+        label: const Text('AJOUTER UN JOUEUR'),
       ),
       body: ListenableBuilder(
         listenable: store,
         builder: (context, _) {
           if (store.players.isEmpty) {
-            return const Center(child: Text('Aucun joueur pour l\'instant'));
-          }
-          return ListView(
-            padding: const EdgeInsets.only(bottom: 88),
-            children: [
-              for (final p in store.players)
-                ListTile(
-                  leading: PlayerAvatar.of(p),
-                  title: Text(p.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(p.games == 0
-                      ? 'Aucune partie'
-                      : '${p.games} partie${p.games > 1 ? 's' : ''} · '
-                          '${p.winRate} % de victoires · '
-                          'moy ${p.average.toStringAsFixed(1)}'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => PlayerDetailPage(player: p)),
-                  ),
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Aucun joueur sur ce téléphone.\nAjoute un joueur : crée un '
+                  'compte ou connecte-toi avec ton pseudo et ton code.',
+                  textAlign: TextAlign.center,
+                  style: Tv.label(15, color: Tv.text),
                 ),
+              ),
+            );
+          }
+          return GridView.extent(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
+            maxCrossAxisExtent: 280,
+            childAspectRatio: 2.6,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            children: [
+              for (final p in store.players) _PlayerCard(player: p),
             ],
           );
         },
@@ -53,137 +51,260 @@ class PlayersPage extends StatelessWidget {
   }
 }
 
-class PlayerDetailPage extends StatelessWidget {
+class _PlayerCard extends StatelessWidget {
+  final PlayerProfile player;
+  const _PlayerCard({required this.player});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = player;
+    final r = p.rating;
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        decoration: BoxDecoration(
+          gradient: Tv.panelGradient,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: p.expired ? Tv.red : Tv.line),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => PlayerDetailPage(player: p))),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                PlayerAvatar.of(p, size: 44),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(p.name.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Tv.title(20)),
+                      Text(
+                        p.expired
+                            ? 'À RECONNECTER'
+                            : '${p.games} PARTIE${p.games > 1 ? 'S' : ''} · '
+                                '${p.wins} VICTOIRE${p.wins > 1 ? 'S' : ''}',
+                        style:
+                            Tv.label(11, color: p.expired ? Tv.red : Tv.muted),
+                      ),
+                    ],
+                  ),
+                ),
+                if (r != null) RatingBadge(rating: r),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Note + classe (ex. « 52.3 · A »).
+class RatingBadge extends StatelessWidget {
+  final double rating;
+  final bool big;
+  const RatingBadge({super.key, required this.rating, this.big = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding:
+          EdgeInsets.symmetric(horizontal: big ? 14 : 8, vertical: big ? 6 : 3),
+      decoration: BoxDecoration(
+        gradient: Tv.goldGradient,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(ratingClass(rating),
+              style: Tv.title(big ? 26 : 16, color: Colors.black)),
+          Text(rating.toStringAsFixed(1),
+              style: Tv.label(big ? 13 : 10, color: Colors.black87)),
+        ],
+      ),
+    );
+  }
+}
+
+class PlayerDetailPage extends StatefulWidget {
   final PlayerProfile player;
   const PlayerDetailPage({super.key, required this.player});
 
-  Future<bool> _confirm(BuildContext context, String title, String text) async {
-    final r = await showDialog<bool>(
+  @override
+  State<PlayerDetailPage> createState() => _PlayerDetailPageState();
+}
+
+class _PlayerDetailPageState extends State<PlayerDetailPage> {
+  final store = PlayerStore.instance;
+  PlayerProfile get p => widget.player;
+
+  @override
+  void initState() {
+    super.initState();
+    store.refreshProfile(p);
+  }
+
+  Future<void> _forget() async {
+    final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(text),
+        title: Text('Retirer ${p.name} de ce téléphone ?', style: Tv.title(20)),
+        content: const Text('Le compte et ses statistiques restent sur le '
+            'serveur : il suffira de se reconnecter avec le pseudo et le code.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Annuler')),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Confirmer')),
+              child: const Text('Retirer')),
         ],
       ),
     );
-    return r ?? false;
+    if (ok != true) return;
+    await store.forget(p);
+    if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    final store = PlayerStore.instance;
-    final cs = Theme.of(context).colorScheme;
-
     return ListenableBuilder(
       listenable: store,
       builder: (context, _) {
-        final p = player;
-        Widget stat(String label, String value) => Expanded(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Column(
-                    children: [
-                      Text(value,
-                          style: const TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.bold)),
-                      Text(label,
-                          style: TextStyle(fontSize: 12, color: cs.outline)),
-                    ],
-                  ),
+        final s = p.stats;
+        int n(String k) => (s[k] as num?)?.toInt() ?? 0;
+        final recent = (p.profile?['recent'] as List?) ?? const [];
+
+        Widget stat(String label, String value) => Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: Tv.panel,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Tv.line),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(value, style: Tv.title(24)),
+                    Text(label.toUpperCase(), style: Tv.label(10)),
+                  ],
                 ),
               ),
             );
 
         return Scaffold(
-          appBar: AppBar(
-            title: Text(p.name),
-            actions: [
-              PopupMenuButton<String>(
-                onSelected: (v) async {
-                  if (v == 'rename') {
-                    final name = await askName(context,
-                        title: 'Renommer', initial: p.name);
-                    if (name != null) {
-                      p.name = name;
-                      await store.update(p);
-                    }
-                  } else if (v == 'color') {
-                    p.colorIndex = (p.colorIndex + 1) % kPlayerColors.length;
-                    await store.update(p);
-                  } else if (v == 'reset') {
-                    if (context.mounted &&
-                        await _confirm(context, 'Remettre à zéro ?',
-                            'Toutes les statistiques de ${p.name} seront effacées.')) {
-                      await store.resetStats(p);
-                    }
-                  } else if (v == 'delete') {
-                    if (context.mounted &&
-                        await _confirm(context, 'Supprimer ${p.name} ?',
-                            'Le joueur et ses statistiques seront supprimés.')) {
-                      await store.remove(p);
-                      if (context.mounted) Navigator.pop(context);
-                    }
-                  }
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'rename', child: Text('Renommer')),
-                  PopupMenuItem(
-                      value: 'color', child: Text('Changer de couleur')),
-                  PopupMenuItem(
-                      value: 'reset', child: Text('Remettre les stats à zéro')),
-                  PopupMenuItem(value: 'delete', child: Text('Supprimer')),
-                ],
-              ),
-            ],
-          ),
-          body: ListView(
-            padding: const EdgeInsets.all(12),
+          appBar: AppBar(title: Text(p.name.toUpperCase())),
+          body: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(child: PlayerAvatar.of(p, size: 72)),
-              const SizedBox(height: 12),
-              Row(children: [
-                stat('Parties', '${p.games}'),
-                stat('Victoires', '${p.wins}'),
-                stat('% victoires', '${p.winRate}'),
-              ]),
-              Row(children: [
-                stat('Moyenne', p.average.toStringAsFixed(1)),
-                stat('Meilleure fin',
-                    p.bestCheckout == 0 ? '–' : '${p.bestCheckout}'),
-                stat('Meilleure manche', '${p.highestTurn}'),
-              ]),
-              Row(children: [
-                stat('Manches 100+', '${p.count100}'),
-                stat('180', '${p.count180}'),
-                stat('Fléchettes', '${p.darts}'),
-              ]),
-              const SizedBox(height: 16),
-              Text('Dernières parties',
-                  style: TextStyle(
-                      color: cs.primary, fontWeight: FontWeight.bold)),
-              if (p.history.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('Aucune partie enregistrée'),
+              // Identité
+              SizedBox(
+                width: 230,
+                child: ListView(
+                  padding: const EdgeInsets.all(12),
+                  children: [
+                    Center(child: PlayerAvatar.of(p, size: 72)),
+                    const SizedBox(height: 8),
+                    if (p.rating != null)
+                      Center(child: RatingBadge(rating: p.rating!, big: true))
+                    else
+                      Center(
+                          child: Text('NOTE APRÈS 3 PARTIES',
+                              style: Tv.label(12))),
+                    if (p.rank != null)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                              '${p.rank}${p.rank == 1 ? 'ER' : 'E'} AU CLASSEMENT',
+                              style: Tv.title(16, color: Tv.gold)),
+                        ),
+                      ),
+                    const SizedBox(height: 14),
+                    if (p.expired)
+                      FilledButton.icon(
+                        onPressed: () =>
+                            showAccountPage(context, pseudo: p.name),
+                        icon: const Icon(Icons.login),
+                        label: const Text('RECONNECTER'),
+                      ),
+                    OutlinedButton.icon(
+                      onPressed: () => store.setColor(
+                          p, (p.colorIndex + 1) % kPlayerColors.length),
+                      icon: Icon(Icons.palette, color: p.color),
+                      label: const Text('COULEUR'),
+                    ),
+                    const SizedBox(height: 6),
+                    OutlinedButton.icon(
+                      onPressed: _forget,
+                      icon: const Icon(Icons.logout),
+                      label: const Text('RETIRER'),
+                    ),
+                  ],
                 ),
-              for (final h in p.history)
-                ListTile(
-                  dense: true,
-                  leading: Icon(h.won ? Icons.emoji_events : Icons.close,
-                      color: h.won ? Colors.amber : cs.outline),
-                  title: Text(h.mode),
-                  subtitle: Text(_date(h.date)),
-                  trailing: Text('moy ${h.average.toStringAsFixed(1)}'
-                      '${h.checkout == null ? '' : '  ·  fin ${h.checkout}'}'),
+              ),
+              // Stats + parties
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(0, 12, 12, 12),
+                  children: [
+                    GridView.count(
+                      crossAxisCount: 4,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 6,
+                      crossAxisSpacing: 6,
+                      childAspectRatio: 2.0,
+                      children: [
+                        stat('Parties', '${n('games')}'),
+                        stat('Victoires', '${n('wins')}'),
+                        stat('Moyenne', p.average.toStringAsFixed(1)),
+                        stat('Fléchettes', '${n('darts')}'),
+                        stat('Meilleure fin',
+                            n('best_co') == 0 ? '–' : '${n('best_co')}'),
+                        stat('Meilleure manche', '${n('high')}'),
+                        stat('100+', '${n('n100')}'),
+                        stat('180', '${n('n180')}'),
+                      ],
+                    ),
+                    const TvSection('Dernières parties',
+                        padding: EdgeInsets.fromLTRB(0, 16, 0, 6)),
+                    if (recent.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                            p.profile == null
+                                ? 'Profil pas encore chargé (hors ligne ?)'
+                                : 'Aucune partie pour l\'instant',
+                            style: Tv.label(13, color: Tv.text)),
+                      ),
+                    for (final g in recent.cast<Map>())
+                      ListTile(
+                        dense: true,
+                        leading: Icon(
+                            g['won'] == true ? Icons.emoji_events : Icons.close,
+                            color: g['won'] == true ? Tv.gold : Tv.muted),
+                        title: Text('${g['mode']}', style: Tv.title(17)),
+                        subtitle: Text(_date('${g['date']}')),
+                        trailing: Text(
+                            'MOY ${(g['avg'] as num?)?.toStringAsFixed(1) ?? '–'}'
+                            '${g['checkout'] == null ? '' : '  ·  FIN ${g['checkout']}'}',
+                            style: Tv.label(13, color: Tv.text)),
+                      ),
+                  ],
                 ),
+              ),
             ],
           ),
         );
@@ -191,7 +312,9 @@ class PlayerDetailPage extends StatelessWidget {
     );
   }
 
-  static String _date(DateTime d) {
+  static String _date(String iso) {
+    final d = DateTime.tryParse(iso)?.toLocal();
+    if (d == null) return '';
     String two(int n) => n.toString().padLeft(2, '0');
     return '${two(d.day)}/${two(d.month)}/${d.year} ${two(d.hour)}:${two(d.minute)}';
   }

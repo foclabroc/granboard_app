@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../board_service.dart';
 import '../players.dart';
+import 'theme.dart';
 
 /// Pastille de couleur avec l'initiale du joueur.
 class PlayerAvatar extends StatelessWidget {
@@ -42,51 +43,37 @@ class BoardBanner extends StatelessWidget {
       builder: (context, _) {
         if (board.isConnected) return const SizedBox.shrink();
         final connecting = board.status == BoardStatus.connecting;
-        return MaterialBanner(
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
-          leading: connecting
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.bluetooth_disabled),
-          content: Text(connecting
-              ? 'Connexion à la cible…'
-              : board.error ?? 'Cible non connectée'),
-          actions: [
-            if (!connecting && board.lastId != null)
-              TextButton(
-                  onPressed: board.reconnect, child: const Text('Reconnecter')),
-            if (connecting || board.lastId == null) const SizedBox.shrink(),
-          ],
+        // Bandeau fin (paysage : chaque pixel de hauteur compte)
+        return Container(
+          height: 34,
+          color: Tv.red.withValues(alpha: 0.28),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              connecting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.bluetooth_disabled, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                    connecting
+                        ? 'Connexion à la cible…'
+                        : board.error ?? 'Cible non connectée',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Tv.title(15)),
+              ),
+              if (!connecting && board.lastId != null)
+                TextButton(
+                    onPressed: board.reconnect,
+                    child: const Text('RECONNECTER')),
+            ],
+          ),
         );
       },
     );
   }
-}
-
-Future<String?> askName(BuildContext context,
-    {String title = 'Nouveau joueur', String initial = ''}) {
-  final ctrl = TextEditingController(text: initial);
-  return showDialog<String>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(title),
-      content: TextField(
-        controller: ctrl,
-        autofocus: true,
-        textCapitalization: TextCapitalization.words,
-        maxLength: 16,
-        decoration: const InputDecoration(labelText: 'Nom'),
-        onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
-      ),
-      actions: [
-        TextButton(
-            onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-        FilledButton(
-            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-            child: const Text('OK')),
-      ],
-    ),
-  ).then((v) => (v == null || v.isEmpty) ? null : v);
 }

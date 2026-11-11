@@ -11,7 +11,10 @@ import 'widgets.dart';
 /// Fin de partie : podium et statistiques.
 class ResultsPage extends StatefulWidget {
   final X01Game game;
-  const ResultsPage({super.key, required this.game});
+
+  /// Envoi de la partie au serveur (true = enregistrée en ligne).
+  final Future<bool>? saving;
+  const ResultsPage({super.key, required this.game, this.saving});
 
   @override
   State<ResultsPage> createState() => _ResultsPageState();
@@ -24,6 +27,13 @@ class _ResultsPageState extends State<ResultsPage> {
   void initState() {
     super.initState();
     AudioService.instance.startMusic();
+    widget.saving?.then((ok) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(ok
+              ? 'Partie enregistrée sur le serveur'
+              : 'Hors ligne : la partie sera envoyée plus tard')));
+    });
   }
 
   /// Ordre d'affichage : gagnants d'abord, puis par reste croissant.
@@ -53,33 +63,57 @@ class _ResultsPageState extends State<ResultsPage> {
 
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 46,
         automaticallyImplyLeading: false,
         title: Text('RÉSULTATS · ${game.settings.name.toUpperCase()}'),
       ),
       body: TvBackground(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (winTeam != null)
-              Center(
-                child: Text(kTeamNames[winTeam].toUpperCase(),
-                    style: Tv.title(26, color: kTeamColors[winTeam])),
-              ),
-            Center(
-              child: Text(
-                game.endReason == EndReason.checkout
-                    ? 'VICTOIRE EN ${game.round} MANCHE${game.round > 1 ? 'S' : ''}'
-                    : 'LIMITE DE ${game.settings.roundLimit} MANCHES',
-                style: Tv.label(14),
+            // Podium
+            SizedBox(
+              width: 340,
+              child: Column(
+                children: [
+                  const SizedBox(height: 4),
+                  if (winTeam != null)
+                    Text(kTeamNames[winTeam].toUpperCase(),
+                        style: Tv.title(22, color: kTeamColors[winTeam])),
+                  Text(
+                    game.endReason == EndReason.checkout
+                        ? 'VICTOIRE EN ${game.round} MANCHE${game.round > 1 ? 'S' : ''}'
+                        : 'LIMITE DE ${game.settings.roundLimit} MANCHES',
+                    style: Tv.label(13),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.bottomCenter,
+                        child: SizedBox(
+                          width: 320,
+                          child: _Podium(game: game, ranking: ranking),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            _Podium(game: game, ranking: ranking),
-            const SizedBox(height: 8),
-            const TvSection('Statistiques',
-                padding: EdgeInsets.fromLTRB(4, 14, 4, 8)),
-            for (final (rank, i) in ranking.indexed)
-              _StatCard(game: game, index: i, rank: rank + 1),
+            // Statistiques
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(4, 0, 12, 12),
+                children: [
+                  const TvSection('Statistiques',
+                      padding: EdgeInsets.fromLTRB(4, 8, 4, 6)),
+                  for (final (rank, i) in ranking.indexed)
+                    _StatCard(game: game, index: i, rank: rank + 1),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -87,13 +121,13 @@ class _ResultsPageState extends State<ResultsPage> {
         color: Tv.panel,
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
             child: Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(56)),
+                        minimumSize: const Size.fromHeight(46)),
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.tune),
                     label: const Text('RÉGLAGES'),
@@ -103,7 +137,7 @@ class _ResultsPageState extends State<ResultsPage> {
                 Expanded(
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(56)),
+                        minimumSize: const Size.fromHeight(46)),
                     onPressed: () => Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
@@ -154,9 +188,7 @@ class _Podium extends StatelessWidget {
                     const Text('🏆', style: TextStyle(fontSize: 34)),
                   PlayerAvatar(
                     name: game.players[i].name,
-                    color:
-                        PlayerStore.instance.byId(game.players[i].id)?.color ??
-                            Colors.grey,
+                    color: PlayerStore.instance.colorOf(game.players[i].id),
                     size: place == 1 ? 52 : 40,
                   ),
                   const SizedBox(height: 4),
@@ -207,7 +239,7 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = game.players[index];
     final s = game.stateOf(index);
-    final color = PlayerStore.instance.byId(p.id)?.color ?? Colors.grey;
+    final color = PlayerStore.instance.colorOf(p.id);
     final won = game.winners.contains(index);
 
     Widget stat(String label, String value) => Expanded(

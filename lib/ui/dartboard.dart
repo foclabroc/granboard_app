@@ -198,3 +198,231 @@ class _BoardPainter extends CustomPainter {
   bool shouldRepaint(_BoardPainter old) =>
       old.highlights != highlights || old.showNumbers != showNumbers;
 }
+
+// ─── Cible animée (écran de partie) ───────────────────────────────────────
+
+/// Point d'impact d'une fléchette (centre de la zone + léger décalage stable).
+Offset dartPoint(Offset c, double r, DartHit h, int order) {
+  if (h.isBull) {
+    final rr = h.ring == Ring.innerBull ? 0.02 : 0.066;
+    final a = order * 2.1;
+    return c + Offset(math.cos(a), math.sin(a)) * r * rr;
+  }
+  final i = kBoardOrder.indexOf(h.number);
+  const seg = 2 * math.pi / 20;
+  final (ro, ri) = switch (h.ring) {
+    Ring.double => (_BoardPainter.rDoubleOut, _BoardPainter.rDoubleIn),
+    Ring.triple => (_BoardPainter.rTripleOut, _BoardPainter.rTripleIn),
+    Ring.singleOuter => (_BoardPainter.rDoubleIn, _BoardPainter.rTripleOut),
+    _ => (_BoardPainter.rTripleIn, _BoardPainter.rBullOut),
+  };
+  // Décalage pour que 3 fléchettes dans la même zone ne se cachent pas
+  final jitterA = (order - 1) * seg * 0.22;
+  final a = -math.pi / 2 + i * seg + jitterA;
+  final rr = (ro + ri) / 2 + (order.isEven ? -1 : 1) * (ro - ri) * 0.12;
+  return c + Offset(math.cos(a), math.sin(a)) * r * rr;
+}
+
+/// Grande cible de la partie : zones touchées qui pulsent, impact animé
+/// (onde + fléchette qui se plante), éclair rouge sur un bust.
+class AnimatedDartboard extends StatefulWidget {
+  final double size;
+  final List<DartHit> hits;
+  final bool bust;
+  final bool win;
+  final Color dartColor;
+  const AnimatedDartboard({
+    super.key,
+    required this.size,
+    required this.hits,
+    this.bust = false,
+    this.win = false,
+    this.dartColor = Tv.gold,
+  });
+
+  @override
+  State<AnimatedDartboard> createState() => _AnimatedDartboardState();
+}
+
+class _AnimatedDartboardState extends State<AnimatedDartboard>
+    with TickerProviderStateMixin {
+  late final _impact = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 650));
+  late final _pulse = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1400))
+    ..repeat(reverse: true);
+  late final _flash = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 900));
+
+  @override
+  void didUpdateWidget(AnimatedDartboard old) {
+    super.didUpdateWidget(old);
+    if (widget.hits.length > old.hits.length) _impact.forward(from: 0);
+    if (widget.bust && !old.bust) _flash.forward(from: 0);
+    if (widget.win && !old.win) _flash.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _impact.dispose();
+    _pulse.dispose();
+    _flash.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: SizedBox.square(
+        dimension: widget.size,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _BoardPainter(const [], true),
+              ),
+            ),
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: Listenable.merge([_impact, _pulse, _flash]),
+                builder: (context, _) => CustomPaint(
+                  painter: _HitsPainter(
+                    hits: widget.hits,
+                    impact: _impact.value,
+                    pulse: _pulse.value,
+                    flash: _flash.value,
+                    flashColor: widget.win ? Tv.gold : Tv.red,
+                    dartColor: widget.dartColor,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HitsPainter extends CustomPainter {
+  final List<DartHit> hits;
+  final double impact; // 0 → 1 pour la dernière fléchette
+  final double pulse;
+  final double flash;
+  final Color flashColor;
+  final Color dartColor;
+  _HitsPainter({
+    required this.hits,
+    required this.impact,
+    required this.pulse,
+    required this.flash,
+    required this.flashColor,
+    required this.dartColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final outer = size.width / 2;
+    final r = outer - outer * 0.15; // même calcul que _BoardPainter
+
+    // Zones touchées : halo qui pulse
+    for (var k = 0; k < hits.length; k++) {
+      final last = k == hits.length - 1;
+      final path = _zonePath(c, r, hits[k]);
+      final glow = 0.55 + 0.35 * pulse + (last ? 0.1 * (1 - impact) : 0);
+      canvas.drawPath(
+          path,
+          Paint()
+            ..color = Tv.goldLight.withValues(alpha: glow.clamp(0, 1))
+            ..maskFilter = MaskFilter.blur(BlurStyle.solid, r * 0.03));
+      canvas.drawPath(
+          path,
+          Paint()
+            ..color = Colors.white
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = r * 0.02);
+    }
+
+    // Onde de choc de la dernière fléchette
+    if (hits.isNotEmpty && impact < 1) {
+      final p = dartPoint(c, r, hits.last, hits.length);
+      final t = Curves.easeOut.transform(impact);
+      canvas.drawCircle(
+          p,
+          r * (0.05 + 0.4 * t),
+          Paint()
+            ..color = Tv.goldLight.withValues(alpha: (1 - t) * 0.9)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = r * 0.025 * (1 - t) + 1);
+    }
+
+    // Fléchettes plantées (vues de face : empennage en croix)
+    for (var k = 0; k < hits.length; k++) {
+      final last = k == hits.length - 1;
+      final p = dartPoint(c, r, hits[k], k + 1);
+      // La dernière arrive de loin : plus grosse puis se plante
+      final t = last ? Curves.easeIn.transform(impact.clamp(0, 1)) : 1.0;
+      final scale = 1 + (1 - t) * 1.6;
+      final s = r * 0.085 * scale;
+      final shadowOff = const Offset(1, 1) * r * 0.03 * scale;
+      canvas.drawCircle(p + shadowOff, s * 0.9,
+          Paint()..color = Colors.black.withValues(alpha: 0.45));
+      final flight = Paint()..color = dartColor;
+      for (var q = 0; q < 4; q++) {
+        final a = math.pi / 4 + q * math.pi / 2;
+        final dir = Offset(math.cos(a), math.sin(a));
+        final side = Offset(-dir.dy, dir.dx);
+        canvas.drawPath(
+            Path()
+              ..moveTo(p.dx, p.dy)
+              ..lineTo((p + dir * s + side * s * 0.35).dx,
+                  (p + dir * s + side * s * 0.35).dy)
+              ..lineTo((p + dir * s - side * s * 0.35).dx,
+                  (p + dir * s - side * s * 0.35).dy)
+              ..close(),
+            flight);
+      }
+      canvas.drawCircle(p, s * 0.28, Paint()..color = Colors.black);
+      canvas.drawCircle(
+          p,
+          s * 0.28,
+          Paint()
+            ..color = Colors.white
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = math.max(1, s * 0.08));
+    }
+
+    // Éclair plein écran (bust en rouge, victoire en or)
+    if (flash > 0 && flash < 1) {
+      final a = math.sin(flash * math.pi) * 0.45;
+      canvas.drawCircle(
+          c, outer, Paint()..color = flashColor.withValues(alpha: a));
+    }
+  }
+
+  Path _zonePath(Offset c, double r, DartHit h) {
+    if (h.isBull) {
+      final rr = h.ring == Ring.innerBull
+          ? _BoardPainter.rBullIn
+          : _BoardPainter.rBullOut;
+      return Path()..addOval(Rect.fromCircle(center: c, radius: r * rr));
+    }
+    final i = kBoardOrder.indexOf(h.number);
+    const seg = 2 * math.pi / 20;
+    final a0 = -math.pi / 2 - seg / 2 + i * seg;
+    final (ro, ri) = switch (h.ring) {
+      Ring.double => (_BoardPainter.rDoubleOut, _BoardPainter.rDoubleIn),
+      Ring.triple => (_BoardPainter.rTripleOut, _BoardPainter.rTripleIn),
+      Ring.singleOuter => (_BoardPainter.rDoubleIn, _BoardPainter.rTripleOut),
+      _ => (_BoardPainter.rTripleIn, _BoardPainter.rBullOut),
+    };
+    return Path()
+      ..arcTo(Rect.fromCircle(center: c, radius: r * ro), a0, seg, true)
+      ..arcTo(Rect.fromCircle(center: c, radius: r * ri), a0 + seg, -seg, false)
+      ..close();
+  }
+
+  @override
+  bool shouldRepaint(_HitsPainter old) => true;
+}

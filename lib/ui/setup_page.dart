@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../board_service.dart';
 import '../game/x01.dart';
 import '../players.dart';
+import 'account_page.dart';
 import 'game_page.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -59,7 +60,7 @@ class _SetupPageState extends State<SetupPage> {
           ..clear()
           ..addAll([
             for (final id in (j['players'] as List? ?? const []))
-              if (store.byId(id as String) != null) id
+              if (store.byId(id as String) != null || isGuestId(id)) id
           ]);
         _team
           ..clear()
@@ -98,10 +99,21 @@ class _SetupPageState extends State<SetupPage> {
 
   int _teamOf(String id) => _team[id] ?? 0;
 
+  String _nameOf(String id) =>
+      isGuestId(id) ? 'Invité ${id.substring(6)}' : store.byId(id)?.name ?? '?';
+
+  void _addGuest() {
+    var n = 1;
+    while (_selected.contains('guest-$n')) {
+      n++;
+    }
+    _select('guest-$n');
+  }
+
   /// Joueurs dans l'ordre de lancer (Freeze : équipes en alternance).
   List<X01Player> get _order {
     X01Player mk(String id, int team) =>
-        X01Player(id: id, name: store.byId(id)!.name, team: team);
+        X01Player(id: id, name: _nameOf(id), team: team);
     if (!_freeze) {
       return [for (var i = 0; i < _selected.length; i++) mk(_selected[i], i)];
     }
@@ -124,10 +136,11 @@ class _SetupPageState extends State<SetupPage> {
   }
 
   Future<void> _newPlayer() async {
-    final name = await askName(context);
-    if (name == null) return;
-    final p = await store.add(name);
-    if (_selected.length < _maxPlayers) _select(p.id);
+    final p = await showAccountPage(context);
+    if (p == null || !mounted) return;
+    if (_selected.length < _maxPlayers && !_selected.contains(p.key)) {
+      _select(p.key);
+    }
   }
 
   void _select(String id) {
@@ -154,158 +167,207 @@ class _SetupPageState extends State<SetupPage> {
     );
   }
 
-  Widget _section(String title) => TvSection(title);
-
   @override
   Widget build(BuildContext context) {
     final problem = _problem;
     final available =
-        store.players.where((p) => !_selected.contains(p.id)).toList();
+        store.players.where((p) => !_selected.contains(p.key)).toList();
+    final full = _selected.length >= _maxPlayers;
 
     return Scaffold(
       appBar: AppBar(title: const Text('NOUVELLE PARTIE')),
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _section('Mode'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(
-              spacing: 8,
+          // ─── Mode et règles ───
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: 16),
               children: [
-                for (final s in kStartScores)
-                  ChoiceChip(
-                    label: Text('$s',
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                    selected: _start == s,
-                    onSelected: (_) => setState(() => _start = s),
+                const TvSection('Mode',
+                    padding: EdgeInsets.fromLTRB(16, 4, 16, 8)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final s in kStartScores)
+                        ChoiceChip(
+                          label: Text('$s',
+                              style: const TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                          selected: _start == s,
+                          onSelected: (_) => setState(() => _start = s),
+                        ),
+                    ],
                   ),
+                ),
+                SwitchListTile(
+                  title: Text('Freeze (équipes)', style: Tv.title(18)),
+                  subtitle: const Text(
+                      'Une équipe dont le total restant dépasse celui de '
+                      'l\'adversaire est gelée ❄ et ne peut pas finir.'),
+                  value: _freeze,
+                  onChanged: (v) => setState(() => _freeze = v),
+                ),
+                const TvSection('Règles',
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 6)),
+                _RuleRow<InRule>(
+                  label: 'Début',
+                  value: _in,
+                  values: InRule.values,
+                  text: (r) => r.label.split(' ').first,
+                  onChanged: (v) => setState(() => _in = v),
+                ),
+                _RuleRow<OutRule>(
+                  label: 'Fin',
+                  value: _out,
+                  values: OutRule.values,
+                  text: (r) => r.label.split(' ').first,
+                  onChanged: (v) => setState(() => _out = v),
+                ),
+                _RuleRow<BullMode>(
+                  label: 'Bull',
+                  value: _bull,
+                  values: BullMode.values,
+                  text: (b) => b == BullMode.split ? '25 / 50' : '50 / 50',
+                  onChanged: (v) => setState(() => _bull = v),
+                ),
+                ListTile(
+                  title: Text('Limite de manches', style: Tv.title(17)),
+                  trailing: DropdownButton<int?>(
+                    value: _limit,
+                    items: [
+                      for (final l in _limits)
+                        DropdownMenuItem(
+                            value: l, child: Text(l == null ? 'Aucune' : '$l')),
+                    ],
+                    onChanged: (v) => setState(() => _limit = v),
+                  ),
+                ),
               ],
             ),
           ),
-          SwitchListTile(
-            title: const Text('Freeze (équipes)'),
-            subtitle:
-                const Text('Une équipe dont le total restant dépasse celui de '
-                    'l\'adversaire est gelée ❄ et ne peut pas finir.'),
-            value: _freeze,
-            onChanged: (v) => setState(() => _freeze = v),
-          ),
-          _section('Règles'),
-          _RuleRow<InRule>(
-            label: 'Début',
-            value: _in,
-            values: InRule.values,
-            text: (r) => r.label.split(' ').first,
-            onChanged: (v) => setState(() => _in = v),
-          ),
-          _RuleRow<OutRule>(
-            label: 'Fin',
-            value: _out,
-            values: OutRule.values,
-            text: (r) => r.label.split(' ').first,
-            onChanged: (v) => setState(() => _out = v),
-          ),
-          _RuleRow<BullMode>(
-            label: 'Bull',
-            value: _bull,
-            values: BullMode.values,
-            text: (b) => b == BullMode.split ? '25 / 50' : '50 / 50',
-            onChanged: (v) => setState(() => _bull = v),
-          ),
-          ListTile(
-            title: const Text('Limite de manches'),
-            trailing: DropdownButton<int?>(
-              value: _limit,
-              items: [
-                for (final l in _limits)
-                  DropdownMenuItem(
-                      value: l, child: Text(l == null ? 'Aucune' : '$l')),
-              ],
-              onChanged: (v) => setState(() => _limit = v),
-            ),
-          ),
-          _section(
-              'Joueurs ${_selected.length}/$_maxPlayers · ordre de lancer'),
-          if (_selected.isNotEmpty)
-            ReorderableListView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              buildDefaultDragHandles: false,
-              onReorderItem: (from, to) => setState(
-                  () => _selected.insert(to, _selected.removeAt(from))),
+          const VerticalDivider(width: 1),
+          // ─── Joueurs ───
+          Expanded(
+            child: Column(
               children: [
-                for (var i = 0; i < _selected.length; i++)
-                  _playerTile(i, _selected[i]),
-              ],
-            ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (_selected.length < _maxPlayers)
-                  for (final p in available)
-                    ActionChip(
-                      avatar: PlayerAvatar.of(p, size: 24),
-                      label: Text(p.name),
-                      onPressed: () => _select(p.id),
+                Expanded(
+                  child: ListView(
+                    children: [
+                      TvSection(
+                          'Joueurs ${_selected.length}/$_maxPlayers · ordre de lancer',
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 6)),
+                      if (_selected.isNotEmpty)
+                        ReorderableListView(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          buildDefaultDragHandles: false,
+                          onReorderItem: (from, to) => setState(() =>
+                              _selected.insert(to, _selected.removeAt(from))),
+                          children: [
+                            for (var i = 0; i < _selected.length; i++)
+                              _playerTile(i, _selected[i]),
+                          ],
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (!full)
+                              for (final p in available)
+                                ActionChip(
+                                  avatar: PlayerAvatar.of(p, size: 24),
+                                  label:
+                                      Text(p.expired ? '${p.name} ⚠' : p.name),
+                                  onPressed: () => _select(p.key),
+                                ),
+                            if (!full)
+                              ActionChip(
+                                avatar:
+                                    const Icon(Icons.person_outline, size: 18),
+                                label: const Text('Invité'),
+                                onPressed: _addGuest,
+                              ),
+                            ActionChip(
+                              avatar: const Icon(Icons.person_add, size: 18),
+                              label: const Text('Ajouter un joueur'),
+                              onPressed: _newPlayer,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                            'Les invités jouent sans enregistrer de stats.',
+                            style: Tv.label(12)),
+                      ),
+                    ],
+                  ),
+                ),
+                SafeArea(
+                  top: false,
+                  left: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (problem != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Text(problem,
+                                style: Tv.title(15, color: Tv.red)),
+                          ),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: FilledButton.icon(
+                            onPressed: problem == null ? _startGame : null,
+                            icon: const Icon(Icons.play_arrow),
+                            label: Text(
+                                'LANCER ${_settings.name.toUpperCase()}',
+                                style: Tv.title(22, color: Colors.black)),
+                          ),
+                        ),
+                      ],
                     ),
-                ActionChip(
-                  avatar: const Icon(Icons.person_add, size: 18),
-                  label: const Text('Nouveau joueur'),
-                  onPressed: _newPlayer,
+                  ),
                 ),
               ],
             ),
           ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (problem != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(problem,
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.error)),
-                ),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: FilledButton.icon(
-                  onPressed: problem == null ? _startGame : null,
-                  icon: const Icon(Icons.play_arrow),
-                  label: Text('LANCER ${_settings.name.toUpperCase()}',
-                      style: Tv.title(22, color: Colors.black)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
   Widget _playerTile(int index, String id) {
-    final p = store.byId(id)!;
+    final guest = isGuestId(id);
+    final p = store.byId(id);
+    final name = _nameOf(id);
     return ListTile(
       key: ValueKey(id),
+      dense: true,
       leading: ReorderableDragStartListener(
         index: index,
         child: const Icon(Icons.drag_indicator),
       ),
       title: Row(
         children: [
-          PlayerAvatar.of(p, size: 28),
+          PlayerAvatar(name: name, color: p?.color ?? kGuestColor, size: 28),
           const SizedBox(width: 10),
-          Flexible(child: Text(p.name, overflow: TextOverflow.ellipsis)),
+          Flexible(
+            child: Text(name,
+                overflow: TextOverflow.ellipsis, style: Tv.title(18)),
+          ),
+          if (guest) Text('  INVITÉ', style: Tv.label(10)),
+          if (p?.expired == true)
+            Text('  À RECONNECTER', style: Tv.label(10, color: Tv.red)),
         ],
       ),
       trailing: Row(

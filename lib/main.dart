@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'audio.dart';
 import 'board_service.dart';
@@ -9,12 +10,17 @@ import 'update_check.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations(
+      [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   await Future.wait([
     BoardService.instance.init(),
     PlayerStore.instance.load(),
     AudioService.instance.init(),
   ]);
   runApp(const GranBoardApp());
+  // Comptes : vérifie les sessions, envoie les parties en attente
+  PlayerStore.instance.sync();
 }
 
 class GranBoardApp extends StatelessWidget {

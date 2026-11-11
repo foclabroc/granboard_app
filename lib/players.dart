@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'game/x01.dart';
+import 'server.dart';
 
 const kPlayerColors = [
   Color(0xFFE53935),
@@ -16,220 +17,296 @@ const kPlayerColors = [
   Color(0xFFD81B60),
 ];
 
-/// Résumé d'une partie dans l'historique d'un joueur.
-class GameRecord {
-  final DateTime date;
-  final String mode; // ex. « 501 » ou « Freeze 301 »
-  final bool won;
-  final double average;
-  final int darts;
-  final int? checkout;
+const kGuestColor = Color(0xFF8D8D9C);
 
-  GameRecord({
-    required this.date,
-    required this.mode,
-    required this.won,
-    required this.average,
-    required this.darts,
-    this.checkout,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'date': date.toIso8601String(),
-        'mode': mode,
-        'won': won,
-        'avg': average,
-        'darts': darts,
-        if (checkout != null) 'co': checkout,
-      };
-
-  factory GameRecord.fromJson(Map<String, dynamic> j) => GameRecord(
-        date: DateTime.parse(j['date'] as String),
-        mode: j['mode'] as String,
-        won: j['won'] as bool,
-        average: (j['avg'] as num).toDouble(),
-        darts: j['darts'] as int,
-        checkout: j['co'] as int?,
-      );
+/// Classe de niveau d'après la note (moyenne aux 3 fléchettes).
+String ratingClass(double r) {
+  if (r >= 80) return 'MASTER';
+  if (r >= 65) return 'AAA';
+  if (r >= 55) return 'AA';
+  if (r >= 45) return 'A';
+  if (r >= 35) return 'B';
+  if (r >= 25) return 'C';
+  return 'D';
 }
 
+bool isGuestId(String id) => id.startsWith('guest-');
+
+/// Compte joueur mémorisé sur ce téléphone (pseudo + PIN sur le serveur).
 class PlayerProfile {
-  final String id;
+  final int id;
   String name;
   int colorIndex;
+  String token;
 
-  // Statistiques X01 cumulées
-  int games;
-  int wins;
-  int darts;
-  int points;
-  int bestCheckout;
-  int highestTurn;
-  int count180;
-  int count100;
-  List<GameRecord> history;
+  /// Session refusée par le serveur : il faut se reconnecter.
+  bool expired;
+
+  /// Dernier profil reçu du serveur (stats, note, rang, parties récentes).
+  Map<String, dynamic>? profile;
 
   PlayerProfile({
     required this.id,
     required this.name,
+    required this.token,
     this.colorIndex = 0,
-    this.games = 0,
-    this.wins = 0,
-    this.darts = 0,
-    this.points = 0,
-    this.bestCheckout = 0,
-    this.highestTurn = 0,
-    this.count180 = 0,
-    this.count100 = 0,
-    List<GameRecord>? history,
-  }) : history = history ?? [];
+    this.expired = false,
+    this.profile,
+  });
+
+  /// Identifiant utilisé dans les parties (X01Player.id).
+  String get key => '$id';
 
   Color get color => kPlayerColors[colorIndex % kPlayerColors.length];
-  double get average => darts == 0 ? 0 : points * 3 / darts;
-  int get winRate => games == 0 ? 0 : (wins * 100 / games).round();
+
+  Map<String, dynamic> get stats =>
+      (profile?['stats'] as Map?)?.cast<String, dynamic>() ?? const {};
+
+  double? get rating => (stats['rating'] as num?)?.toDouble();
+  int? get rank => (profile?['rank'] as num?)?.toInt();
+  int get games => (stats['games'] as num?)?.toInt() ?? 0;
+  int get wins => (stats['wins'] as num?)?.toInt() ?? 0;
+  double get average => (stats['avg'] as num?)?.toDouble() ?? 0;
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
         'color': colorIndex,
-        'games': games,
-        'wins': wins,
-        'darts': darts,
-        'points': points,
-        'bestCo': bestCheckout,
-        'high': highestTurn,
-        'n180': count180,
-        'n100': count100,
-        'history': history.map((h) => h.toJson()).toList(),
+        'token': token,
+        'expired': expired,
+        if (profile != null) 'profile': profile,
       };
 
   factory PlayerProfile.fromJson(Map<String, dynamic> j) => PlayerProfile(
-        id: j['id'] as String,
+        id: (j['id'] as num).toInt(),
         name: j['name'] as String,
-        colorIndex: j['color'] as int? ?? 0,
-        games: j['games'] as int? ?? 0,
-        wins: j['wins'] as int? ?? 0,
-        darts: j['darts'] as int? ?? 0,
-        points: j['points'] as int? ?? 0,
-        bestCheckout: j['bestCo'] as int? ?? 0,
-        highestTurn: j['high'] as int? ?? 0,
-        count180: j['n180'] as int? ?? 0,
-        count100: j['n100'] as int? ?? 0,
-        history: [
-          for (final h in (j['history'] as List? ?? const []))
-            GameRecord.fromJson(h as Map<String, dynamic>)
-        ],
+        token: j['token'] as String,
+        colorIndex: (j['color'] as num?)?.toInt() ?? 0,
+        expired: j['expired'] as bool? ?? false,
+        profile: (j['profile'] as Map?)?.cast<String, dynamic>(),
       );
 }
 
-/// Profils enregistrés sur le téléphone.
+/// Comptes mémorisés + parties en attente d'envoi (hors ligne).
 class PlayerStore extends ChangeNotifier {
   PlayerStore._();
   static final instance = PlayerStore._();
 
-  static const _key = 'players_v1';
-  static const _historyMax = 50;
+  static const _keyAccounts = 'accounts_v1';
+  static const _keyPending = 'pending_games_v1';
 
   final List<PlayerProfile> players = [];
 
+  /// Parties pas encore envoyées. Les joueurs y sont désignés par leur id :
+  /// le jeton est ajouté au moment de l'envoi (il peut changer entre-temps).
+  final List<Map<String, dynamic>> pending = [];
+
+  bool syncing = false;
+
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
     players.clear();
-    if (raw != null) {
-      try {
-        for (final p in jsonDecode(raw) as List) {
-          players.add(PlayerProfile.fromJson(p as Map<String, dynamic>));
-        }
-      } catch (_) {}
-    }
+    pending.clear();
+    try {
+      for (final p
+          in jsonDecode(prefs.getString(_keyAccounts) ?? '[]') as List) {
+        players
+            .add(PlayerProfile.fromJson(Map<String, dynamic>.from(p as Map)));
+      }
+    } catch (_) {}
+    try {
+      for (final g
+          in jsonDecode(prefs.getString(_keyPending) ?? '[]') as List) {
+        pending.add(Map<String, dynamic>.from(g as Map));
+      }
+    } catch (_) {}
     notifyListeners();
   }
 
   Future<void> _save() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-        _key, jsonEncode(players.map((p) => p.toJson()).toList()));
+        _keyAccounts, jsonEncode(players.map((p) => p.toJson()).toList()));
+    await prefs.setString(_keyPending, jsonEncode(pending));
     notifyListeners();
   }
 
   PlayerProfile? byId(String id) {
     for (final p in players) {
-      if (p.id == id) return p;
+      if (p.key == id) return p;
     }
     return null;
   }
 
-  Future<PlayerProfile> add(String name) async {
+  Color colorOf(String id) => byId(id)?.color ?? kGuestColor;
+
+  int _freeColor() {
     final used = players.map((p) => p.colorIndex).toSet();
-    var color = 0;
-    while (used.contains(color) && color < kPlayerColors.length) {
-      color++;
+    for (var i = 0; i < kPlayerColors.length; i++) {
+      if (!used.contains(i)) return i;
     }
-    final p = PlayerProfile(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      name: name.trim(),
-      colorIndex: color % kPlayerColors.length,
-    );
-    players.add(p);
+    return players.length % kPlayerColors.length;
+  }
+
+  Future<PlayerProfile> _remember(Map<String, dynamic> acc) async {
+    final id = (acc['id'] as num).toInt();
+    var p = byId('$id');
+    if (p == null) {
+      p = PlayerProfile(
+        id: id,
+        name: acc['pseudo'] as String,
+        token: acc['token'] as String,
+        colorIndex: (acc['color'] as num?)?.toInt() ?? 0,
+      );
+      players.add(p);
+    } else {
+      p
+        ..name = acc['pseudo'] as String
+        ..token = acc['token'] as String
+        ..colorIndex = (acc['color'] as num?)?.toInt() ?? p.colorIndex
+        ..expired = false;
+    }
     await _save();
+    refreshProfile(p);
+    flush();
     return p;
   }
 
-  Future<void> update(PlayerProfile p) => _save();
+  /// Création de compte (lève ApiError).
+  Future<PlayerProfile> register(String pseudo, String pin) async =>
+      _remember(await GbServer.register(pseudo.trim(), pin, _freeColor()));
 
-  Future<void> remove(PlayerProfile p) async {
+  /// Connexion d'un compte existant (lève ApiError).
+  Future<PlayerProfile> login(String pseudo, String pin) async =>
+      _remember(await GbServer.login(pseudo.trim(), pin));
+
+  /// Retire le compte de ce téléphone (le compte reste sur le serveur).
+  Future<void> forget(PlayerProfile p) async {
     players.remove(p);
     await _save();
+    try {
+      await GbServer.logout(p.token);
+    } catch (_) {}
   }
 
-  Future<void> resetStats(PlayerProfile p) async {
-    p
-      ..games = 0
-      ..wins = 0
-      ..darts = 0
-      ..points = 0
-      ..bestCheckout = 0
-      ..highestTurn = 0
-      ..count180 = 0
-      ..count100 = 0
-      ..history = [];
+  Future<void> setColor(PlayerProfile p, int color) async {
+    p.colorIndex = color;
     await _save();
+    try {
+      await GbServer.setColor(p.token, color);
+    } catch (_) {}
   }
 
-  /// Enregistre une partie X01 terminée dans les profils des joueurs.
-  Future<void> recordX01(X01Game g) async {
-    final now = DateTime.now();
-    for (var i = 0; i < g.players.length; i++) {
-      final p = byId(g.players[i].id);
-      if (p == null) continue;
-      final s = g.stateOf(i);
-      final won = g.winners.contains(i);
-      p
-        ..games += 1
-        ..wins += won ? 1 : 0
-        ..darts += s.darts
-        ..points += s.points
-        ..count180 += s.count180
-        ..count100 += s.count100;
-      if (s.highestTurn > p.highestTurn) p.highestTurn = s.highestTurn;
-      final co = s.checkout;
-      if (co != null && co > p.bestCheckout) p.bestCheckout = co;
-      p.history.insert(
-        0,
-        GameRecord(
-          date: now,
-          mode: g.settings.name,
-          won: won,
-          average: s.average,
-          darts: s.darts,
-          checkout: co,
-        ),
-      );
-      if (p.history.length > _historyMax) {
-        p.history.removeRange(_historyMax, p.history.length);
+  Future<void> refreshProfile(PlayerProfile p) async {
+    try {
+      p.profile = await GbServer.profile(p.id);
+      await _save();
+    } catch (_) {}
+  }
+
+  /// Au démarrage : vérifie les sessions, envoie les parties en attente,
+  /// met à jour les profils. Silencieux hors ligne.
+  Future<void> sync() async {
+    if (players.isEmpty && pending.isEmpty) return;
+    try {
+      final valid = await GbServer.check([for (final p in players) p.token]);
+      final ok = {for (final a in valid) (a['id'] as num).toInt()};
+      for (final p in players) {
+        p.expired = !ok.contains(p.id);
       }
+      await _save();
+    } on ApiError {
+      return; // hors ligne : on réessaiera
     }
+    await flush();
+    for (final p in players) {
+      await refreshProfile(p);
+    }
+  }
+
+  /// Envoie les parties en attente. Renvoie true si tout est parti.
+  Future<bool> flush() async {
+    if (syncing) return pending.isEmpty;
+    syncing = true;
+    try {
+      while (pending.isNotEmpty) {
+        final g = pending.first;
+        final send = <Map<String, dynamic>>[];
+        for (final pl in (g['players'] as List)) {
+          final m = Map<String, dynamic>.from(pl as Map);
+          final acc = byId('${m.remove('pid')}');
+          if (acc == null || acc.expired) continue;
+          send.add({...m, 'token': acc.token});
+        }
+        if (send.isEmpty) {
+          // Joueurs oubliés ou à reconnecter : on garde si reconnexion possible
+          final waiting = (g['players'] as List)
+              .any((pl) => byId('${(pl as Map)['pid']}')?.expired == true);
+          if (waiting) return false;
+          pending.removeAt(0);
+          await _save();
+          continue;
+        }
+        try {
+          await GbServer.submit({...g, 'players': send});
+          pending.removeAt(0);
+          await _save();
+        } on ApiError catch (e) {
+          if (e.offline) return false;
+          if (e.code == 'session') {
+            await sync();
+            return false;
+          }
+          // Partie refusée (valeurs, doublon) : on la retire
+          pending.removeAt(0);
+          await _save();
+        }
+      }
+      return true;
+    } finally {
+      syncing = false;
+    }
+  }
+
+  /// Enregistre une partie X01 terminée (envoi immédiat ou plus tard).
+  /// Renvoie true si elle est déjà sur le serveur.
+  Future<bool> recordX01(X01Game g) async {
+    final ps = <Map<String, dynamic>>[];
+    for (var i = 0; i < g.players.length; i++) {
+      final p = g.players[i];
+      if (isGuestId(p.id)) continue;
+      final s = g.stateOf(i);
+      ps.add({
+        'pid': p.id,
+        if (g.settings.freeze) 'team': p.team,
+        'won': g.winners.contains(i),
+        'darts': s.darts,
+        'points': s.points,
+        'highest': s.highestTurn,
+        'n100': s.count100,
+        'n180': s.count180,
+        if (s.checkout != null) 'checkout': s.checkout,
+        'remaining': s.remaining,
+      });
+    }
+    if (ps.isEmpty) return true; // que des invités
+    pending.add({
+      'cid': '${DateTime.now().microsecondsSinceEpoch}-${ps.first['pid']}',
+      'mode': g.settings.name,
+      'start': g.settings.startScore,
+      'freeze': g.settings.freeze,
+      'in': g.settings.inRule.name,
+      'out': g.settings.outRule.name,
+      if (g.settings.roundLimit != null) 'rounds': g.settings.roundLimit,
+      'n': g.players.length,
+      'players': ps,
+    });
     await _save();
+    final sent = await flush();
+    for (final p in ps) {
+      final acc = byId('${p['pid']}');
+      if (acc != null) await refreshProfile(acc);
+    }
+    return sent;
   }
 }

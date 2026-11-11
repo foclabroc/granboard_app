@@ -8,6 +8,7 @@ import 'connect_page.dart';
 import 'dartboard.dart';
 import 'diagnostic_page.dart';
 import 'players_page.dart';
+import 'ranking_page.dart';
 import 'setup_page.dart';
 import 'sound_settings.dart';
 import 'theme.dart';
@@ -61,54 +62,83 @@ class _HomePageState extends State<HomePage>
     return Scaffold(
       body: TvBackground(
         child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          child: Row(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  IconButton(
-                    tooltip: 'Sons',
-                    icon: const Icon(Icons.volume_up),
-                    onPressed: () => showSoundSettings(context),
+              // Cible + titre
+              Expanded(
+                flex: 5,
+                child: LayoutBuilder(
+                  builder: (context, c) => _Hero(
+                    spin: _spin,
+                    size: (c.maxHeight - 100).clamp(120.0, c.maxWidth - 40),
                   ),
-                  IconButton(
-                    tooltip: 'Vérifier les mises à jour',
-                    icon: const Icon(Icons.system_update),
-                    onPressed: _checkUpdate,
-                  ),
-                ],
-              ),
-              _Hero(spin: _spin),
-              const SizedBox(height: 20),
-              ListenableBuilder(
-                listenable: board,
-                builder: (context, _) => _BoardBar(
-                  board: board,
-                  onChoose: () => _open(const ConnectPage()),
-                  onDiagnostic: () => _open(const DiagnosticPage()),
-                  onCalibrate: () => _open(const CalibrationPage()),
                 ),
               ),
-              const SizedBox(height: 16),
-              _MenuButton(
-                icon: Icons.sports_score,
-                title: 'Nouvelle partie',
-                subtitle: '301 · 501 · 701 · 901 · Freeze',
-                primary: true,
-                onTap: () => _open(const SetupPage()),
+              // Menu
+              Expanded(
+                flex: 6,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(4, 4, 16, 12),
+                  children: [
+                    Row(
+                      children: [
+                        const Spacer(),
+                        Text('V$kAppVersion',
+                            style: Tv.label(11, color: Tv.line)),
+                        IconButton(
+                          tooltip: 'Sons',
+                          icon: const Icon(Icons.volume_up),
+                          onPressed: () => showSoundSettings(context),
+                        ),
+                        IconButton(
+                          tooltip: 'Vérifier les mises à jour',
+                          icon: const Icon(Icons.system_update),
+                          onPressed: _checkUpdate,
+                        ),
+                      ],
+                    ),
+                    ListenableBuilder(
+                      listenable: board,
+                      builder: (context, _) => _BoardBar(
+                        board: board,
+                        onChoose: () => _open(const ConnectPage()),
+                        onDiagnostic: () => _open(const DiagnosticPage()),
+                        onCalibrate: () => _open(const CalibrationPage()),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _MenuButton(
+                      icon: Icons.sports_score,
+                      title: 'Nouvelle partie',
+                      subtitle: '301 · 501 · 701 · 901 · Freeze',
+                      primary: true,
+                      onTap: () => _open(const SetupPage()),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _MenuButton(
+                            icon: Icons.groups,
+                            title: 'Joueurs',
+                            subtitle: 'Comptes et stats',
+                            onTap: () => _open(const PlayersPage()),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _MenuButton(
+                            icon: Icons.leaderboard,
+                            title: 'Classements',
+                            subtitle: 'Tous les joueurs',
+                            onTap: () => _open(const RankingPage()),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 10),
-              _MenuButton(
-                icon: Icons.groups,
-                title: 'Joueurs',
-                subtitle: 'Profils et statistiques',
-                onTap: () => _open(const PlayersPage()),
-              ),
-              const SizedBox(height: 28),
-              Center(
-                  child: Text('VERSION $kAppVersion',
-                      style: Tv.label(12, color: Tv.line))),
             ],
           ),
         ),
@@ -119,11 +149,13 @@ class _HomePageState extends State<HomePage>
 
 class _Hero extends StatelessWidget {
   final Animation<double> spin;
-  const _Hero({required this.spin});
+  final double size;
+  const _Hero({required this.spin, required this.size});
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
           decoration: BoxDecoration(
@@ -137,18 +169,19 @@ class _Hero extends StatelessWidget {
           ),
           child: RotationTransition(
             turns: spin,
-            child: const Dartboard(size: 210, showNumbers: true),
+            child: Dartboard(size: size, showNumbers: true),
           ),
         ),
-        const SizedBox(height: 18),
-        ShaderMask(
-          shaderCallback: (r) => Tv.goldGradient.createShader(r),
-          child: Text('GRANBOARD',
-              style:
-                  Tv.title(52, color: Colors.white).copyWith(letterSpacing: 4)),
+        const SizedBox(height: 10),
+        FittedBox(
+          child: ShaderMask(
+            shaderCallback: (r) => Tv.goldGradient.createShader(r),
+            child: Text('GRANBOARD',
+                style: Tv.title(46, color: Colors.white)
+                    .copyWith(letterSpacing: 4)),
+          ),
         ),
-        const SizedBox(height: 4),
-        Text('DARTS  ·  X01  ·  FREEZE', style: Tv.label(14)),
+        Text('DARTS  ·  X01  ·  FREEZE', style: Tv.label(13)),
       ],
     );
   }
@@ -271,16 +304,21 @@ class _MenuButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                Icon(icon, size: 38, color: fg),
+                Icon(icon, size: 32, color: fg),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title.toUpperCase(), style: Tv.title(26, color: fg)),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(title.toUpperCase(),
+                            maxLines: 1, style: Tv.title(26, color: fg)),
+                      ),
                       const SizedBox(height: 2),
                       Text(subtitle,
                           style: Tv.label(14,

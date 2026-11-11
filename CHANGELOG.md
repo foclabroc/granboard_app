@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.4.0
+
+- Comptes joueurs sur le serveur maison : pseudo + code à 4 chiffres, mémorisés sur le téléphone, utilisables sur n'importe quel téléphone
+- Statistiques en ligne, note de niveau (moyenne des 20 dernières parties) avec classe D à MASTER, rang
+- Classements de tous les joueurs : note, victoires, moyenne, 180, meilleure fin, meilleure manche
+- Joueurs invités (sans stats)
+- Parties envoyées au serveur, ou plus tard si hors ligne
+- Toute l'appli en paysage
+- Grande cible animée en partie : fléchettes plantées, onde d'impact, zones touchées qui pulsent, éclair sur un bust ou une victoire
+- Calibration : boutons toujours visibles
+
 ## v0.3.3
 
 - GranBoard 3s reconnue sans calibration : mêmes codes que la Dash, la bordure extérieure compte comme fléchette ratée

@@ -31,7 +31,6 @@ class _GamePageState extends State<GamePage> {
   late final StreamSubscription<BoardEvent> _sub;
   final _splash = GlobalKey<_SplashState>();
   final audio = AudioService.instance;
-  bool _recorded = false;
 
   @override
   void initState() {
@@ -172,14 +171,15 @@ class _GamePageState extends State<GamePage> {
 
   void _undo() => setState(() => game.undo());
 
-  Future<void> _results() async {
-    if (!_recorded) {
-      _recorded = true;
-      await PlayerStore.instance.recordX01(game);
-    }
-    if (!mounted) return;
+  Future<bool>? _saving;
+
+  void _results() {
+    // Envoi au serveur en arrière-plan : les résultats s'affichent tout de suite
+    _saving ??= PlayerStore.instance.recordX01(game);
     Navigator.pushReplacement(
-        context, MaterialPageRoute(builder: (_) => ResultsPage(game: game)));
+        context,
+        MaterialPageRoute(
+            builder: (_) => ResultsPage(game: game, saving: _saving)));
   }
 
   Future<bool> _confirmQuit() async {
@@ -213,6 +213,7 @@ class _GamePageState extends State<GamePage> {
       },
       child: Scaffold(
         appBar: AppBar(
+          toolbarHeight: 46,
           titleSpacing: 0,
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,14 +254,51 @@ class _GamePageState extends State<GamePage> {
             Column(
               children: [
                 const BoardBanner(),
-                _CurrentPanel(game: game),
-                Expanded(child: _Scoreboard(game: game)),
-                _ActionBar(
-                  game: game,
-                  onUndo: _undo,
-                  onMiss: () => _dart(null),
-                  onNext: _next,
-                  onResults: _results,
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Grande cible animée
+                      LayoutBuilder(
+                        builder: (context, c) {
+                          final size = c.maxHeight - 12;
+                          final turn = game.currentTurn;
+                          return Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: AnimatedDartboard(
+                              size: size,
+                              hits: [
+                                for (final d in turn.darts)
+                                  if (d.hit != null) d.hit!
+                              ],
+                              bust: turn.isBust,
+                              win: game.finished &&
+                                  game.endReason == EndReason.checkout,
+                              dartColor: _colorOf(game.currentPlayer),
+                            ),
+                          );
+                        },
+                      ),
+                      // Joueur en cours + boutons
+                      Expanded(
+                        flex: 5,
+                        child: Column(
+                          children: [
+                            Expanded(child: _CurrentPanel(game: game)),
+                            _ActionBar(
+                              game: game,
+                              onUndo: _undo,
+                              onMiss: () => _dart(null),
+                              onNext: _next,
+                              onResults: _results,
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Tableau des scores
+                      Expanded(flex: 4, child: _Scoreboard(game: game)),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -272,8 +310,7 @@ class _GamePageState extends State<GamePage> {
   }
 }
 
-Color _colorOf(X01Player p) =>
-    PlayerStore.instance.byId(p.id)?.color ?? Colors.grey;
+Color _colorOf(X01Player p) => PlayerStore.instance.colorOf(p.id);
 
 // ─── Annonce animée (180, BUST, VICTOIRE) ───
 
@@ -398,14 +435,9 @@ class _CurrentPanel extends StatelessWidget {
       statusColor = Tv.green;
     }
 
-    final hits = [
-      for (final d in turn.darts)
-        if (d.hit != null) d.hit!
-    ];
-
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
-      margin: const EdgeInsets.fromLTRB(10, 6, 10, 4),
+      margin: const EdgeInsets.fromLTRB(4, 6, 4, 4),
       decoration: BoxDecoration(
         gradient: Tv.panelGradient,
         borderRadius: BorderRadius.circular(16),
@@ -414,48 +446,40 @@ class _CurrentPanel extends StatelessWidget {
           BoxShadow(color: accent.withValues(alpha: 0.15), blurRadius: 20),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Dartboard(size: 128, highlights: hits, showNumbers: false),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(width: 5, height: 20, color: color),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(p.name.toUpperCase(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Tv.title(24)),
-                        ),
-                        if (freeze) ...[
-                          const SizedBox(width: 6),
-                          Text(kTeamNames[p.team].split(' ').last,
-                              style: Tv.title(18, color: kTeamColors[p.team])),
-                        ],
-                      ],
-                    ),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text('${st.remaining}',
-                          style: Tv.title(88, color: Colors.white)),
-                    ),
-                    Text(status,
-                        maxLines: 2, style: Tv.title(17, color: statusColor)),
-                  ],
-                ),
+              Container(width: 5, height: 20, color: color),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(p.name.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Tv.title(24)),
               ),
+              if (freeze) ...[
+                const SizedBox(width: 6),
+                Text(kTeamNames[p.team].split(' ').last,
+                    style: Tv.title(18, color: kTeamColors[p.team])),
+              ],
             ],
           ),
-          const SizedBox(height: 10),
+          Expanded(
+            child: FittedBox(
+              fit: BoxFit.contain,
+              alignment: Alignment.centerLeft,
+              child: Text('${st.remaining}',
+                  style: Tv.title(110, color: Colors.white)),
+            ),
+          ),
+          Text(status,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Tv.title(17, color: statusColor)),
+          const SizedBox(height: 6),
           Row(
             children: [
               for (var i = 0; i < 3; i++)
@@ -465,24 +489,27 @@ class _CurrentPanel extends StatelessWidget {
                       bust: turn.isBust),
                 ),
               Container(
-                width: 70,
-                height: 52,
+                width: 64,
+                height: 48,
                 margin: const EdgeInsets.only(left: 4),
                 decoration: BoxDecoration(
                   gradient: Tv.goldGradient,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('TOTAL', style: Tv.label(10, color: Colors.black87)),
-                    Text(
-                        turn.isBust
-                            ? '0'
-                            : '${turn.darts.fold<int>(0, (s, d) => s + d.points)}',
-                        style: Tv.title(24, color: Colors.black)),
-                  ],
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('TOTAL', style: Tv.label(10, color: Colors.black87)),
+                      Text(
+                          turn.isBust
+                              ? '0'
+                              : '${turn.darts.fold<int>(0, (s, d) => s + d.points)}',
+                          style: Tv.title(22, color: Colors.black)),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -509,7 +536,7 @@ class _DartSlot extends StatelessWidget {
       if (h.isBull) c = h.ring == Ring.innerBull ? Tv.red : Tv.green;
     }
     return Container(
-      height: 52,
+      height: 48,
       padding: const EdgeInsets.all(4),
       margin: const EdgeInsets.symmetric(horizontal: 3),
       decoration: BoxDecoration(
@@ -559,9 +586,13 @@ class _Scoreboard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Text(kTeamNames[t].toUpperCase(),
-                  style: Tv.title(16, color: kTeamColors[t])),
-              if (frozen) Text('  ❄ GELÉE', style: Tv.title(14, color: Tv.ice)),
+              Flexible(
+                child: Text(kTeamNames[t].toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Tv.title(16, color: kTeamColors[t])),
+              ),
+              if (frozen) const Text(' ❄', style: TextStyle(color: Tv.ice)),
               const Spacer(),
               Text('${game.teamRemaining(t)}', style: Tv.title(20)),
             ],

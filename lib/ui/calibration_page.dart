@@ -164,117 +164,141 @@ class _CalibrationPageState extends State<CalibrationPage> {
     final skipped = _codes.where((c) => c == null).length;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('CALIBRATION')),
+      appBar: AppBar(toolbarHeight: 46, title: const Text('CALIBRATION')),
       body: ListenableBuilder(
         listenable: board,
-        builder: (context, _) => ListView(
-          padding: const EdgeInsets.all(16),
+        builder: (context, _) => Row(
           children: [
-            if (!board.isConnected)
-              Card(
-                color: Tv.red.withValues(alpha: 0.25),
-                child: const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text('Connecte d\'abord la cible depuis l\'accueil.'),
+            LayoutBuilder(
+              builder: (context, c) => Padding(
+                padding: const EdgeInsets.all(8),
+                child: Dartboard(
+                  size: c.maxHeight - 16,
+                  highlights: target == null ? const [] : [target.hit],
                 ),
               ),
-            Text(
-                'Lance une fléchette dans la zone indiquée. Le bouton de la '
-                'cible n\'est pas pris en compte.',
-                style: Tv.label(14, color: Tv.text)),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Text(
-                    '${_index.clamp(0, kCalTargets.length)} / ${kCalTargets.length}',
-                    style: Tv.title(20, color: Tv.gold)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: LinearProgressIndicator(
-                    value: _index / kCalTargets.length,
-                    minHeight: 8,
-                    borderRadius: BorderRadius.circular(4),
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
+                      children: [
+                        Center(
+                          child: Text(
+                            target == null
+                                ? 'BORDURE EXTÉRIEURE'
+                                : 'VISE : ${target.label}',
+                            textAlign: TextAlign.center,
+                            style: Tv.title(28,
+                                color: target == null ? Tv.gold : Tv.text),
+                          ),
+                        ),
+                        if (target == null)
+                          Center(
+                            child: Text(
+                                '${_outCodes.length} code(s) de bordure enregistré(s)',
+                                style: Tv.title(18, color: Tv.goldLight)),
+                          ),
+                        Center(
+                          child: Text(
+                            _last == null
+                                ? 'En attente d\'une fléchette…'
+                                : 'Reçu : "$_last"',
+                            style: Tv.label(13),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Text(
+                                '${_index.clamp(0, kCalTargets.length)} / ${kCalTargets.length}',
+                                style: Tv.title(20, color: Tv.gold)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: LinearProgressIndicator(
+                                value: _index / kCalTargets.length,
+                                minHeight: 8,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (skipped > 0)
+                          Text('$skipped zone(s) passée(s)',
+                              style: Tv.label(13, color: Tv.goldLight)),
+                        const SizedBox(height: 8),
+                        if (target == null)
+                          Text(
+                            'Les 82 zones sont faites. Si ta cible a une bordure '
+                            'détectée autour des doubles (GranBoard 3s), lance '
+                            'plusieurs fléchettes tout autour dedans : elles '
+                            'compteront comme ratées. Sinon, enregistre directement.',
+                            style: Tv.label(14, color: Tv.text),
+                          )
+                        else
+                          Text(
+                              'Lance une fléchette dans la zone indiquée. Le bouton '
+                              'de la cible n\'est pas pris en compte.',
+                              style: Tv.label(14, color: Tv.text)),
+                        if (!board.isConnected)
+                          Card(
+                            color: Tv.red.withValues(alpha: 0.25),
+                            child: const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: Text(
+                                  'Connecte d\'abord la cible depuis l\'accueil.'),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: Dartboard(
-                size: 250,
-                highlights: target == null ? const [] : [target.hit],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: Text(
-                target == null
-                    ? 'BORDURE EXTÉRIEURE'
-                    : 'VISE : ${target.label}',
-                textAlign: TextAlign.center,
-                style: Tv.title(30, color: target == null ? Tv.gold : Tv.text),
-              ),
-            ),
-            if (target == null)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  'Les 82 zones sont faites. Si ta cible a une bordure '
-                  'détectée autour des doubles (GranBoard 3s), lance '
-                  'plusieurs fléchettes tout autour dedans : elles compteront '
-                  'comme ratées. Sinon, enregistre directement.\n'
-                  '${_outCodes.length} code(s) de bordure enregistré(s).',
-                  textAlign: TextAlign.center,
-                  style: Tv.label(14, color: Tv.text),
-                ),
-              ),
-            const SizedBox(height: 6),
-            Center(
-              child: Text(
-                _last == null
-                    ? 'En attente d\'une fléchette…'
-                    : 'Reçu : "$_last"',
-                style: Tv.label(13),
-              ),
-            ),
-            if (skipped > 0)
-              Center(
-                child: Text('$skipped zone(s) passée(s)',
-                    style: Tv.label(13, color: Tv.goldLight)),
-              ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52)),
-                    onPressed:
-                        _codes.isEmpty && _outCodes.isEmpty ? null : _back,
-                    icon: const Icon(Icons.undo),
-                    label: const Text('RETOUR'),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 16, 8),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(52)),
+                                onPressed: _codes.isEmpty && _outCodes.isEmpty
+                                    ? null
+                                    : _back,
+                                icon: const Icon(Icons.undo),
+                                label: const Text('RETOUR'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(52)),
+                                onPressed: _done ? null : _skip,
+                                icon: const Icon(Icons.skip_next),
+                                label: const Text('PASSER'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(56)),
+                          onPressed: _table.isEmpty ? null : _save,
+                          icon: const Icon(Icons.save),
+                          label: Text(
+                              _done ? 'ENREGISTRER' : 'ENREGISTRER (PARTIEL)',
+                              style: Tv.title(20, color: Colors.black)),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52)),
-                    onPressed: _done ? null : _skip,
-                    icon: const Icon(Icons.skip_next),
-                    label: const Text('PASSER'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(56)),
-              onPressed: _table.isEmpty ? null : _save,
-              icon: const Icon(Icons.save),
-              label: Text(_done ? 'ENREGISTRER' : 'ENREGISTRER (PARTIEL)',
-                  style: Tv.title(20, color: Colors.black)),
+                ],
+              ),
             ),
           ],
         ),
