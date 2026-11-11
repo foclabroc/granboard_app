@@ -7,6 +7,7 @@ import '../audio.dart';
 import '../game/cricket.dart';
 import '../game/darts_game.dart';
 import '../game/match.dart';
+import '../game/practice.dart';
 import '../game/x01.dart';
 import '../granboard.dart';
 import 'setup_page.dart' show kTeamNames;
@@ -52,6 +53,23 @@ class GameFx {
         afterDart(g, hit, outerRing: outerRing);
       case CricketGame g:
         afterCricketDart(g, hit, outerRing: outerRing);
+      case PracticeGame g:
+        _hitSound(hit, outerRing: outerRing);
+        if (g.finished) {
+          win(g);
+          return;
+        }
+        _haptic(false);
+        final note = g.currentTurn.note;
+        final d = g.currentTurn.darts.isEmpty ? null : g.currentTurn.darts.last;
+        if (note != null && d != null && d.points != 0 && _bigNote(note)) {
+          audio.play(Sfx.crowd);
+          audio.sayLater(_speakable(note), 300);
+          _show(note.split(' +').first, Tv.gold);
+        } else if (note == 'BUST' || note == 'TROP !') {
+          audio.play(Sfx.bust);
+          audio.sayLater(note == 'BUST' ? 'Bust !' : 'Trop !', 250);
+        }
       case MatchGame m:
         if (m.finished) {
           _hitSound(hit, outerRing: outerRing);
@@ -72,6 +90,19 @@ class GameFx {
         afterNext(g);
       case CricketGame g:
         afterCricketNext(g);
+      case PracticeGame g:
+        if (g.finished) {
+          win(g);
+          return;
+        }
+        audio.play(Sfx.next);
+        final prev = g.turns.length > 1 ? g.turns[g.turns.length - 2] : null;
+        final note = prev?.note;
+        final before =
+            note != null && !_bigNote(note) ? '${_speakable(note)}. ' : '';
+        audio.sayLater(
+            '$before${g.currentPlayer.name}, cible ${_speakable(g.targetLabel)}',
+            250);
       case MatchGame m:
         if (m.finished) {
           win(m);
@@ -88,6 +119,26 @@ class GameFx {
         }
     }
   }
+
+  /// Notes de manche qui méritent une annonce animée.
+  static bool _bigNote(String n) =>
+      n.startsWith('HAT') ||
+      n.startsWith('WHITE') ||
+      n.startsWith('ARAIGNÉE') ||
+      n.startsWith('TOUTES') ||
+      n.startsWith('NAVIRE') ||
+      n.startsWith('3 TRIPLES') ||
+      n.startsWith('RÉUSSI') ||
+      n.startsWith('BONUS');
+
+  /// Texte lisible par l'annonceur.
+  static String _speakable(String s) => s
+      .replaceAll('÷ 2', 'divisé par deux')
+      .replaceAll('BULL', 'bull')
+      .replaceAll(RegExp(r'\(.*?\)'), '')
+      .replaceAllMapped(RegExp(r'\bD(\d+)'), (m) => 'double ${m[1]}')
+      .replaceAllMapped(RegExp(r'\bT(\d+)'), (m) => 'triple ${m[1]}')
+      .toLowerCase();
 
   void _legWon(MatchGame m) {
     _haptic(true);
@@ -229,6 +280,17 @@ class GameFx {
       CricketGame g => g.settings.teams,
       _ => false,
     };
+    if (game is PracticeGame) {
+      final names = game.winners.map((i) => game.players[i].name).join(' et ');
+      final byGoal = game.endReason == PracticeEnd.goal;
+      audio.sayLater(
+          game.players.length == 1
+              ? 'Fin de l\'entraînement. Score : ${game.scoreText(0)}.'
+              : '${byGoal ? 'Objectif atteint ! ' : 'Fin de la partie. '}Victoire de $names !',
+          900);
+      _show(byGoal ? 'VICTOIRE' : 'FIN', Tv.gold, big: true);
+      return;
+    }
     if (game is MatchGame) {
       final names = game.winners.map((i) => game.players[i].name).join(' et ');
       audio.sayLater('Jeu, set et match ! Victoire de $names !', 900);

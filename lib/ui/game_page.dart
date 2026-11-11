@@ -9,6 +9,7 @@ import '../board_service.dart';
 import '../game/cricket.dart';
 import '../game/darts_game.dart';
 import '../game/match.dart';
+import '../game/practice.dart';
 import '../game/x01.dart';
 import '../granboard.dart';
 import '../players.dart';
@@ -16,6 +17,7 @@ import '../tv_link.dart';
 import 'cricket_view.dart';
 import 'dartboard.dart';
 import 'match_view.dart';
+import 'practice_view.dart';
 import 'game_fx.dart';
 import 'results_page.dart';
 import 'setup_page.dart' show kTeamColors, kTeamNames;
@@ -119,6 +121,15 @@ class _GamePageState extends State<GamePage> {
 
   void _pushTv() => TvLink.instance.pushGame(game);
 
+  /// Choix de cible (entraînement).
+  void _changeTarget(int n) {
+    final g = game;
+    if (g is! PracticeGame) return;
+    setState(() => g.changeTarget(n));
+    audio.say('Nouvelle cible : ${n == 25 ? 'bull' : '$n'}');
+    _pushTv();
+  }
+
   Future<bool>? _saving;
 
   void _results() {
@@ -128,6 +139,7 @@ class _GamePageState extends State<GamePage> {
       X01Game g => PlayerStore.instance.recordX01(g),
       CricketGame g => PlayerStore.instance.recordCricket(g),
       MatchGame m => PlayerStore.instance.recordMatch(m),
+      PracticeGame p => PlayerStore.instance.recordPractice(p),
       _ => Future.value(true),
     };
     TvLink.instance.pushGame(game, screen: 'results');
@@ -214,7 +226,8 @@ class _GamePageState extends State<GamePage> {
           children: [
             const BoardBanner(),
             Expanded(
-              child: gameView(game, _splash, actionBar: actionBar),
+              child: gameView(game, _splash,
+                  actionBar: actionBar, onChangeTarget: _changeTarget),
             ),
           ],
         ),
@@ -225,9 +238,14 @@ class _GamePageState extends State<GamePage> {
 
 /// Écran de partie selon le jeu (téléphone et TV).
 Widget gameView(DartsGame game, GlobalKey<GameSplashState> splash,
-        {Widget? actionBar}) =>
+        {Widget? actionBar, void Function(int)? onChangeTarget}) =>
     switch (game) {
       MatchGame m => gameView(m.leg, splash, actionBar: actionBar),
+      PracticeGame g => PracticeLayout(
+          game: g,
+          splashKey: splash,
+          actionBar: actionBar,
+          onChangeTarget: onChangeTarget),
       CricketGame g =>
         CricketLayout(game: g, splashKey: splash, actionBar: actionBar),
       _ => GameLayout(
@@ -239,6 +257,7 @@ Widget resultsPageFor(DartsGame game,
         {Future<bool>? saving, bool tv = false}) =>
     switch (game) {
       MatchGame m => MatchResultsPage(game: m, saving: saving, tv: tv),
+      PracticeGame g => PracticeResultsPage(game: g, saving: saving, tv: tv),
       CricketGame g => CricketResultsPage(game: g, saving: saving, tv: tv),
       _ => ResultsPage(game: game as X01Game, saving: saving, tv: tv),
     };

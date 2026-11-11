@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../board_service.dart';
 import '../game/cricket.dart';
 import '../game/match.dart';
+import '../game/practice.dart';
 import '../game/x01.dart';
 import '../players.dart';
 import 'account_page.dart';
@@ -41,6 +42,12 @@ class _SetupPageState extends State<SetupPage> {
   CricketVariant _variant = CricketVariant.standard;
   bool _cTeams = false;
   int? _cLimit = 20;
+  // Entraînement
+  PracticeKind _pKind = PracticeKind.countUp;
+  int? _pRounds;
+  int? _pGoal;
+  int _pTarget = 20;
+  final Set<String> _pOptions = {};
   // Match
   int _mLegs = 3;
   List<LegKind> _mPattern = MatchSettings.alternate(13);
@@ -73,6 +80,14 @@ class _SetupPageState extends State<SetupPage> {
         _cTeams = j['cteams'] as bool? ?? false;
         _cLimit = j.containsKey('climit') ? j['climit'] as int? : 20;
         _mLegs = j['mlegs'] as int? ?? 3;
+        _pKind = PracticeKind.values.firstWhere((k) => k.name == j['pkind'],
+            orElse: () => PracticeKind.countUp);
+        _pRounds = j['prounds'] as int?;
+        _pGoal = j['pgoal'] as int?;
+        _pTarget = j['ptarget'] as int? ?? 20;
+        _pOptions
+          ..clear()
+          ..addAll([for (final o in (j['popt'] as List? ?? const [])) '$o']);
         final mp = [
           for (final k in (j['mpattern'] as List? ?? const []))
             LegKind.values
@@ -114,6 +129,11 @@ class _SetupPageState extends State<SetupPage> {
           'cteams': _cTeams,
           'climit': _cLimit,
           'mlegs': _mLegs,
+          'pkind': _pKind.name,
+          'prounds': _pRounds,
+          'pgoal': _pGoal,
+          'ptarget': _pTarget,
+          'popt': _pOptions.toList(),
           'mpattern': [for (final k in _mPattern) k.name],
           'players': _selected,
           'teams': _team,
@@ -138,6 +158,28 @@ class _SetupPageState extends State<SetupPage> {
 
   bool get _cricketOn => _kind == 'cricket';
   bool get _matchOn => _kind == 'match';
+  bool get _practiceOn => _kind == 'practice';
+
+  PracticeInfo get _pInfo => kPracticeInfo[_pKind]!;
+
+  PracticeSettings get _practice => PracticeSettings(
+        _pKind,
+        rounds: _pInfo.rounds != null &&
+                _pInfo.rounds!.contains(_pRounds ?? _pInfo.defaultRounds)
+            ? _pRounds ?? _pInfo.defaultRounds
+            : null,
+        goal: _pInfo.goals != null &&
+                _pInfo.goals!.contains(_pGoal ?? _pInfo.defaultGoal)
+            ? _pGoal ?? _pInfo.defaultGoal
+            : null,
+        target: _pTarget,
+        bull: _bull,
+        options: {
+          for (final o in _pOptions)
+            if (_pInfo.options.containsKey(o)) o
+        },
+        seed: DateTime.now().microsecondsSinceEpoch,
+      );
 
   MatchSettings get _match => MatchSettings(
         legs: _mLegs,
@@ -149,17 +191,19 @@ class _SetupPageState extends State<SetupPage> {
       );
 
   /// Jeu en équipes (Freeze ou Team Cricket).
-  bool get _teams => _matchOn
+  bool get _teams => _matchOn || _practiceOn
       ? false
       : _cricketOn
           ? _cTeams
           : _freeze;
 
-  String get _gameName => _matchOn
-      ? 'Match $_mLegs legs'
-      : _cricketOn
-          ? _cricket.name
-          : _settings.name;
+  String get _gameName => _practiceOn
+      ? _pInfo.name
+      : _matchOn
+          ? 'Match $_mLegs legs'
+          : _cricketOn
+              ? _cricket.name
+              : _settings.name;
 
   int _teamOf(String id) => _team[id] ?? 0;
 
@@ -231,11 +275,13 @@ class _SetupPageState extends State<SetupPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-          builder: (_) => _matchOn
-              ? GamePage(game: MatchGame(_match, _order))
-              : _cricketOn
-                  ? GamePage(game: CricketGame(_cricket, _order))
-                  : GamePage(settings: _settings, players: _order)),
+          builder: (_) => _practiceOn
+              ? GamePage(game: PracticeGame(_practice, _order))
+              : _matchOn
+                  ? GamePage(game: MatchGame(_match, _order))
+                  : _cricketOn
+                      ? GamePage(game: CricketGame(_cricket, _order))
+                      : GamePage(settings: _settings, players: _order)),
     );
   }
 
@@ -266,12 +312,15 @@ class _SetupPageState extends State<SetupPage> {
                       ButtonSegment(value: 'x01', label: Text('01')),
                       ButtonSegment(value: 'cricket', label: Text('CRICKET')),
                       ButtonSegment(value: 'match', label: Text('MATCH')),
+                      ButtonSegment(value: 'practice', label: Text('ENTRAÎN.')),
                     ],
                     selected: {_kind},
                     onSelectionChanged: (v) => setState(() => _kind = v.first),
                   ),
                 ),
-                if (_matchOn)
+                if (_practiceOn)
+                  ..._practiceOptions()
+                else if (_matchOn)
                   ..._matchOptions()
                 else if (_cricketOn)
                   ..._cricketOptions()
@@ -375,6 +424,105 @@ class _SetupPageState extends State<SetupPage> {
         ],
       ),
     );
+  }
+
+  List<Widget> _practiceOptions() {
+    final info = _pInfo;
+    final rounds = _pRounds ?? info.defaultRounds;
+    final goal = _pGoal ?? info.defaultGoal;
+    return [
+      const TvSection('Jeu d\'entraînement',
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 8)),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final k in PracticeKind.values)
+              ChoiceChip(
+                label: Text(kPracticeInfo[k]!.name.toUpperCase()),
+                selected: _pKind == k,
+                onSelected: (_) => setState(() {
+                  _pKind = k;
+                  _pRounds = null;
+                  _pGoal = null;
+                }),
+              ),
+          ],
+        ),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        child: Text(info.help, style: Tv.label(12, color: Tv.text)),
+      ),
+      if (info.goals != null)
+        ListTile(
+          title: Text('Objectif', style: Tv.title(17)),
+          trailing: DropdownButton<int>(
+            value: goal,
+            items: [
+              for (final n in info.goals!)
+                DropdownMenuItem(
+                    value: n, child: Text(n == 0 ? 'En 10 manches' : '$n')),
+            ],
+            onChanged: (v) => setState(() => _pGoal = v),
+          ),
+        ),
+      if (info.rounds != null)
+        ListTile(
+          title: Text(
+              _pKind == PracticeKind.checkout121
+                  ? 'Fléchettes par tentative'
+                  : 'Manches',
+              style: Tv.title(17)),
+          trailing: DropdownButton<int>(
+            value: rounds,
+            items: [
+              for (final n in info.rounds!)
+                DropdownMenuItem(
+                    value: n,
+                    child: Text(_pKind == PracticeKind.countUp && n == 33
+                        ? '33 (99 fléchettes)'
+                        : '$n')),
+            ],
+            onChanged: (v) => setState(() => _pRounds = v),
+          ),
+        ),
+      if (info.target)
+        ListTile(
+          title: Text('Cible', style: Tv.title(17)),
+          trailing: DropdownButton<int>(
+            value: _pTarget,
+            items: [
+              for (final n in [for (var i = 20; i >= 1; i--) i, 25])
+                DropdownMenuItem(
+                    value: n, child: Text(n == 25 ? 'Bull' : '$n')),
+            ],
+            onChanged: (v) => setState(() => _pTarget = v ?? 20),
+          ),
+        ),
+      for (final o in info.options.entries)
+        SwitchListTile(
+          title: Text(o.value, style: Tv.title(17)),
+          value: _pOptions.contains(o.key),
+          onChanged: (v) => setState(() {
+            // Options qui s'excluent (doubles / triples seulement)
+            if (v && (o.key == 'double' || o.key == 'triple')) {
+              _pOptions.removeAll({'double', 'triple'});
+            }
+            v ? _pOptions.add(o.key) : _pOptions.remove(o.key);
+          }),
+        ),
+      if (info.bull)
+        _RuleRow<BullMode>(
+          label: 'Bull',
+          value: _bull,
+          values: BullMode.values,
+          text: (b) => b == BullMode.split ? '25 / 50' : '50 / 50',
+          onChanged: (v) => setState(() => _bull = v),
+        ),
+    ];
   }
 
   List<Widget> _matchOptions() => [

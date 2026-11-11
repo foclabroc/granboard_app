@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'game/cricket.dart';
 import 'game/match.dart';
+import 'game/practice.dart';
 import 'game/x01.dart';
 import 'server.dart';
 
@@ -369,5 +370,43 @@ class PlayerStore extends ChangeNotifier {
       ok = ok && r;
     }
     return ok;
+  }
+
+  /// Partie d'entraînement terminée (invités exclus) : le score sert aux
+  /// classements « meilleur score » de chaque jeu.
+  Future<bool> recordPractice(PracticeGame g) async {
+    final ps = <Map<String, dynamic>>[];
+    for (var i = 0; i < g.players.length; i++) {
+      final p = g.players[i];
+      if (isGuestId(p.id)) continue;
+      final s = g.stateOf(i);
+      ps.add({
+        'pid': p.id,
+        'won': g.winners.contains(i) && g.players.length > 1,
+        'darts': s.darts,
+        'points': s.score,
+        'marks': s.good,
+        'highest': 0,
+        'remaining': 0,
+      });
+    }
+    if (ps.isEmpty) return true;
+    pending.add({
+      'cid': '${DateTime.now().microsecondsSinceEpoch}-${ps.first['pid']}',
+      'kind': 'practice',
+      'mode': g.settings.name,
+      'variant': g.settings.kind.name,
+      'start': 0,
+      'freeze': false,
+      'n': g.players.length,
+      'players': ps,
+    });
+    await _save();
+    final sent = await flush();
+    for (final p in ps) {
+      final acc = byId('${p['pid']}');
+      if (acc != null) await refreshProfile(acc);
+    }
+    return sent;
   }
 }

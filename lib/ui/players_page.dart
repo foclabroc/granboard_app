@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../game/practice.dart';
 import '../players.dart';
 import 'account_page.dart';
 import 'theme.dart';
@@ -296,6 +297,23 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                             n('cr_best') == 0 ? '–' : '${n('cr_best')} M'),
                       ],
                     ),
+                    if ((s['practice'] as Map?)?.isNotEmpty ?? false) ...[
+                      const TvSection('Entraînement · meilleurs scores',
+                          padding: EdgeInsets.fromLTRB(0, 14, 0, 6)),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final e in (s['practice'] as Map).entries)
+                            Chip(
+                              label: Text(
+                                  '${kPracticeInfo[PracticeKind.values.where((k) => k.name == e.key).firstOrNull]?.name ?? e.key} : '
+                                  '${(e.value as Map)['best']}',
+                                  style: Tv.title(15)),
+                            ),
+                        ],
+                      ),
+                    ],
                     const TvSection('Dernières parties',
                         padding: EdgeInsets.fromLTRB(0, 16, 0, 6)),
                     if (recent.isEmpty)
@@ -316,10 +334,12 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                         title: Text('${g['mode']}', style: Tv.title(17)),
                         subtitle: Text(_date('${g['date']}')),
                         trailing: Text(
-                            g['kind'] == 'cricket'
-                                ? 'MPR ${(g['mpr'] as num?)?.toStringAsFixed(2) ?? '–'}'
-                                : 'MOY ${(g['avg'] as num?)?.toStringAsFixed(1) ?? '–'}'
-                                    '${g['checkout'] == null ? '' : '  ·  FIN ${g['checkout']}'}',
+                            g['kind'] == 'practice'
+                                ? 'SCORE ${g['points'] ?? '–'}'
+                                : g['kind'] == 'cricket'
+                                    ? 'MPR ${(g['mpr'] as num?)?.toStringAsFixed(2) ?? '–'}'
+                                    : 'MOY ${(g['avg'] as num?)?.toStringAsFixed(1) ?? '–'}'
+                                        '${g['checkout'] == null ? '' : '  ·  FIN ${g['checkout']}'}',
                             style: Tv.label(13, color: Tv.text)),
                       ),
                   ],

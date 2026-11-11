@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../game/practice.dart';
 import '../players.dart';
 import '../server.dart';
 import 'players_page.dart' show RatingBadge;
@@ -24,7 +25,7 @@ class RankingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: _kinds.length,
+      length: _kinds.length + 1,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('CLASSEMENTS'),
@@ -35,20 +36,68 @@ class RankingPage extends StatelessWidget {
             labelColor: Tv.gold,
             unselectedLabelColor: Tv.muted,
             indicatorColor: Tv.gold,
-            tabs: [for (final k in _kinds) Tab(text: k.$2)],
+            tabs: [
+              for (final k in _kinds) Tab(text: k.$2),
+              const Tab(text: 'ENTRAÎNEMENT'),
+            ],
           ),
         ),
         body: TabBarView(
-          children: [for (final k in _kinds) _TopList(kind: k.$1)],
+          children: [
+            for (final k in _kinds) _TopList(kind: k.$1),
+            const _PracticeTop(),
+          ],
         ),
       ),
     );
   }
 }
 
+/// Meilleurs scores d'un jeu d'entraînement (au choix).
+class _PracticeTop extends StatefulWidget {
+  const _PracticeTop();
+
+  @override
+  State<_PracticeTop> createState() => _PracticeTopState();
+}
+
+class _PracticeTopState extends State<_PracticeTop> {
+  PracticeKind _kind = PracticeKind.countUp;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          width: 200,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            children: [
+              for (final k in PracticeKind.values)
+                ListTile(
+                  dense: true,
+                  selected: k == _kind,
+                  selectedTileColor: Tv.panel2,
+                  title: Text(kPracticeInfo[k]!.name.toUpperCase(),
+                      style:
+                          Tv.title(15, color: k == _kind ? Tv.gold : Tv.text)),
+                  onTap: () => setState(() => _kind = k),
+                ),
+            ],
+          ),
+        ),
+        const VerticalDivider(width: 1),
+        Expanded(
+            child: _TopList(key: ValueKey(_kind), kind: 'pr:${_kind.name}')),
+      ],
+    );
+  }
+}
+
 class _TopList extends StatefulWidget {
   final String kind;
-  const _TopList({required this.kind});
+  const _TopList({super.key, required this.kind});
 
   @override
   State<_TopList> createState() => _TopListState();

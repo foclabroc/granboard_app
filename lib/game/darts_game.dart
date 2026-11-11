@@ -4,6 +4,7 @@
 import '../granboard.dart';
 import 'cricket.dart';
 import 'match.dart';
+import 'practice.dart';
 import 'x01.dart';
 
 abstract interface class DartsGame {
@@ -43,6 +44,7 @@ abstract interface class DartsGame {
 DartsGame gameFromJson(Map<String, dynamic> j) => switch (j['kind']) {
       'cricket' => CricketGame.fromJson(j),
       'match' => MatchGame.fromJson(j),
+      'practice' => PracticeGame.fromJson(j),
       _ => X01Game.fromJson(j),
     };
 
