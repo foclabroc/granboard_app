@@ -76,7 +76,7 @@ class _WelcomePageState extends State<WelcomePage>
                             ShaderMask(
                               shaderCallback: (r) =>
                                   Tv.goldGradient.createShader(r),
-                              child: Text('GRANBOARD',
+                              child: Text('FOCLABOARD',
                                   style: Tv.title(52, color: Colors.white)
                                       .copyWith(letterSpacing: 4)),
                             ),

@@ -208,7 +208,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     if (!mounted) return;
     setState(() => _info = r.type == ResultType.done
         ? ''
-        : 'Autorise « Installer des applis inconnues » pour GranBoard, '
+        : 'Autorise « Installer des applis inconnues » pour Foclaboard, '
             'puis appuie sur Installer.');
   }
 

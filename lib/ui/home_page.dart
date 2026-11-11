@@ -178,7 +178,7 @@ class _HomePageState extends State<HomePage>
                           child: ShaderMask(
                             shaderCallback: (r) =>
                                 Tv.goldGradient.createShader(r),
-                            child: Text('GRANBOARD',
+                            child: Text('FOCLABOARD',
                                 style: Tv.title(30, color: Colors.white)
                                     .copyWith(letterSpacing: 2)),
                           ),

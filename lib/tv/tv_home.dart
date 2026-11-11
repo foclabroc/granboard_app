@@ -149,7 +149,7 @@ class _CodeScreen extends StatelessWidget {
               children: [
                 ShaderMask(
                   shaderCallback: (r) => Tv.goldGradient.createShader(r),
-                  child: Text('GRANBOARD',
+                  child: Text('FOCLABOARD',
                       style: Tv.title(56, color: Colors.white)
                           .copyWith(letterSpacing: 5)),
                 ),
@@ -258,7 +258,7 @@ class _Lobby extends StatelessWidget {
               const SizedBox(height: 20),
               ShaderMask(
                 shaderCallback: (r) => Tv.goldGradient.createShader(r),
-                child: Text('GRANBOARD',
+                child: Text('FOCLABOARD',
                     style: Tv.title(52, color: Colors.white)
                         .copyWith(letterSpacing: 5)),
               ),

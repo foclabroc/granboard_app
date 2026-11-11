@@ -143,7 +143,7 @@ class _TvSheetState extends State<_TvSheet> {
             Text(
                 link.linked
                     ? 'Ajouter un autre écran : entre le code qu\'il affiche'
-                    : 'Allume GranBoard sur la TV (ou la tablette) et entre le code affiché :',
+                    : 'Allume Foclaboard sur la TV (ou la tablette) et entre le code affiché :',
                 style: Tv.label(14, color: Tv.text)),
             const SizedBox(height: 8),
             Row(

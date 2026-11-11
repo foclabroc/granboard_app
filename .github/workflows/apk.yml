@@ -1,4 +1,4 @@
-# GranBoard — APK Android compilé par GitHub (bouton « Run workflow » dans l'onglet Actions)
+# Foclaboard — APK Android compilé par GitHub (bouton « Run workflow » dans l'onglet Actions)
 # L'APK est signé avec TA clé debug (secret DEBUG_KEYSTORE_B64, même valeur que
 # Pixel Trade), donc il s'installe par-dessus l'appli déjà installée.
 # Résultat : granboard.V<version>.apk dans « Artifacts », et dans la release
@@ -94,6 +94,6 @@ jobs:
           if gh release view "v$V" >/dev/null 2>&1; then
             gh release edit "v$V" --notes-file notes.md
           else
-            gh release create "v$V" --title "GranBoard v$V" --notes-file notes.md --latest
+            gh release create "v$V" --title "Foclaboard v$V" --notes-file notes.md --latest
           fi
           gh release upload "v$V" "granboard.V$V.apk" --clobber

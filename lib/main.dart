@@ -86,7 +86,7 @@ class GranBoardAppState extends State<GranBoardApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'GranBoard',
+      title: 'Foclaboard',
       debugShowCheckedModeBanner: false,
       theme: Tv.theme(),
       home: UpdateGate(

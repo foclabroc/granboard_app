@@ -1,6 +1,6 @@
-# GranBoard App
+# Foclaboard
 
-Appli Flutter (Android) de fléchettes pour cible électronique **GranBoard** (Dash, 3s), connectée en Bluetooth LE. Comptes, stats et classements sur le serveur maison. La même appli sert d'écran sur une Android TV.
+**Foclaboard** : appli Flutter (Android) de fléchettes pour cible électronique **GranBoard** (Dash, 3s), connectée en Bluetooth LE. Comptes, stats et classements sur le serveur maison. La même appli sert d'écran sur une Android TV.
 
 ## Utilisation
 

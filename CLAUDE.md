@@ -1,9 +1,10 @@
-# GranBoard App
+# Foclaboard (dépôt granboard_app)
 
 Appli Flutter (Android, **paysage**) de fléchettes, connectée en Bluetooth LE à une cible électronique GranBoard (Dash et 3s). Comptes joueurs et stats sur le serveur maison de foclabroc. Projet perso de foclabroc.
 
 ## État actuel
 
+- Nom affiché : **Foclaboard** (icône, titre, accueil, écran TV, releases). Identifiant Android `com.example.granboard_proto`, dépôt `granboard_app` et nom d'APK `granboard.V<x>.apk` inchangés (mise à jour auto et données des téléphones conservées).
 - v0.6.0 : **Entraînement** (17 jeux) + **Fête** (16 jeux, dont Golf, Scram, Football, Patate chaude), tous dans `lib/game/practice.dart`, + **Cricket** (Standard, Cut Throat, Caché, Cut Throat caché, Wildcard, No Score, Triple Only, Mickey Mouse, Team) + **Match** (legs 01/Cricket) + stats Cricket en ligne (MPR). Règles relevées sur gran-darts.com dans `docs/regles_granboard.md` (avec les choix validés par foclabroc).
 - v0.5.1 : fins possibles affichées (combinaison conseillée + 2 autres, zone à viser sur la cible).
 - v0.5.0 : **écran TV** (même APK, plusieurs écrans à la fois, choix de l'appareil qui joue le son) : sur Android TV l'appli démarre en mode écran, affiche un code ; le téléphone s'y relie et pilote tout ; la TV rejoue la partie et joue le son. Liaison par le serveur maison (relais temps réel de Pixel Trade), choisie pour préparer le jeu à distance (joueur chez lui).
