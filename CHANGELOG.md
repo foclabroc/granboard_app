@@ -4,9 +4,10 @@
 
 - Écran TV : la même appli, installée sur une Android TV, démarre en mode écran. Elle affiche un code ; sur le téléphone, Accueil › icône TV › entre le code
 - Le téléphone pilote tout, la TV affiche la partie en grand (cible animée, scores, annonces) puis les résultats
-- Le son (annonceur, bruitages, musique) passe par la TV quand elle est reliée
+- Plusieurs écrans en même temps (ex. TV + tablette) : tous affichent la partie
+- Choix de l'appareil qui joue le son (annonceur, bruitages, musique) : téléphone ou l'un des écrans, dans la fenêtre Écrans ou les réglages du son. Une TV reliée prend le son par défaut
 - Liaison par le serveur maison, en temps réel (prépare le jeu à distance)
-- Un téléphone ou une tablette peut aussi servir d'écran (icône TV › « Cet appareil devient l'écran TV »)
+- Un téléphone ou une tablette peut aussi servir d'écran (icône TV › « Cet appareil devient un écran »)
 
 ## v0.4.0
 

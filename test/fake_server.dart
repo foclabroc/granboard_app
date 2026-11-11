@@ -72,7 +72,8 @@ class FakeServer {
           'key': 'k$code',
           'host': null,
           'state': null,
-          'seq': 0
+          'seq': 0,
+          'name': b['p_name'] ?? 'Écran',
         };
         return {
           'code': code,
@@ -87,7 +88,8 @@ class FakeServer {
         r['state'] = {'screen': 'lobby', 'host': b['p_name']};
         return {
           'code': (b['p_code'] as String).toUpperCase(),
-          'host_key': r['host']
+          'host_key': r['host'],
+          'name': r['name'],
         };
       case 'gb_tv_push':
         final r = tvRooms[b['p_code']];

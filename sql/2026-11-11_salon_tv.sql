@@ -1,6 +1,7 @@
 -- GranBoard : salon TV. La TV affiche un code, le téléphone s'y relie et
 -- envoie l'état de la partie ; la TV est prévenue par le relais temps réel
 -- de Pixel Trade (pg_notify via rc__rt_safe) puis relit l'état.
+-- Un téléphone peut piloter plusieurs écrans (TV + tablette) : un salon par écran.
 -- Préparé pour le jeu à distance (plusieurs téléphones dans le même salon).
 -- Relançable. À lancer en postgres APRÈS 2026-11-11_comptes_stats.sql :
 --   psql -U postgres -d postgres -f 2026-11-11_salon_tv.sql
@@ -17,6 +18,7 @@ create table if not exists public.gb_tv (
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
+alter table public.gb_tv add column if not exists tv_name text;  -- « TV », « Tablette »
 alter table public.gb_tv owner to rc_owner;
 revoke all on public.gb_tv from public, anon, authenticated;
 
@@ -26,8 +28,9 @@ create or replace function public.gb__tv_topic(p_code text) returns text
  set search_path to 'public'
 as $$ select 'rc_' || left(encode(extensions.digest('gbtv|' || p_code, 'sha256'), 'hex'), 24) $$;
 
--- La TV ouvre un salon : {code, key, topic}
-create or replace function public.gb_tv_open()
+-- L'écran ouvre un salon : {code, key, topic}
+drop function if exists public.gb_tv_open();
+create or replace function public.gb_tv_open(p_name text default null)
  returns jsonb
  language plpgsql security definer
  set search_path to 'public'
@@ -47,11 +50,12 @@ begin
     end loop;
     exit when not exists (select 1 from gb_tv where code = v_code);
   end loop;
-  insert into gb_tv (code, tv_key_hash) values (v_code, gb__sha(v_key));
+  insert into gb_tv (code, tv_key_hash, tv_name)
+  values (v_code, gb__sha(v_key), left(coalesce(nullif(btrim(p_name), ''), 'Écran'), 20));
   return jsonb_build_object('code', v_code, 'key', v_key, 'topic', gb__tv_topic(v_code));
 end $$;
 
--- Le téléphone se relie avec le code : {host_key}. Le dernier relié pilote.
+-- Le téléphone se relie avec le code : {code, host_key, name}. Le dernier relié pilote.
 create or replace function public.gb_tv_link(p_code text, p_name text default null)
  returns jsonb
  language plpgsql security definer
@@ -60,6 +64,7 @@ as $$
 declare
   v_code text := upper(btrim(coalesce(p_code, '')));
   v_key  text := encode(extensions.gen_random_bytes(16), 'hex');
+  v_name text;
 begin
   update gb_tv
      set host_key_hash = gb__sha(v_key),
@@ -67,12 +72,13 @@ begin
          state = jsonb_build_object('screen', 'lobby', 'host', left(btrim(coalesce(p_name, '')), 16)),
          seq = seq + 1,
          updated_at = now()
-   where code = v_code;
-  if not found then
+   where code = v_code
+  returning coalesce(tv_name, 'Écran') into v_name;
+  if v_name is null then
     return jsonb_build_object('error', 'tv_code');
   end if;
   perform rc__rt_safe(gb__tv_topic(v_code), 'gb', jsonb_build_object('seq', 0));
-  return jsonb_build_object('code', v_code, 'host_key', v_key);
+  return jsonb_build_object('code', v_code, 'host_key', v_key, 'name', v_name);
 end $$;
 
 -- Le téléphone envoie l'état (128 Ko max) : renvoie le nouveau numéro

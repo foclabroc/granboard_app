@@ -9,79 +9,151 @@ import 'game/x01.dart';
 import 'players.dart';
 import 'server.dart';
 
-/// Côté téléphone : liaison avec un écran TV (salon sur le serveur maison).
-/// Le téléphone pilote tout et envoie l'état ; la TV affiche et joue le son.
+/// Un écran relié (TV, tablette…), un salon par écran sur le serveur.
+class TvScreen {
+  final String code;
+  final String hostKey;
+  final String name;
+  TvScreen(this.code, this.hostKey, this.name);
+
+  String get label => '$name $code';
+
+  Map<String, dynamic> toJson() => {'code': code, 'key': hostKey, 'name': name};
+  factory TvScreen.fromJson(Map<String, dynamic> j) =>
+      TvScreen('${j['code']}', '${j['key']}', '${j['name'] ?? 'Écran'}');
+}
+
+/// Côté téléphone : liaison avec un ou plusieurs écrans. Le téléphone pilote
+/// tout et envoie l'état à chaque écran ; un seul appareil joue le son.
 class TvLink extends ChangeNotifier {
   TvLink._();
   static final instance = TvLink._();
 
-  static const _prefKey = 'tv_link_v1';
+  static const _prefKey = 'tv_link_v2';
+  static const _prefOld = 'tv_link_v1';
+  static const phone = 'phone';
 
-  String? code;
-  String? _hostKey;
+  final List<TvScreen> screens = [];
+
+  /// Appareil qui joue le son : [phone] ou le code d'un écran.
+  String soundOn = phone;
+
   String? error;
 
-  bool get linked => code != null && _hostKey != null;
+  bool get linked => screens.isNotEmpty;
 
-  Map<String, dynamic>? _pending;
-  bool _sending = false;
+  Map<String, dynamic>? _last; // dernier état envoyé (renvoyé si le son change)
+  final _pending = <String, Map<String, dynamic>>{};
+  final _sending = <String>{};
 
   Future<void> load() async {
+    screens.clear();
+    soundOn = phone;
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_prefKey);
       if (raw != null) {
         final j = jsonDecode(raw) as Map<String, dynamic>;
-        code = j['code'] as String?;
-        _hostKey = j['key'] as String?;
+        for (final s in (j['screens'] as List? ?? const [])) {
+          screens.add(TvScreen.fromJson(Map<String, dynamic>.from(s as Map)));
+        }
+        soundOn = j['sound'] as String? ?? phone;
+      } else {
+        // Ancienne liaison (un seul écran)
+        final old = prefs.getString(_prefOld);
+        if (old != null) {
+          final j = jsonDecode(old) as Map<String, dynamic>;
+          screens.add(TvScreen('${j['code']}', '${j['key']}', 'TV'));
+          soundOn = '${j['code']}';
+          await prefs.remove(_prefOld);
+        }
       }
     } catch (_) {}
-    AudioService.instance.muted = linked;
+    _fixSound();
+    _applyMute();
     notifyListeners();
   }
 
   Future<void> _save() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (linked) {
-      await prefs.setString(
-          _prefKey, jsonEncode({'code': code, 'key': _hostKey}));
-    } else {
-      await prefs.remove(_prefKey);
-    }
-    AudioService.instance.muted = linked;
+    _fixSound();
+    _applyMute();
     notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        _prefKey,
+        jsonEncode({
+          'screens': [for (final s in screens) s.toJson()],
+          'sound': soundOn,
+        }));
   }
+
+  /// Le son revient au téléphone si l'écran choisi a été retiré.
+  void _fixSound() {
+    if (soundOn != phone && !screens.any((s) => s.code == soundOn)) {
+      soundOn = phone;
+    }
+  }
+
+  void _applyMute() => AudioService.instance.muted = soundOn != phone;
 
   String get _hostName {
     final ps = PlayerStore.instance.players;
     return ps.isEmpty ? 'Téléphone' : ps.first.name;
   }
 
-  /// Relie la TV qui affiche [tvCode] (lève ApiError).
-  Future<void> link(String tvCode) async {
+  /// Nom de l'appareil qui joue le son.
+  String get soundLabel {
+    if (soundOn == phone) return 'Téléphone';
+    for (final s in screens) {
+      if (s.code == soundOn) return s.name;
+    }
+    return 'Téléphone';
+  }
+
+  /// Relie l'écran qui affiche [tvCode] (lève ApiError). Une TV reliée
+  /// prend le son si le son était sur le téléphone.
+  Future<TvScreen> link(String tvCode) async {
     final r = await GbServer.rpc('gb_tv_link',
         {'p_code': tvCode.trim().toUpperCase(), 'p_name': _hostName});
     final m = Map<String, dynamic>.from(r as Map);
-    code = m['code'] as String;
-    _hostKey = m['host_key'] as String;
+    final s =
+        TvScreen('${m['code']}', '${m['host_key']}', '${m['name'] ?? 'Écran'}');
+    screens.removeWhere((x) => x.code == s.code);
+    screens.add(s);
+    if (soundOn == phone && s.name == 'TV') soundOn = s.code;
     error = null;
+    await _save();
+    _resend();
+    return s;
+  }
+
+  Future<void> unlink(String code) async {
+    screens.removeWhere((s) => s.code == code);
+    _pending.remove(code);
+    await _save();
+    _resend(); // le son a pu changer d'écran
+  }
+
+  Future<void> unlinkAll() async {
+    screens.clear();
+    _pending.clear();
     await _save();
   }
 
-  Future<void> unlink() async {
-    code = null;
-    _hostKey = null;
-    _pending = null;
+  /// Choisit l'appareil qui joue le son ([phone] ou code d'écran).
+  Future<void> setSoundOn(String target) async {
+    soundOn = target;
     await _save();
+    _resend();
   }
 
   /// Écran d'attente (accueil, réglages).
-  void pushLobby() => _send({'screen': 'lobby', 'host': _hostName});
+  void pushLobby() => _push({'screen': 'lobby', 'host': _hostName});
 
   /// Partie en cours ([screen] = game) ou terminée ([screen] = results).
   void pushGame(X01Game game, {String screen = 'game'}) {
     final store = PlayerStore.instance;
-    _send({
+    _push({
       'screen': screen,
       'host': _hostName,
       'game': game.toJson(),
@@ -91,42 +163,49 @@ class TvLink extends ChangeNotifier {
     });
   }
 
-  /// Envoi « le dernier gagne » : pendant un envoi, seul le plus récent attend.
-  void _send(Map<String, dynamic> state) {
-    if (!linked) return;
-    _pending = state;
-    if (!_sending) _flush();
+  void _resend() {
+    final last = _last;
+    if (last != null) _push(last);
   }
 
-  Future<void> _flush() async {
-    _sending = true;
+  void _push(Map<String, dynamic> state) {
+    _last = state;
+    for (final s in screens) {
+      // Chaque écran sait s'il doit jouer le son
+      _pending[s.code] = {...state, 'sound': soundOn == s.code};
+      if (!_sending.contains(s.code)) _flush(s);
+    }
+  }
+
+  /// Envoi « le dernier gagne » par écran.
+  Future<void> _flush(TvScreen s) async {
+    _sending.add(s.code);
     try {
-      while (_pending != null && linked) {
-        final s = _pending!;
-        _pending = null;
+      while (_pending.containsKey(s.code) && screens.contains(s)) {
+        final st = _pending.remove(s.code)!;
         try {
           await GbServer.rpc('gb_tv_push',
-              {'p_code': code, 'p_host_key': _hostKey, 'p_state': s});
+              {'p_code': s.code, 'p_host_key': s.hostKey, 'p_state': st});
           if (error != null) {
             error = null;
             notifyListeners();
           }
         } on ApiError catch (e) {
           if (e.code == 'tv_host' || e.code == 'tv_code') {
-            // TV éteinte depuis 2 jours, ou un autre téléphone a pris la main
-            error = 'La TV n\'est plus reliée à ce téléphone';
-            await unlink();
+            // Écran éteint depuis 2 jours, ou un autre téléphone l'a pris
+            error = '${s.label} n\'est plus relié à ce téléphone';
+            await unlink(s.code);
             return;
           }
           error =
-              e.message; // hors ligne : on garde l'état pour le prochain envoi
-          _pending ??= s;
+              e.message; // hors ligne : on retente avec l'état le plus récent
+          _pending.putIfAbsent(s.code, () => st);
           notifyListeners();
           await Future<void>.delayed(const Duration(seconds: 2));
         }
       }
     } finally {
-      _sending = false;
+      _sending.remove(s.code);
     }
   }
 }

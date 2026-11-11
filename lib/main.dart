@@ -13,14 +13,23 @@ import 'update_check.dart';
 
 const kPrefTvMode = 'tv_mode';
 
-/// Vrai sur une Android TV (ou si l'utilisateur a choisi le mode écran TV).
-Future<bool> detectTv() async {
+/// Vrai sur une Android TV.
+Future<bool> isAndroidTv() async {
   try {
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool(kPrefTvMode) == true) return true;
     return await const MethodChannel('granboard/device')
             .invokeMethod<bool>('isTv') ??
         false;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Mode écran : Android TV, ou appareil choisi comme écran (tablette…).
+Future<bool> detectTv() async {
+  if (await isAndroidTv()) return true;
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(kPrefTvMode) == true;
   } catch (_) {
     return false;
   }
@@ -31,21 +40,23 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations(
       [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-  final tv = await detectTv();
+  final androidTv = await isAndroidTv();
+  final tv = androidTv || await detectTv();
   await Future.wait([
     AudioService.instance.init(),
     if (!tv) BoardService.instance.init(),
     if (!tv) PlayerStore.instance.load(),
   ]);
   if (!tv) await TvLink.instance.load();
-  runApp(GranBoardApp(tv: tv));
+  runApp(GranBoardApp(tv: tv, androidTv: androidTv));
   // Comptes : vérifie les sessions, envoie les parties en attente
   if (!tv) PlayerStore.instance.sync();
 }
 
 class GranBoardApp extends StatefulWidget {
   final bool tv;
-  const GranBoardApp({super.key, this.tv = false});
+  final bool androidTv;
+  const GranBoardApp({super.key, this.tv = false, this.androidTv = false});
 
   @override
   State<GranBoardApp> createState() => GranBoardAppState();
@@ -79,7 +90,8 @@ class GranBoardAppState extends State<GranBoardApp> {
         child: tv
             ? TvHome(
                 key: const ValueKey('tv'),
-                onPhoneMode: () => setTvMode(false),
+                deviceName: widget.androidTv ? 'TV' : 'Tablette',
+                onPhoneMode: widget.androidTv ? null : () => setTvMode(false),
               )
             : const HomePage(key: ValueKey('phone')),
       ),

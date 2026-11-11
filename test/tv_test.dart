@@ -28,7 +28,7 @@ void main() {
   });
 
   test('Téléphone → serveur → TV : liaison, partie, son coupé', () async {
-    final tv = TvClient(realtime: false);
+    final tv = TvClient(realtime: false); // une TV
     await tv.start();
     expect(tv.code, isNotNull);
     expect(tv.state, isNull);
@@ -55,7 +55,7 @@ void main() {
         X01Game.fromJson(Map<String, dynamic>.from(tv.state!['game'] as Map));
     expect(copy.stateOf(0).remaining, 441);
 
-    // Un autre téléphone prend la main : le premier est déconnecté
+    // Un autre téléphone prend la main : l'écran est retiré, le son revient
     final hostBefore = server.tvRooms[tv.code]!['host'];
     server.tvRooms[tv.code]!['host'] = 'autre';
     TvLink.instance.pushLobby();
@@ -64,6 +64,55 @@ void main() {
     expect(AudioService.instance.muted, isFalse);
     expect(hostBefore, isNotNull);
     tv.dispose();
+  });
+
+  test('TV + tablette : les deux reçoivent, un seul joue le son', () async {
+    final tv = TvClient(realtime: false);
+    final tab =
+        TvClient(realtime: false, deviceName: 'Tablette', prefKey: 'tablette');
+    await tv.start();
+    await tab.start();
+    final link = TvLink.instance;
+    await link.link(tab.code!);
+    expect(link.soundOn, TvLink.phone,
+        reason: 'une tablette ne prend pas le son');
+    expect(AudioService.instance.muted, isFalse);
+    await link.link(tv.code!);
+    expect(link.screens.length, 2);
+    expect(link.soundOn, tv.code, reason: 'la TV prend le son');
+    expect(AudioService.instance.muted, isTrue);
+
+    final g =
+        X01Game(const X01Settings(), const [X01Player(id: '1', name: 'Foc')]);
+    g.throwDart(const DartHit(20, 1, Ring.singleOuter));
+    link.pushGame(g);
+    await settle();
+    await tv.fetch();
+    await tab.fetch();
+    expect(tv.state?['sound'], isTrue);
+    expect(tab.state?['sound'], isFalse);
+    expect(tab.state?['screen'], 'game');
+
+    // Le son passe sur la tablette
+    await link.setSoundOn(tab.code!);
+    await settle();
+    await tv.fetch();
+    await tab.fetch();
+    expect(tv.state?['sound'], isFalse);
+    expect(tab.state?['sound'], isTrue);
+
+    // Puis sur le téléphone
+    await link.setSoundOn(TvLink.phone);
+    expect(AudioService.instance.muted, isFalse);
+
+    // Retirer l'écran qui a le son : le son revient au téléphone
+    await link.setSoundOn(tv.code!);
+    await link.unlink(tv.code!);
+    expect(link.soundOn, TvLink.phone);
+    expect(link.screens.single.code, tab.code);
+    await link.unlinkAll();
+    tv.dispose();
+    tab.dispose();
   });
 
   testWidgets('Écran TV : code, attente, partie, résultats', (tester) async {

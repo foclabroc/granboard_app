@@ -5,7 +5,7 @@ import '../server.dart';
 import '../tv_link.dart';
 import 'theme.dart';
 
-/// Relier une TV (code affiché sur l'écran TV), ou faire de cet appareil l'écran.
+/// Écrans reliés (TV, tablette…) : ajout, retrait, choix du son.
 Future<void> showTvSheet(BuildContext context) => showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -13,6 +13,40 @@ Future<void> showTvSheet(BuildContext context) => showModalBottomSheet(
       showDragHandle: true,
       builder: (_) => const _TvSheet(),
     );
+
+/// Choix de l'appareil qui joue le son (téléphone ou un écran relié).
+class SoundTargetPicker extends StatelessWidget {
+  const SoundTargetPicker({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final link = TvLink.instance;
+    return ListenableBuilder(
+      listenable: link,
+      builder: (context, _) => Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        children: [
+          ChoiceChip(
+            showCheckmark: false,
+            avatar: const Icon(Icons.smartphone, size: 18),
+            label: const Text('Téléphone'),
+            selected: link.soundOn == TvLink.phone,
+            onSelected: (_) => link.setSoundOn(TvLink.phone),
+          ),
+          for (final s in link.screens)
+            ChoiceChip(
+              showCheckmark: false,
+              avatar: Icon(s.name == 'TV' ? Icons.tv : Icons.tablet, size: 18),
+              label: Text(s.label),
+              selected: link.soundOn == s.code,
+              onSelected: (_) => link.setSoundOn(s.code),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
 class _TvSheet extends StatefulWidget {
   const _TvSheet();
@@ -45,12 +79,12 @@ class _TvSheetState extends State<_TvSheet> {
     try {
       await link.link(_code.text);
       link.pushLobby();
-      if (mounted) Navigator.pop(context);
+      _code.clear();
+      setState(() => _busy = false);
     } on ApiError catch (e) {
       setState(() {
-        _error = e.code == 'tv_code'
-            ? 'Code inconnu : vérifie l\'écran TV'
-            : e.message;
+        _error =
+            e.code == 'tv_code' ? 'Code inconnu : vérifie l\'écran' : e.message;
         _busy = false;
       });
     }
@@ -60,7 +94,7 @@ class _TvSheetState extends State<_TvSheet> {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: link,
-      builder: (context, _) => Padding(
+      builder: (context, _) => SingleChildScrollView(
         padding: EdgeInsets.only(
             left: 20,
             right: 20,
@@ -69,79 +103,88 @@ class _TvSheetState extends State<_TvSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const TvSection('Écran TV', padding: EdgeInsets.only(bottom: 10)),
-            if (link.linked) ...[
-              Row(
-                children: [
-                  const Icon(Icons.tv, color: Tv.green, size: 32),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('TV RELIÉE · CODE ${link.code}',
-                            style: Tv.title(22)),
-                        Text(
-                            link.error ??
-                                'La partie s\'affiche sur la TV, le son passe par la TV.',
-                            style: Tv.label(13,
-                                color: link.error == null ? Tv.muted : Tv.red)),
-                      ],
-                    ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      await link.unlink();
-                      if (context.mounted) Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.link_off),
-                    label: const Text('DÉCONNECTER'),
-                  ),
-                ],
+            const TvSection('Écrans', padding: EdgeInsets.only(bottom: 8)),
+            if (link.error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(link.error!, style: Tv.title(15, color: Tv.red)),
               ),
-            ] else ...[
-              if (link.error != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(link.error!, style: Tv.title(15, color: Tv.red)),
+            for (final s in link.screens)
+              Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+                decoration: BoxDecoration(
+                  color: Tv.panel2,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Tv.line),
                 ),
-              Text('Allume GranBoard sur la TV et entre le code affiché :',
-                  style: Tv.label(14, color: Tv.text)),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 200,
-                    child: TextField(
-                      controller: _code,
-                      enabled: !_busy,
-                      autofocus: true,
-                      maxLength: 4,
-                      textCapitalization: TextCapitalization.characters,
-                      style: Tv.title(32).copyWith(letterSpacing: 10),
-                      textAlign: TextAlign.center,
-                      decoration: const InputDecoration(
-                        counterText: '',
-                        hintText: 'ABCD',
-                        border: OutlineInputBorder(),
+                child: Row(
+                  children: [
+                    Icon(s.name == 'TV' ? Icons.tv : Icons.tablet,
+                        color: Tv.green),
+                    const SizedBox(width: 10),
+                    Expanded(
+                        child:
+                            Text(s.label.toUpperCase(), style: Tv.title(20))),
+                    if (link.soundOn == s.code)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 4),
+                        child: Icon(Icons.volume_up, color: Tv.gold),
                       ),
-                      onSubmitted: (_) => _link(),
+                    TextButton.icon(
+                      onPressed: () => link.unlink(s.code),
+                      icon: const Icon(Icons.link_off),
+                      label: const Text('DÉCONNECTER'),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  FilledButton.icon(
-                    onPressed: _busy ? null : _link,
-                    icon: const Icon(Icons.cast),
-                    label: const Text('RELIER'),
-                  ),
-                ],
-              ),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(_error!, style: Tv.title(15, color: Tv.red)),
+                  ],
                 ),
-              const SizedBox(height: 14),
+              ),
+            const SizedBox(height: 6),
+            Text(
+                link.linked
+                    ? 'Ajouter un autre écran : entre le code qu\'il affiche'
+                    : 'Allume GranBoard sur la TV (ou la tablette) et entre le code affiché :',
+                style: Tv.label(14, color: Tv.text)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                SizedBox(
+                  width: 180,
+                  child: TextField(
+                    controller: _code,
+                    enabled: !_busy,
+                    autofocus: !link.linked,
+                    maxLength: 4,
+                    textCapitalization: TextCapitalization.characters,
+                    style: Tv.title(30).copyWith(letterSpacing: 10),
+                    textAlign: TextAlign.center,
+                    decoration: const InputDecoration(
+                      counterText: '',
+                      hintText: 'ABCD',
+                      border: OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) => _link(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                FilledButton.icon(
+                  onPressed: _busy ? null : _link,
+                  icon: const Icon(Icons.cast),
+                  label: const Text('RELIER'),
+                ),
+              ],
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(_error!, style: Tv.title(15, color: Tv.red)),
+              ),
+            if (link.linked) ...[
+              const TvSection('Le son sort sur',
+                  padding: EdgeInsets.only(top: 16, bottom: 8)),
+              const SoundTargetPicker(),
+            ] else ...[
+              const SizedBox(height: 12),
               TextButton.icon(
                 onPressed: () {
                   Navigator.pop(context);
@@ -150,7 +193,7 @@ class _TvSheetState extends State<_TvSheet> {
                       ?.setTvMode(true);
                 },
                 icon: const Icon(Icons.connected_tv),
-                label: const Text('CET APPAREIL DEVIENT L\'ÉCRAN TV'),
+                label: const Text('CET APPAREIL DEVIENT UN ÉCRAN'),
               ),
             ],
           ],

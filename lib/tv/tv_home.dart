@@ -18,14 +18,17 @@ import 'tv_client.dart';
 class TvHome extends StatefulWidget {
   final TvClient? client; // injecté en test
   final VoidCallback? onPhoneMode; // « utiliser en mode téléphone »
-  const TvHome({super.key, this.client, this.onPhoneMode});
+  final String deviceName; // « TV » ou « Tablette »
+  const TvHome(
+      {super.key, this.client, this.onPhoneMode, this.deviceName = 'TV'});
 
   @override
   State<TvHome> createState() => _TvHomeState();
 }
 
 class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
-  late final TvClient client = widget.client ?? TvClient();
+  late final TvClient client =
+      widget.client ?? TvClient(deviceName: widget.deviceName);
   late final AnimationController _spin =
       AnimationController(vsync: this, duration: const Duration(seconds: 90))
         ..repeat();
@@ -59,6 +62,8 @@ class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
             '${e.key}': Color((e.value as num).toInt())
         });
     }
+    // Le téléphone choisit quel appareil joue le son
+    AudioService.instance.muted = s != null && s['sound'] == false;
     final screen = s?['screen'] as String?;
     if (screen != _screen) {
       _screen = screen;
@@ -88,7 +93,10 @@ class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
       body = _Lobby(spin: _spin, host: '${s?['host'] ?? ''}', client: client);
     } else {
       body = _CodeScreen(
-          spin: _spin, client: client, onPhoneMode: widget.onPhoneMode);
+          spin: _spin,
+          client: client,
+          deviceName: widget.deviceName,
+          onPhoneMode: widget.onPhoneMode);
     }
     return Scaffold(
       body: TvBackground(child: SafeArea(child: body)),
@@ -102,8 +110,12 @@ class _CodeScreen extends StatelessWidget {
   final Animation<double> spin;
   final TvClient client;
   final VoidCallback? onPhoneMode;
+  final String deviceName;
   const _CodeScreen(
-      {required this.spin, required this.client, this.onPhoneMode});
+      {required this.spin,
+      required this.client,
+      required this.deviceName,
+      this.onPhoneMode});
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +148,8 @@ class _CodeScreen extends StatelessWidget {
                       style: Tv.title(56, color: Colors.white)
                           .copyWith(letterSpacing: 5)),
                 ),
-                Text('ÉCRAN TV', style: Tv.label(18, color: Tv.text)),
+                Text('ÉCRAN ${deviceName.toUpperCase()}',
+                    style: Tv.label(18, color: Tv.text)),
                 const SizedBox(height: 24),
                 if (code == null)
                   Text(client.error ?? 'Connexion au serveur…',

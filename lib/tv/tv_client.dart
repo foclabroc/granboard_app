@@ -10,12 +10,19 @@ import '../server.dart';
 /// Côté TV : ouvre un salon (code à afficher), écoute le relais temps réel
 /// du serveur et relit l'état envoyé par le téléphone.
 class TvClient extends ChangeNotifier {
-  TvClient({this.realtime = true});
+  TvClient(
+      {this.realtime = true,
+      this.deviceName = 'TV',
+      this.prefKey = 'tv_room_v1'});
+
+  /// Clé du salon mémorisé (différente en test pour simuler deux appareils).
+  final String prefKey;
+
+  /// « TV » sur une Android TV, « Tablette » sinon (affiché sur le téléphone).
+  final String deviceName;
 
   /// Faux en test (pas de WebSocket).
   final bool realtime;
-
-  static const _prefKey = 'tv_room_v1';
 
   String? code;
   String? _key;
@@ -58,7 +65,7 @@ class TvClient extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     if (!fresh) {
       try {
-        final j = jsonDecode(prefs.getString(_prefKey) ?? '') as Map;
+        final j = jsonDecode(prefs.getString(prefKey) ?? '') as Map;
         code = j['code'] as String?;
         _key = j['key'] as String?;
         _topic = j['topic'] as String?;
@@ -69,7 +76,7 @@ class TvClient extends ChangeNotifier {
     }
     try {
       final r = Map<String, dynamic>.from(
-          await GbServer.rpc('gb_tv_open', {}) as Map);
+          await GbServer.rpc('gb_tv_open', {'p_name': deviceName}) as Map);
       code = r['code'] as String;
       _key = r['key'] as String;
       _topic = r['topic'] as String;
@@ -77,7 +84,7 @@ class TvClient extends ChangeNotifier {
       state = null;
       error = null;
       await prefs.setString(
-          _prefKey, jsonEncode({'code': code, 'key': _key, 'topic': _topic}));
+          prefKey, jsonEncode({'code': code, 'key': _key, 'topic': _topic}));
     } on ApiError catch (e) {
       error = e.message;
     }
