@@ -5,6 +5,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../audio.dart';
 import '../game/darts_game.dart';
+import '../media.dart';
 import '../players.dart';
 import '../ui/dartboard.dart';
 import '../ui/game_fx.dart';
@@ -334,6 +335,7 @@ class _TvGameState extends State<_TvGame> {
     if (g == null || sig != _sig) {
       _sig = sig;
       _game = gameFromJson(j);
+      MediaStore.instance.ensure(_game!.players.map((p) => p.id));
       if (actions.isEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _fx.start(_game!));
       }

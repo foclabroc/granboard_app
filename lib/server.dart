@@ -35,6 +35,11 @@ class ApiError implements Exception {
         return 'Session expirée : reconnecte ce joueur';
       case 'values':
         return 'Partie refusée par le serveur';
+      case 'photo':
+        return 'Photo refusée (trop lourde ?)';
+      case 'voice':
+      case 'sound':
+        return 'Son refusé (enregistrement trop long ?)';
     }
     return offline ? 'Pas de connexion au serveur' : 'Erreur serveur ($code)';
   }
@@ -119,6 +124,23 @@ class GbServer {
 
   static Future<void> setColor(String token, int color) =>
       rpc('gb_set_color', {'p_token': token, 'p_color': color});
+
+  /// Photo de profil (JPEG en base64, null = retirer) → nouvelle version.
+  static Future<int> setPhoto(String token, String? photo) async =>
+      ((await rpc('gb_set_photo', {'p_token': token, 'p_photo': photo})) as num)
+          .toInt();
+
+  /// Son du tour ('' aucun, id d'un son fourni, 'voice') → nouvelle version.
+  static Future<int> setSound(String token, String sound,
+          {String? voice}) async =>
+      ((await rpc('gb_set_sound',
+              {'p_token': token, 'p_sound': sound, 'p_voice': voice})) as num)
+          .toInt();
+
+  /// Médias des joueurs dont la version diffère de `known`.
+  static Future<Map<String, dynamic>> media(
+          List<int> ids, Map<String, int> known) async =>
+      _map(await rpc('gb_media', {'p_ids': ids, 'p_known': known}));
 
   static Future<void> setPin(String token, String oldPin, String newPin) =>
       rpc('gb_set_pin', {'p_token': token, 'p_old': oldPin, 'p_new': newPin});

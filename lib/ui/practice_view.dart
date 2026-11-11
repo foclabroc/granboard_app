@@ -218,8 +218,12 @@ class _Panel extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(width: 5, height: 20, color: _colorOf(g, g.current)),
-              const SizedBox(width: 6),
+              PlayerAvatar(
+                  id: p.id,
+                  name: p.name,
+                  color: _colorOf(g, g.current),
+                  size: 30),
+              const SizedBox(width: 8),
               Flexible(
                 child: Text(p.name.toUpperCase(),
                     maxLines: 1,
@@ -516,6 +520,7 @@ class _PracticeResultsPageState extends State<PracticeResultsPage> {
                                 color: medals[rank + 1] ?? Tv.muted)),
                       ),
                       PlayerAvatar(
+                          id: g.players[i].id,
                           name: g.players[i].name,
                           color: _colorOf(g, i),
                           size: 34),

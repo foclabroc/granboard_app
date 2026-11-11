@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../game/practice.dart';
+import '../media.dart';
 import '../players.dart';
 import 'account_page.dart';
+import 'media_editor.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -215,7 +217,28 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                 child: ListView(
                   padding: const EdgeInsets.all(12),
                   children: [
-                    Center(child: PlayerAvatar.of(p, size: 72)),
+                    Center(
+                      child: GestureDetector(
+                        onTap:
+                            p.expired ? null : () => showPhotoSheet(context, p),
+                        child: Stack(
+                          children: [
+                            PlayerAvatar.of(p, size: 84),
+                            if (!p.expired)
+                              const Positioned(
+                                right: 0,
+                                bottom: 0,
+                                child: CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: Tv.gold,
+                                  child: Icon(Icons.photo_camera,
+                                      size: 16, color: Colors.black),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     if (p.rating != null)
                       Center(child: RatingBadge(rating: p.rating!, big: true))
@@ -247,6 +270,22 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                       label: const Text('COULEUR'),
                     ),
                     const SizedBox(height: 6),
+                    if (!p.expired) ...[
+                      ListenableBuilder(
+                        listenable: MediaStore.instance,
+                        builder: (context, _) {
+                          final s = MediaStore.instance.soundOf(p.key);
+                          return OutlinedButton.icon(
+                            onPressed: () => showTurnSoundSheet(context, p),
+                            icon: const Icon(Icons.music_note),
+                            label: Text(
+                                'SON : ${s.isEmpty ? 'AUCUN' : s == kVoiceSound ? 'MA VOIX' : kTurnSounds[s]?.toUpperCase() ?? s}',
+                                overflow: TextOverflow.ellipsis),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 6),
+                    ],
                     OutlinedButton.icon(
                       onPressed: _forget,
                       icon: const Icon(Icons.logout),

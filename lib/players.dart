@@ -7,6 +7,7 @@ import 'game/cricket.dart';
 import 'game/match.dart';
 import 'game/practice.dart';
 import 'game/x01.dart';
+import 'media.dart';
 import 'server.dart';
 
 const kPlayerColors = [
@@ -248,6 +249,7 @@ class PlayerStore extends ChangeNotifier {
       return; // hors ligne : on réessaiera
     }
     await flush();
+    MediaStore.instance.ensure(players.map((p) => p.key));
     for (final p in players) {
       await refreshProfile(p);
     }

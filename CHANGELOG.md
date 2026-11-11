@@ -14,6 +14,8 @@
 - Nouvel accueil en grille de jeux : 6 tuiles de même taille (01, Cricket, Match, Entraînement, Fête, En ligne « bientôt ») ; en haut : état de la cible, bouton « Joueurs » (ajouter, gérer les comptes), TV, classements, sons et joueur
 - Style de la cible au choix : Classique ou Pub en bois (menu ⋮ de l'accueil), aussi sur l'écran TV
 - Joueurs invités en couleurs différentes
+- Photo de profil (appareil photo ou galerie, recadrée au carré) : affichée en partie, dans les résultats, les classements et sur l'écran TV
+- Son du tour : chaque joueur choisit un son (fanfare, klaxon, laser, gong, coq… 12 au choix) ou enregistre sa voix (3 s) ; il est joué quand c'est son tour, puis l'annonceur dit son nom (aussi sur la TV)
 - Tout s'affiche aussi sur l'écran TV
 
 ## v0.5.1

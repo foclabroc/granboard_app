@@ -581,6 +581,7 @@ class _PlayersBar extends StatelessWidget {
                                           : Colors.transparent,
                                     ),
                                     child: PlayerAvatar(
+                                        id: g.players[i].id,
                                         name: g.players[i].name,
                                         color: _playerColor(g, i),
                                         size: i == g.current ? av * 1.2 : av),
@@ -793,7 +794,10 @@ class _SideRow extends StatelessWidget {
           const SizedBox(width: 10),
           if (!g.settings.teams)
             PlayerAvatar(
-                name: g.players[side].name, color: sideColor(g, side), size: 34)
+                id: g.players[side].id,
+                name: g.players[side].name,
+                color: sideColor(g, side),
+                size: 34)
           else
             Container(width: 6, height: 34, color: sideColor(g, side)),
           const SizedBox(width: 10),

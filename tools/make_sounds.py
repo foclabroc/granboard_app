@@ -1,7 +1,8 @@
 """Génère les bruitages et la musique de l'appli (100 % synthèse, libres de droits).
 
 Usage : python3 tools/make_sounds.py   (nécessite numpy, scipy et ffmpeg)
-Sortie : assets/sounds/*.ogg et assets/music/menu.ogg
+Sortie : assets/sounds/*.ogg, assets/sounds/turn/*.ogg (sons du tour)
+et assets/music/menu.ogg
 """
 
 import os
@@ -256,6 +257,76 @@ def music():
     return out
 
 
+# ─── Sons du tour (au choix de chaque joueur, 1 à 1,6 s) ───
+
+def square(freq, tt):
+    return np.sign(sine(freq, tt))
+
+
+def turn_sounds():
+    out = {}
+    # Fanfare courte : ta-ta-taaa
+    total = 1.4
+    parts = []
+    for start, m, ln in [(0, 67, 0.12), (0.14, 67, 0.12), (0.28, 72, 0.9)]:
+        for k in (0, 4, 7):
+            parts.append(at(brass(m + k, ln, 0.5), start, total))
+    out['fanfare'] = mix(*parts)
+    # Klaxon : deux coups
+    tt = t(0.32)
+    honk = lp(saw(370, tt) + saw(466, tt), 2200) * env(len(tt), 0.01, 0.05, 0.9, 0.05)
+    out['klaxon'] = mix(at(honk, 0, 0.9), at(honk, 0.45, 0.9))
+    # Laser : descente rapide
+    tt = t(0.6)
+    f = 2400 * np.exp(-tt * 6) + 200
+    phase = 2 * np.pi * np.cumsum(f) / SR
+    out['laser'] = np.sign(np.sin(phase)) * env(len(tt), 0.002, 0.55) * 0.6
+    # Cloche : deux notes
+    out['cloche'] = mix(bell(1318, 1.2), at(bell(988, 1.3), 0.25, 1.6))
+    # Roulement de tambour + cymbale
+    n = int(SR * 1.3)
+    roll = np.zeros(n)
+    for k in range(26):
+        i = int(SR * 0.03 * k)
+        st = int(SR * 0.06)
+        hit = bp(RNG.normal(size=st), 300, 4000) * np.exp(-np.arange(st) / (SR * 0.02))
+        roll[i:i + st] += hit * (0.3 + 0.7 * k / 26)
+    cy = hp(RNG.normal(size=int(SR * 0.6)), 5000) * np.exp(-t(0.6) * 5)
+    out['tambour'] = mix(roll, at(cy, 0.8, 1.4) * 0.8)
+    # Guitare saturée : accord de quinte
+    tt = t(1.2)
+    g = sum(saw(note(m) * (1 + d), tt) for m in (40, 47, 52) for d in (0, 0.004))
+    out['guitare'] = lp(np.tanh(g * 3), 3000) * env(len(tt), 0.005, 0.3, 0.5, 0.4)
+    # Gong
+    tt = t(1.6)
+    gong = sum(a * sine(110 * r, tt) * np.exp(-tt * (1.2 + k))
+               for k, (r, a) in enumerate(zip([1, 1.48, 2.1, 2.9, 3.7], [1, .7, .5, .35, .2])))
+    out['gong'] = gong * (1 - np.exp(-tt * 80))
+    # Sifflet d'arbitre
+    tt = t(0.7)
+    out['sifflet'] = (sine(2900 + 160 * sine(28, tt), tt) +
+                      0.3 * bp(RNG.normal(size=len(tt)), 2500, 3500)) * env(len(tt), 0.02, 0.1, 0.8, 0.12)
+    # Arpège de piano
+    out['piano'] = chime([60, 64, 67, 72, 76], 0.09, 0.8, 0.6)
+    # Arcade 8 bits : montée
+    total = 0.9
+    parts = []
+    for i, m in enumerate([72, 76, 79, 84, 88]):
+        tt = t(0.12)
+        parts.append(at(square(note(m), tt) * env(len(tt), 0.001, 0.11) * 0.5, i * 0.08, total))
+    out['arcade'] = mix(*parts)
+    # Sonar
+    out['sonar'] = mix(sine(1200, t(1.2)) * np.exp(-t(1.2) * 4),
+                       at(sine(1200, t(0.8)) * np.exp(-t(0.8) * 6) * 0.3, 0.45, 1.3))
+    # Coq
+    tt = t(1.1)
+    f = np.interp(tt, [0, .15, .35, .7, 1.1], [500, 900, 800, 1000, 600])
+    phase = 2 * np.pi * np.cumsum(f) / SR
+    crow = (np.sin(phase) + 0.5 * np.sin(2 * phase) + 0.3 * np.sin(3 * phase))
+    out['coq'] = bp(crow * (1 + 0.4 * sine(40, tt)), 300, 4000) * env(len(tt), 0.03, 0.2, 0.7, 0.3)
+    return out
+
+
 if __name__ == '__main__':
     save(thud(), 'assets/sounds/hit.ogg')
     save(mix(thud(), at(chime([76, 83], 0.05, 0.45), 0.02, 0.6) * 0.45),
@@ -270,3 +341,5 @@ if __name__ == '__main__':
     save(crowd(3.2, 1.2), 'assets/sounds/crowd.ogg')
     save(fanfare(), 'assets/sounds/win.ogg')
     save(music(), 'assets/music/menu.ogg', quality=4)
+    for name, x in turn_sounds().items():
+        save(x, f'assets/sounds/turn/{name}.ogg')

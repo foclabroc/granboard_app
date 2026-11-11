@@ -53,6 +53,8 @@ class AudioService extends ChangeNotifier {
   final _pool = <AudioPlayer>[];
   int _poolIndex = 0;
   AudioPlayer? _music;
+  AudioPlayer? _cue; // son du tour du joueur
+  int _cueId = 0;
   FlutterTts? _tts;
   bool _musicWanted = false;
 
@@ -88,6 +90,9 @@ class AudioService extends ChangeNotifier {
         await p.setReleaseMode(ReleaseMode.stop);
         _pool.add(p);
       }
+      final c = AudioPlayer();
+      await c.setReleaseMode(ReleaseMode.stop);
+      _cue = c;
       final m = AudioPlayer();
       await m.setReleaseMode(ReleaseMode.loop);
       _music = m;
@@ -144,6 +149,49 @@ class AudioService extends ChangeNotifier {
         await p.stop();
         await p.play(AssetSource('sounds/${s.name}.ogg'),
             volume: _volumes[s] ?? 0.8);
+      } catch (_) {}
+    }();
+  }
+
+  /// Son du tour d'un joueur (son fourni ou voix enregistrée), puis
+  /// l'annonce une fois le son fini. Sans son perso : « suivant » + annonce.
+  void turnCue(String text,
+      {String sound = '', Uint8List? voice, int ms = 250, bool next = true}) {
+    final c = _cue;
+    final custom = sound.isNotEmpty && (sound != 'voice' || voice != null);
+    if (_muted || !effects || c == null || !custom) {
+      if (next) play(Sfx.next);
+      sayLater(text, ms);
+      return;
+    }
+    final id = ++_cueId;
+    () async {
+      try {
+        await c.stop();
+        final done = c.onPlayerComplete.first;
+        await c.play(
+            sound == 'voice'
+                ? BytesSource(voice!, mimeType: 'audio/mp4')
+                : AssetSource('sounds/turn/$sound.ogg'),
+            volume: 1.0);
+        await done.timeout(const Duration(seconds: 4));
+      } catch (_) {}
+      if (id == _cueId) say(text);
+    }();
+  }
+
+  /// Écoute d'un son du tour (réglages du joueur).
+  void preview(String sound, {Uint8List? voice}) {
+    final c = _cue;
+    if (c == null || sound.isEmpty) return;
+    () async {
+      try {
+        await c.stop();
+        await c.play(
+            sound == 'voice'
+                ? BytesSource(voice!, mimeType: 'audio/mp4')
+                : AssetSource('sounds/turn/$sound.ogg'),
+            volume: 1.0);
       } catch (_) {}
     }();
   }

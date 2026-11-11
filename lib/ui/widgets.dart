@@ -1,22 +1,53 @@
 import 'package:flutter/material.dart';
 
 import '../board_service.dart';
+import '../media.dart';
 import '../players.dart';
 import 'theme.dart';
 
-/// Pastille de couleur avec l'initiale du joueur.
+/// Photo du joueur (si `id` en a une), sinon pastille de couleur avec
+/// l'initiale. La photo est cerclée de la couleur du joueur.
 class PlayerAvatar extends StatelessWidget {
   final String name;
   final Color color;
   final double size;
+  final String? id;
   const PlayerAvatar(
-      {super.key, required this.name, required this.color, this.size = 36});
+      {super.key,
+      required this.name,
+      required this.color,
+      this.size = 36,
+      this.id});
 
   factory PlayerAvatar.of(PlayerProfile p, {double size = 36}) =>
-      PlayerAvatar(name: p.name, color: p.color, size: size);
+      PlayerAvatar(name: p.name, color: p.color, size: size, id: p.key);
 
   @override
   Widget build(BuildContext context) {
+    if (id == null) return _initial();
+    return ListenableBuilder(
+      listenable: MediaStore.instance,
+      builder: (context, _) {
+        final image = MediaStore.instance.imageOf(id!);
+        if (image == null) return _initial();
+        return Container(
+          width: size,
+          height: size,
+          padding: EdgeInsets.all(size > 40 ? 3 : 2),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          child: ClipOval(
+            child: Image(
+                image: image,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                errorBuilder: (_, __, ___) => _initial()),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _initial() {
     final initial = name.isEmpty ? '?' : name.characters.first.toUpperCase();
     return CircleAvatar(
       radius: size / 2,

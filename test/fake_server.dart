@@ -9,6 +9,13 @@ class FakeServer {
   final tvRooms =
       <String, Map<String, dynamic>>{}; // code → {key, host, state, seq}
   int _next = 1;
+  final media = <int, Map<String, dynamic>>{}; // id → {v, photo, sound, voice}
+
+  int _auth(dynamic token) {
+    final id = sessions[token];
+    if (id == null) throw const ApiError('session');
+    return id;
+  }
 
   void install() => GbServer.debugRpc = call;
 
@@ -47,6 +54,37 @@ class FakeServer {
         return null;
       case 'gb_set_color':
         return null;
+      case 'gb_set_photo':
+        final id = _auth(b['p_token']);
+        final photo = b['p_photo'] as String?;
+        if (photo != null && !photo.startsWith('/9j/')) {
+          throw const ApiError('photo');
+        }
+        final m = media[id] ??= {'v': 0, 'sound': ''};
+        m['photo'] = photo;
+        return m['v'] = (m['v'] as int) + 1;
+      case 'gb_set_sound':
+        final id = _auth(b['p_token']);
+        final m = media[id] ??= {'v': 0, 'sound': ''};
+        m['sound'] = b['p_sound'];
+        if (b['p_voice'] != null) m['voice'] = b['p_voice'];
+        return m['v'] = (m['v'] as int) + 1;
+      case 'gb_media':
+        final known = Map<String, dynamic>.from(b['p_known'] as Map);
+        return {
+          for (final id in (b['p_ids'] as List).cast<int>())
+            if (accounts.containsKey(id))
+              '$id': (media[id]?['v'] ?? 0) == known['$id']
+                  ? {'v': media[id]?['v'] ?? 0}
+                  : {
+                      'v': media[id]?['v'] ?? 0,
+                      'photo': media[id]?['photo'],
+                      'sound': media[id]?['sound'] ?? '',
+                      'voice': media[id]?['sound'] == 'voice'
+                          ? media[id]!['voice']
+                          : null,
+                    }
+        };
       case 'gb_submit':
         final g = Map<String, dynamic>.from(b['p_game'] as Map);
         for (final p in (g['players'] as List)) {

@@ -739,7 +739,8 @@ class _SetupPageState extends State<SetupPage> {
       ),
       title: Row(
         children: [
-          PlayerAvatar(name: name, color: p?.color ?? kGuestColor, size: 28),
+          PlayerAvatar(
+              id: p?.key, name: name, color: p?.color ?? kGuestColor, size: 28),
           const SizedBox(width: 10),
           Flexible(
             child: Text(name,

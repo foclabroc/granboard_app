@@ -12,6 +12,7 @@ import '../game/match.dart';
 import '../game/practice.dart';
 import '../game/x01.dart';
 import '../granboard.dart';
+import '../media.dart';
 import '../players.dart';
 import '../tv_link.dart';
 import 'cricket_view.dart';
@@ -52,6 +53,7 @@ class _GamePageState extends State<GamePage> {
     _sub = BoardService.instance.events.listen(_onEvent);
     WakelockPlus.enable().catchError((_) {});
     audio.stopMusic();
+    MediaStore.instance.ensure(game.players.map((p) => p.id));
     _fx.start(game);
     WidgetsBinding.instance.addPostFrameCallback((_) => _pushTv());
   }
@@ -386,8 +388,8 @@ class _CurrentPanel extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(width: 5, height: 20, color: color),
-              const SizedBox(width: 6),
+              PlayerAvatar(id: p.id, name: p.name, color: color, size: 30),
+              const SizedBox(width: 8),
               Flexible(
                 child: Text(p.name.toUpperCase(),
                     maxLines: 1,

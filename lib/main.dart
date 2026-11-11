@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'audio.dart';
 import 'board_service.dart';
+import 'media.dart';
 import 'players.dart';
 import 'tv/tv_home.dart';
 import 'tv_link.dart';
@@ -46,6 +47,7 @@ Future<void> main() async {
   await Future.wait([
     AudioService.instance.init(),
     BoardSkin.load(),
+    MediaStore.instance.load(),
     if (!tv) BoardService.instance.init(),
     if (!tv) PlayerStore.instance.load(),
   ]);

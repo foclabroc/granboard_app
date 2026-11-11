@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../audio.dart';
+import '../media.dart';
 import '../game/cricket.dart';
 import '../game/darts_game.dart';
 import '../game/match.dart';
@@ -29,11 +30,19 @@ class GameFx {
     heavy ? HapticFeedback.heavyImpact() : HapticFeedback.lightImpact();
   }
 
+  /// Son du tour du joueur en cours (s'il en a un), puis l'annonce.
+  void _turn(DartsGame game, String text, [int ms = 250, bool next = true]) {
+    final id = game.currentPlayer.id;
+    final media = MediaStore.instance;
+    audio.turnCue(text,
+        sound: media.soundOf(id), voice: media.voiceOf(id), ms: ms, next: next);
+  }
+
   void start(DartsGame game) {
     final title = game is MatchGame
         ? 'Match en ${game.settings.legs} legs. Leg 1, ${game.leg.title}'
         : game.title;
-    audio.sayLater('$title. ${game.currentPlayer.name}, à toi.', 400);
+    _turn(game, '$title. ${game.currentPlayer.name}, à toi.', 400, false);
   }
 
   /// Après une action du journal (écran TV qui rejoue la partie).
@@ -100,7 +109,6 @@ class GameFx {
           win(g);
           return;
         }
-        audio.play(Sfx.next);
         final prev = g.turns.length > 1 ? g.turns[g.turns.length - 2] : null;
         final note = prev?.note;
         final key = '${g.turns.length - 1}:$note';
@@ -108,17 +116,16 @@ class GameFx {
             note != null && key != _lastNote ? '${_speakable(note)}. ' : '';
         if (note != null) _lastNote = key;
         final cible = g.settings.info.party ? '' : 'cible ';
-        audio.sayLater(
-            '$before${g.currentPlayer.name}, $cible${_speakable(g.targetLabel)}',
-            250);
+        _turn(g,
+            '$before${g.currentPlayer.name}, $cible${_speakable(g.targetLabel)}');
       case MatchGame m:
         if (m.finished) {
           win(m);
         } else if (m.betweenLegs) {
           _legWon(m); // limite de manches atteinte
         } else if (m.leg.actionLog.isEmpty) {
-          audio.play(Sfx.next);
-          audio.sayLater(
+          _turn(
+              m,
               'Leg ${m.legNumber}, ${m.leg.title}. '
               '${m.currentPlayer.name}, à toi.',
               300);
@@ -234,7 +241,6 @@ class GameFx {
       win(game);
       return;
     }
-    audio.play(Sfx.next);
     final p = game.currentPlayer;
     final s = game.currentState;
     var text = p.name;
@@ -243,7 +249,7 @@ class GameFx {
     } else if (s.opened && s.remaining <= 170) {
       text += ', il te reste ${s.remaining}';
     }
-    audio.sayLater(text, 250);
+    _turn(game, text);
   }
 
   // ─── Cricket ───
@@ -293,10 +299,9 @@ class GameFx {
       win(game);
       return;
     }
-    audio.play(Sfx.next);
     var text = game.currentPlayer.name;
     if (game.isSpoiler(game.sideOf(game.current))) text += ', spoiler';
-    audio.sayLater(text, 250);
+    _turn(game, text);
   }
 
   void win(DartsGame game) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../game/practice.dart';
+import '../media.dart';
 import '../players.dart';
 import '../server.dart';
 import 'players_page.dart' show RatingBadge;
@@ -104,9 +105,15 @@ class _TopList extends StatefulWidget {
 }
 
 class _TopListState extends State<_TopList> {
-  late Future<List<Map<String, dynamic>>> _future = GbServer.top(widget.kind);
+  late Future<List<Map<String, dynamic>>> _future = _load();
 
-  void _retry() => setState(() => _future = GbServer.top(widget.kind));
+  Future<List<Map<String, dynamic>>> _load() async {
+    final l = await GbServer.top(widget.kind);
+    MediaStore.instance.ensure(l.map((r) => '${r['id']}'));
+    return l;
+  }
+
+  void _retry() => setState(() => _future = _load());
 
   String _value(num v) => widget.kind == 'mpr'
       ? v.toStringAsFixed(2)
@@ -181,6 +188,7 @@ class _TopListState extends State<_TopList> {
                               style: Tv.title(24, color: medal))),
                     ),
                     PlayerAvatar(
+                        id: '${r['id']}',
                         name: '${r['pseudo']}',
                         color: kPlayerColors[
                             ((r['color'] as num?)?.toInt() ?? 0) %

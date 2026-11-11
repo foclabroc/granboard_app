@@ -196,6 +196,7 @@ class _Podium extends StatelessWidget {
                   if (place == 1)
                     const Text('🏆', style: TextStyle(fontSize: 34)),
                   PlayerAvatar(
+                    id: game.players[i].id,
                     name: game.players[i].name,
                     color: PlayerStore.instance.colorOf(game.players[i].id),
                     size: place == 1 ? 52 : 40,

@@ -110,6 +110,7 @@ class _MatchResultsPageState extends State<MatchResultsPage> {
                                     color: medals[rank + 1] ?? Tv.muted)),
                             const SizedBox(width: 10),
                             PlayerAvatar(
+                                id: p.id,
                                 name: p.name,
                                 color: PlayerStore.instance.colorOf(p.id),
                                 size: 34),

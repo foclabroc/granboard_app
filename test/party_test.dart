@@ -216,7 +216,8 @@ void main() {
     expect(g.turnOver, isTrue);
   });
 
-  test('Football : bull = ballon, doubles = buts, manche sans but = ballon perdu',
+  test(
+      'Football : bull = ballon, doubles = buts, manche sans but = ballon perdu',
       () {
     final g = game(PracticeKind.football, goal: 2);
     turn(g, [ib, d(5), null]); // A : ballon + 1 but
@@ -229,7 +230,8 @@ void main() {
     expect(g.winners, [1]);
   });
 
-  test('Patate chaude : toucher le numéro passe la bombe, mèche éteinte = -1 vie',
+  test(
+      'Patate chaude : toucher le numéro passe la bombe, mèche éteinte = -1 vie',
       () {
     final g = game(PracticeKind.hotPotato);
     final n = (g.rules as dynamic).number(g) as int;
