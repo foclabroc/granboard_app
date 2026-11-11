@@ -180,6 +180,20 @@ class _HomePageState extends State<HomePage>
                       ),
                       const SizedBox(width: 8),
                       ListenableBuilder(
+                        listenable: PlayerStore.instance,
+                        builder: (context, _) => TextButton.icon(
+                          style: TextButton.styleFrom(
+                            foregroundColor: Tv.text,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          onPressed: () => _open(const PlayersPage()),
+                          icon: const Icon(Icons.group_add, size: 22),
+                          label: Text(
+                              'JOUEURS (${PlayerStore.instance.players.length})',
+                              style: Tv.title(16)),
+                        ),
+                      ),
+                      ListenableBuilder(
                         listenable: TvLink.instance,
                         builder: (context, _) => IconButton(
                           tooltip: 'Écran TV',
@@ -490,7 +504,7 @@ class _BoardPill extends StatelessWidget {
     final (color, text) = switch (board.status) {
       BoardStatus.connected => (Tv.green, board.deviceName ?? 'GranBoard'),
       BoardStatus.connecting => (Tv.gold, 'Connexion…'),
-      BoardStatus.disconnected => (Tv.red, 'Cible non connectée'),
+      BoardStatus.disconnected => (Tv.red, 'Pas de cible'),
     };
     return Container(
       height: 36,
