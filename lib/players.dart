@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'game/cricket.dart';
+import 'game/match.dart';
 import 'game/x01.dart';
 import 'server.dart';
 
@@ -296,6 +298,7 @@ class PlayerStore extends ChangeNotifier {
     if (ps.isEmpty) return true; // que des invités
     pending.add({
       'cid': '${DateTime.now().microsecondsSinceEpoch}-${ps.first['pid']}',
+      'kind': 'x01',
       'mode': g.settings.name,
       'start': g.settings.startScore,
       'freeze': g.settings.freeze,
@@ -312,5 +315,59 @@ class PlayerStore extends ChangeNotifier {
       if (acc != null) await refreshProfile(acc);
     }
     return sent;
+  }
+
+  /// Partie de Cricket terminée (invités exclus).
+  Future<bool> recordCricket(CricketGame g) async {
+    final ps = <Map<String, dynamic>>[];
+    for (var i = 0; i < g.players.length; i++) {
+      final p = g.players[i];
+      if (isGuestId(p.id)) continue;
+      final s = g.statsOf(i);
+      ps.add({
+        'pid': p.id,
+        if (g.settings.teams) 'team': p.team,
+        'won': g.winners.contains(i),
+        'darts': s.darts,
+        'points': s.points,
+        'marks': s.marks,
+        'highest': s.bestTurn,
+        'remaining': 0,
+      });
+    }
+    if (ps.isEmpty) return true;
+    pending.add({
+      'cid': '${DateTime.now().microsecondsSinceEpoch}-${ps.first['pid']}',
+      'kind': 'cricket',
+      'mode': g.settings.name,
+      'variant': g.settings.variant.name,
+      'start': 0,
+      'freeze': g.settings.teams,
+      if (g.settings.roundLimit != null) 'rounds': g.settings.roundLimit,
+      'n': g.players.length,
+      'players': ps,
+    });
+    await _save();
+    final sent = await flush();
+    for (final p in ps) {
+      final acc = byId('${p['pid']}');
+      if (acc != null) await refreshProfile(acc);
+    }
+    return sent;
+  }
+
+  /// Match terminé : chaque leg est enregistré comme une partie de son jeu.
+  Future<bool> recordMatch(MatchGame m) async {
+    var ok = true;
+    for (final l in m.legs) {
+      if (!l.finished) continue;
+      final r = switch (l) {
+        X01Game g => await recordX01(g),
+        CricketGame g => await recordCricket(g),
+        _ => true,
+      };
+      ok = ok && r;
+    }
+    return ok;
   }
 }

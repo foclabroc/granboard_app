@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'audio.dart';
-import 'game/x01.dart';
+import 'game/darts_game.dart';
 import 'players.dart';
 import 'server.dart';
 
@@ -151,7 +151,7 @@ class TvLink extends ChangeNotifier {
   void pushLobby() => _push({'screen': 'lobby', 'host': _hostName});
 
   /// Partie en cours ([screen] = game) ou terminée ([screen] = results).
-  void pushGame(X01Game game, {String screen = 'game'}) {
+  void pushGame(DartsGame game, {String screen = 'game'}) {
     final store = PlayerStore.instance;
     _push({
       'screen': screen,

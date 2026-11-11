@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../audio.dart';
+import '../game/cricket.dart';
+import '../game/darts_game.dart';
+import '../game/match.dart';
 import '../game/x01.dart';
 import '../granboard.dart';
 import 'setup_page.dart' show kTeamNames;
@@ -25,8 +28,91 @@ class GameFx {
     heavy ? HapticFeedback.heavyImpact() : HapticFeedback.lightImpact();
   }
 
-  void start(X01Game game) => audio.sayLater(
-      '${game.settings.name}. ${game.currentPlayer.name}, à toi.', 400);
+  void start(DartsGame game) {
+    final title = game is MatchGame
+        ? 'Match en ${game.settings.legs} legs. Leg 1, ${game.leg.title}'
+        : game.title;
+    audio.sayLater('$title. ${game.currentPlayer.name}, à toi.', 400);
+  }
+
+  /// Après une action du journal (écran TV qui rejoue la partie).
+  void afterAction(DartsGame game, String entry) {
+    if (entry == 'n') {
+      afterAnyNext(game);
+    } else {
+      final hits = game.turnHits;
+      afterAnyDart(game, hits.isEmpty ? null : hits.last);
+    }
+  }
+
+  /// Après une fléchette, quel que soit le jeu.
+  void afterAnyDart(DartsGame game, DartHit? hit, {bool outerRing = false}) {
+    switch (game) {
+      case X01Game g:
+        afterDart(g, hit, outerRing: outerRing);
+      case CricketGame g:
+        afterCricketDart(g, hit, outerRing: outerRing);
+      case MatchGame m:
+        if (m.finished) {
+          _hitSound(hit, outerRing: outerRing);
+          win(m);
+        } else if (m.betweenLegs) {
+          _hitSound(hit, outerRing: outerRing);
+          _legWon(m);
+        } else {
+          afterAnyDart(m.leg, hit, outerRing: outerRing);
+        }
+    }
+  }
+
+  /// Après « joueur suivant », quel que soit le jeu.
+  void afterAnyNext(DartsGame game) {
+    switch (game) {
+      case X01Game g:
+        afterNext(g);
+      case CricketGame g:
+        afterCricketNext(g);
+      case MatchGame m:
+        if (m.finished) {
+          win(m);
+        } else if (m.betweenLegs) {
+          _legWon(m); // limite de manches atteinte
+        } else if (m.leg.actionLog.isEmpty) {
+          audio.play(Sfx.next);
+          audio.sayLater(
+              'Leg ${m.legNumber}, ${m.leg.title}. '
+              '${m.currentPlayer.name}, à toi.',
+              300);
+        } else {
+          afterAnyNext(m.leg);
+        }
+    }
+  }
+
+  void _legWon(MatchGame m) {
+    _haptic(true);
+    audio.play(Sfx.win);
+    final names = m.leg.winners.map((i) => m.leg.players[i].name).join(' et ');
+    final score = [
+      for (var i = 0; i < m.players.length; i++) '${m.legWinsOf(i)}'
+    ].join(' à ');
+    audio.sayLater('Leg pour $names ! $score.', 700);
+    _show('LEG ${m.legNumber}', Tv.gold, big: true);
+  }
+
+  void _hitSound(DartHit? hit, {bool outerRing = false}) {
+    if (hit != null) {
+      audio.play(hit.isBull
+          ? Sfx.bull
+          : hit.multiplier == 3
+              ? Sfx.triple
+              : hit.multiplier == 2
+                  ? Sfx.double
+                  : Sfx.hit);
+    } else if (outerRing) {
+      audio.play(Sfx.hit);
+    }
+  }
 
   /// Après une fléchette acceptée ([hit] null = ratée).
   void afterDart(X01Game game, DartHit? hit, {bool outerRing = false}) {
@@ -45,17 +131,7 @@ class GameFx {
       return;
     }
     _haptic(false);
-    if (hit != null) {
-      audio.play(hit.isBull
-          ? Sfx.bull
-          : hit.multiplier == 3
-              ? Sfx.triple
-              : hit.multiplier == 2
-                  ? Sfx.double
-                  : Sfx.hit);
-    } else if (outerRing) {
-      audio.play(Sfx.hit);
-    }
+    _hitSound(hit, outerRing: outerRing);
     if (turn.darts.length == 3) {
       final total = turn.total;
       if (total == 180) {
@@ -90,15 +166,85 @@ class GameFx {
     audio.sayLater(text, 250);
   }
 
-  void win(X01Game game) {
+  // ─── Cricket ───
+
+  void afterCricketDart(CricketGame game, DartHit? hit,
+      {bool outerRing = false}) {
+    if (game.finished) {
+      _hitSound(hit, outerRing: outerRing);
+      win(game);
+      return;
+    }
+    _haptic(false);
+    _hitSound(hit, outerRing: outerRing);
+    final t = game.currentTurn;
+    final last = t.darts.isEmpty ? null : t.darts.last;
+    if (last != null && last.revealed) {
+      final n = last.hit!.isBull ? 'Bull' : '${last.hit!.number}';
+      audio.sayLater('$n découvert !', 250);
+    }
+    if (t.darts.length == 3) {
+      final m = t.marks;
+      final triples = {
+        for (final d in t.darts)
+          if (d.hit?.ring == Ring.triple && d.marks > 0) d.hit!.number
+      };
+      if (m == 9 && triples.length == 3) {
+        audio.play(Sfx.crowd);
+        audio.sayLater('White horse !', 500);
+        _show('WHITE HORSE', Tv.gold, big: true);
+      } else if (m >= 5) {
+        audio.play(Sfx.ton);
+        audio.sayLater('$m marques !', 400);
+        _show('$m MARQUES', Tv.gold);
+      } else {
+        audio.sayLater(
+            m == 0
+                ? 'Aucune marque'
+                : m == 1
+                    ? 'Une marque'
+                    : '$m marques',
+            400);
+      }
+    }
+  }
+
+  void afterCricketNext(CricketGame game) {
+    if (game.finished) {
+      win(game);
+      return;
+    }
+    audio.play(Sfx.next);
+    var text = game.currentPlayer.name;
+    if (game.isSpoiler(game.sideOf(game.current))) text += ', spoiler';
+    audio.sayLater(text, 250);
+  }
+
+  void win(DartsGame game) {
     _haptic(true);
     audio.play(Sfx.win);
     Timer(const Duration(milliseconds: 600), () => audio.play(Sfx.crowd));
     final names = game.winners.map((i) => game.players[i].name).join(' et ');
-    final team = game.settings.freeze
+    final teams = switch (game) {
+      X01Game g => g.settings.freeze,
+      CricketGame g => g.settings.teams,
+      _ => false,
+    };
+    if (game is MatchGame) {
+      final names = game.winners.map((i) => game.players[i].name).join(' et ');
+      audio.sayLater('Jeu, set et match ! Victoire de $names !', 900);
+      _show('MATCH', Tv.gold, big: true);
+      return;
+    }
+    final team = teams && game.winners.isNotEmpty
         ? '${kTeamNames[game.players[game.winners.first].team]} : '
         : '';
-    if (game.endReason == EndReason.checkout) {
+    final byClose = switch (game) {
+      X01Game g => g.endReason == EndReason.checkout,
+      CricketGame g => g.endReason == CricketEnd.closed,
+      _ => false,
+    };
+    if (byClose) {
       audio.sayLater('Partie gagnée ! Victoire de $team$names !', 900);
       _show('VICTOIRE', Tv.gold, big: true);
     } else {

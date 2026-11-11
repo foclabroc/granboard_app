@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../board_service.dart';
+import '../game/cricket.dart';
+import '../game/match.dart';
 import '../game/x01.dart';
 import '../players.dart';
 import 'account_page.dart';
@@ -34,6 +36,14 @@ class _SetupPageState extends State<SetupPage> {
   OutRule _out = OutRule.double;
   BullMode _bull = BullMode.split;
   int? _limit;
+  // Cricket
+  String _kind = 'x01';
+  CricketVariant _variant = CricketVariant.standard;
+  bool _cTeams = false;
+  int? _cLimit = 20;
+  // Match
+  int _mLegs = 3;
+  List<LegKind> _mPattern = MatchSettings.alternate(13);
   final List<String> _selected = [];
   final Map<String, int> _team = {};
 
@@ -56,6 +66,22 @@ class _SetupPageState extends State<SetupPage> {
         _out = OutRule.values[j['out'] as int? ?? 1];
         _bull = BullMode.values[j['bull'] as int? ?? 0];
         _limit = j['limit'] as int?;
+        _kind = j['kind'] as String? ?? 'x01';
+        _variant = CricketVariant.values.firstWhere(
+            (v) => v.name == j['variant'],
+            orElse: () => CricketVariant.standard);
+        _cTeams = j['cteams'] as bool? ?? false;
+        _cLimit = j.containsKey('climit') ? j['climit'] as int? : 20;
+        _mLegs = j['mlegs'] as int? ?? 3;
+        final mp = [
+          for (final k in (j['mpattern'] as List? ?? const []))
+            LegKind.values
+                .firstWhere((x) => x.name == k, orElse: () => LegKind.x01)
+        ];
+        _mPattern = [
+          for (var i = 0; i < 13; i++)
+            i < mp.length ? mp[i] : MatchSettings.alternate(13)[i]
+        ];
         _selected
           ..clear()
           ..addAll([
@@ -83,6 +109,12 @@ class _SetupPageState extends State<SetupPage> {
           'out': _out.index,
           'bull': _bull.index,
           'limit': _limit,
+          'kind': _kind,
+          'variant': _variant.name,
+          'cteams': _cTeams,
+          'climit': _cLimit,
+          'mlegs': _mLegs,
+          'mpattern': [for (final k in _mPattern) k.name],
           'players': _selected,
           'teams': _team,
         }));
@@ -96,6 +128,38 @@ class _SetupPageState extends State<SetupPage> {
         roundLimit: _limit,
         freeze: _freeze,
       );
+
+  CricketSettings get _cricket => CricketSettings(
+        variant: _variant,
+        teams: _cTeams,
+        roundLimit: _cLimit,
+        seed: DateTime.now().microsecondsSinceEpoch,
+      );
+
+  bool get _cricketOn => _kind == 'cricket';
+  bool get _matchOn => _kind == 'match';
+
+  MatchSettings get _match => MatchSettings(
+        legs: _mLegs,
+        pattern: _mPattern.take(_mLegs).toList(),
+        x01: X01Settings(
+            startScore: _start, inRule: _in, outRule: _out, bullMode: _bull),
+        cricket: CricketSettings(
+            roundLimit: 20, seed: DateTime.now().microsecondsSinceEpoch),
+      );
+
+  /// Jeu en équipes (Freeze ou Team Cricket).
+  bool get _teams => _matchOn
+      ? false
+      : _cricketOn
+          ? _cTeams
+          : _freeze;
+
+  String get _gameName => _matchOn
+      ? 'Match $_mLegs legs'
+      : _cricketOn
+          ? _cricket.name
+          : _settings.name;
 
   int _teamOf(String id) => _team[id] ?? 0;
 
@@ -114,7 +178,7 @@ class _SetupPageState extends State<SetupPage> {
   List<X01Player> get _order {
     X01Player mk(String id, int team) =>
         X01Player(id: id, name: _nameOf(id), team: team);
-    if (!_freeze) {
+    if (!_teams) {
       return [for (var i = 0; i < _selected.length; i++) mk(_selected[i], i)];
     }
     final a = _selected.where((id) => _teamOf(id) == 0).toList();
@@ -126,10 +190,14 @@ class _SetupPageState extends State<SetupPage> {
 
   String? get _problem {
     if (_selected.isEmpty) return 'Ajoute au moins un joueur';
-    if (_freeze) {
+    if (_teams) {
       final a = _selected.where((id) => _teamOf(id) == 0).length;
       final b = _selected.length - a;
-      if (a == 0 || b == 0) return 'Le Freeze se joue à 2 équipes';
+      if (a == 0 || b == 0) {
+        return _cricketOn
+            ? 'Le Team Cricket se joue à 2 équipes'
+            : 'Le Freeze se joue à 2 équipes';
+      }
       if (a != b) return 'Les 2 équipes doivent avoir autant de joueurs';
     }
     return null;
@@ -163,7 +231,11 @@ class _SetupPageState extends State<SetupPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-          builder: (_) => GamePage(settings: _settings, players: _order)),
+          builder: (_) => _matchOn
+              ? GamePage(game: MatchGame(_match, _order))
+              : _cricketOn
+                  ? GamePage(game: CricketGame(_cricket, _order))
+                  : GamePage(settings: _settings, players: _order)),
     );
   }
 
@@ -184,67 +256,27 @@ class _SetupPageState extends State<SetupPage> {
             child: ListView(
               padding: const EdgeInsets.only(bottom: 16),
               children: [
-                const TvSection('Mode',
+                const TvSection('Jeu',
                     padding: EdgeInsets.fromLTRB(16, 4, 16, 8)),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Wrap(
-                    spacing: 8,
-                    children: [
-                      for (final s in kStartScores)
-                        ChoiceChip(
-                          label: Text('$s',
-                              style: const TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold)),
-                          selected: _start == s,
-                          onSelected: (_) => setState(() => _start = s),
-                        ),
+                  child: SegmentedButton<String>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(value: 'x01', label: Text('01')),
+                      ButtonSegment(value: 'cricket', label: Text('CRICKET')),
+                      ButtonSegment(value: 'match', label: Text('MATCH')),
                     ],
+                    selected: {_kind},
+                    onSelectionChanged: (v) => setState(() => _kind = v.first),
                   ),
                 ),
-                SwitchListTile(
-                  title: Text('Freeze (équipes)', style: Tv.title(18)),
-                  subtitle: const Text(
-                      'Une équipe dont le total restant dépasse celui de '
-                      'l\'adversaire est gelée ❄ et ne peut pas finir.'),
-                  value: _freeze,
-                  onChanged: (v) => setState(() => _freeze = v),
-                ),
-                const TvSection('Règles',
-                    padding: EdgeInsets.fromLTRB(16, 8, 16, 6)),
-                _RuleRow<InRule>(
-                  label: 'Début',
-                  value: _in,
-                  values: InRule.values,
-                  text: (r) => r.label.split(' ').first,
-                  onChanged: (v) => setState(() => _in = v),
-                ),
-                _RuleRow<OutRule>(
-                  label: 'Fin',
-                  value: _out,
-                  values: OutRule.values,
-                  text: (r) => r.label.split(' ').first,
-                  onChanged: (v) => setState(() => _out = v),
-                ),
-                _RuleRow<BullMode>(
-                  label: 'Bull',
-                  value: _bull,
-                  values: BullMode.values,
-                  text: (b) => b == BullMode.split ? '25 / 50' : '50 / 50',
-                  onChanged: (v) => setState(() => _bull = v),
-                ),
-                ListTile(
-                  title: Text('Limite de manches', style: Tv.title(17)),
-                  trailing: DropdownButton<int?>(
-                    value: _limit,
-                    items: [
-                      for (final l in _limits)
-                        DropdownMenuItem(
-                            value: l, child: Text(l == null ? 'Aucune' : '$l')),
-                    ],
-                    onChanged: (v) => setState(() => _limit = v),
-                  ),
-                ),
+                if (_matchOn)
+                  ..._matchOptions()
+                else if (_cricketOn)
+                  ..._cricketOptions()
+                else
+                  ..._x01Options(),
               ],
             ),
           ),
@@ -329,8 +361,7 @@ class _SetupPageState extends State<SetupPage> {
                           child: FilledButton.icon(
                             onPressed: problem == null ? _startGame : null,
                             icon: const Icon(Icons.play_arrow),
-                            label: Text(
-                                'LANCER ${_settings.name.toUpperCase()}',
+                            label: Text('LANCER ${_gameName.toUpperCase()}',
                                 style: Tv.title(22, color: Colors.black)),
                           ),
                         ),
@@ -345,6 +376,176 @@ class _SetupPageState extends State<SetupPage> {
       ),
     );
   }
+
+  List<Widget> _matchOptions() => [
+        const TvSection('Nombre de legs',
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 8)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final n in kMatchLegs)
+                ChoiceChip(
+                  label: Text('$n',
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
+                  selected: _mLegs == n,
+                  onSelected: (_) => setState(() => _mLegs = n),
+                ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+          child: Text(
+              'Le premier à ${_mLegs ~/ 2 + 1} legs gagne. Le joueur qui '
+              'commence change à chaque leg.',
+              style: Tv.label(12, color: Tv.text)),
+        ),
+        const TvSection('Jeu de chaque leg (touche pour changer)',
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 8)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (var i = 0; i < _mLegs; i++)
+                ActionChip(
+                  avatar: CircleAvatar(
+                      backgroundColor: Tv.panel2,
+                      child: Text('${i + 1}', style: Tv.label(11))),
+                  label: Text(
+                      _mPattern[i] == LegKind.x01 ? '$_start' : 'CRICKET',
+                      style: Tv.title(15,
+                          color: _mPattern[i] == LegKind.x01
+                              ? Tv.goldLight
+                              : Tv.green)),
+                  onPressed: () => setState(() => _mPattern[i] =
+                      _mPattern[i] == LegKind.x01
+                          ? LegKind.cricket
+                          : LegKind.x01),
+                ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          child: Text('Cricket : règles Standard, 20 manches.',
+              style: Tv.label(12)),
+        ),
+        ..._x01Options(match: true),
+      ];
+
+  List<Widget> _x01Options({bool match = false}) => [
+        TvSection(match ? 'Legs 01' : 'Mode',
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Wrap(
+            spacing: 8,
+            children: [
+              for (final s in kStartScores)
+                ChoiceChip(
+                  label: Text('$s',
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
+                  selected: _start == s,
+                  onSelected: (_) => setState(() => _start = s),
+                ),
+            ],
+          ),
+        ),
+        if (!match)
+          SwitchListTile(
+            title: Text('Freeze (équipes)', style: Tv.title(18)),
+            subtitle:
+                const Text('Une équipe dont le total restant dépasse celui de '
+                    'l\'adversaire est gelée ❄ et ne peut pas finir.'),
+            value: _freeze,
+            onChanged: (v) => setState(() => _freeze = v),
+          ),
+        const TvSection('Règles', padding: EdgeInsets.fromLTRB(16, 8, 16, 6)),
+        _RuleRow<InRule>(
+          label: 'Début',
+          value: _in,
+          values: InRule.values,
+          text: (r) => r.label.split(' ').first,
+          onChanged: (v) => setState(() => _in = v),
+        ),
+        _RuleRow<OutRule>(
+          label: 'Fin',
+          value: _out,
+          values: OutRule.values,
+          text: (r) => r.label.split(' ').first,
+          onChanged: (v) => setState(() => _out = v),
+        ),
+        _RuleRow<BullMode>(
+          label: 'Bull',
+          value: _bull,
+          values: BullMode.values,
+          text: (b) => b == BullMode.split ? '25 / 50' : '50 / 50',
+          onChanged: (v) => setState(() => _bull = v),
+        ),
+        if (!match)
+          ListTile(
+            title: Text('Limite de manches', style: Tv.title(17)),
+            trailing: DropdownButton<int?>(
+              value: _limit,
+              items: [
+                for (final l in _limits)
+                  DropdownMenuItem(
+                      value: l, child: Text(l == null ? 'Aucune' : '$l')),
+              ],
+              onChanged: (v) => setState(() => _limit = v),
+            ),
+          ),
+      ];
+
+  List<Widget> _cricketOptions() => [
+        const TvSection('Variante', padding: EdgeInsets.fromLTRB(16, 8, 16, 8)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final v in CricketVariant.values)
+                ChoiceChip(
+                  label: Text(v.label.toUpperCase()),
+                  selected: _variant == v,
+                  onSelected: (_) => setState(() => _variant = v),
+                ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Text(_variant.help, style: Tv.label(12, color: Tv.text)),
+        ),
+        SwitchListTile(
+          title: Text('Équipes (Team Cricket)', style: Tv.title(18)),
+          subtitle: const Text(
+              'Marques et points communs à l\'équipe, joueurs en alternance.'),
+          value: _cTeams,
+          onChanged: (v) => setState(() => _cTeams = v),
+        ),
+        ListTile(
+          title: Text('Limite de manches', style: Tv.title(17)),
+          subtitle: const Text('À la limite, le meilleur score gagne'),
+          trailing: DropdownButton<int?>(
+            value: _cLimit,
+            items: [
+              for (final l in kCricketRoundLimits)
+                DropdownMenuItem(
+                    value: l, child: Text(l == null ? 'Aucune' : '$l')),
+            ],
+            onChanged: (v) => setState(() => _cLimit = v),
+          ),
+        ),
+      ];
 
   Widget _playerTile(int index, String id) {
     final guest = isGuestId(id);
@@ -373,7 +574,7 @@ class _SetupPageState extends State<SetupPage> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (_freeze)
+          if (_teams)
             SegmentedButton<int>(
               showSelectedIcon: false,
               segments: [

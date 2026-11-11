@@ -13,6 +13,8 @@ const _kinds = [
   ('n180', '180'),
   ('checkout', 'MEILLEURE FIN'),
   ('high', 'MEILLEURE MANCHE'),
+  ('mpr', 'CRICKET MPR'),
+  ('cr_wins', 'VICTOIRES CRICKET'),
 ];
 
 /// Classements de tous les joueurs du serveur.
@@ -57,9 +59,11 @@ class _TopListState extends State<_TopList> {
 
   void _retry() => setState(() => _future = GbServer.top(widget.kind));
 
-  String _value(num v) => widget.kind == 'rating' || widget.kind == 'avg'
-      ? v.toStringAsFixed(1)
-      : '${v.toInt()}';
+  String _value(num v) => widget.kind == 'mpr'
+      ? v.toStringAsFixed(2)
+      : widget.kind == 'rating' || widget.kind == 'avg'
+          ? v.toStringAsFixed(1)
+          : '${v.toInt()}';
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +93,7 @@ class _TopListState extends State<_TopList> {
         if (rows.isEmpty) {
           return Center(
             child: Text(
-                widget.kind == 'rating' || widget.kind == 'avg'
+                const ['rating', 'avg', 'mpr'].contains(widget.kind)
                     ? 'Personne n\'a encore 3 parties'
                     : 'Pas encore de résultat',
                 style: Tv.label(15, color: Tv.text)),

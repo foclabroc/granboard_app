@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:granboard_proto/audio.dart';
+import 'package:granboard_proto/game/cricket.dart';
 import 'package:granboard_proto/game/x01.dart';
 import 'package:granboard_proto/granboard.dart';
 import 'package:granboard_proto/players.dart';
@@ -156,6 +157,48 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(find.textContaining('RÉSULTATS'), findsOneWidget);
     expect(find.text('REJOUER'), findsNothing); // pas de boutons sur la TV
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Écran TV : partie de Cricket rejouée puis résultats',
+      (tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 2.0; // 960 × 540
+    addTearDown(tester.view.reset);
+    final tv = TvClient(realtime: false);
+    await tester.pumpWidget(MaterialApp(
+        theme: Tv.theme(), home: TvHome(client: tv, onPhoneMode: () {})));
+    final g = CricketGame(
+        const CricketSettings(variant: CricketVariant.cutThroat, seed: 3),
+        const [
+          X01Player(id: '1', name: 'Foc'),
+          X01Player(id: '2', name: 'Sophie'),
+          X01Player(id: '3', name: 'Léo'),
+        ]);
+    Map<String, dynamic> st(String screen) => {
+          'screen': screen,
+          'game': jsonDecode(jsonEncode(g.toJson())),
+          'colors': {'1': 0xFFE53935, '2': 0xFF1E88E5, '3': 0xFF43A047},
+        };
+    tv.debugSetState('KX7P', st('game'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('CUT THROAT'), findsWidgets);
+
+    g.throwDart(const DartHit(20, 3, Ring.triple));
+    g.throwDart(const DartHit(20, 3, Ring.triple));
+    tv.debugSetState('KX7P', st('game'));
+    await tester.pump(const Duration(milliseconds: 300));
+    // 60 points donnés à chacun des 2 adversaires
+    expect(find.text('60'), findsWidgets);
+    expect(tester.takeException(), isNull);
+
+    g.next();
+    g.next();
+    g.next();
+    tv.debugSetState('KX7P', st('results'));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.textContaining('RÉSULTATS'), findsOneWidget);
+    expect(find.text('REJOUER'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 }

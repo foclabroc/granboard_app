@@ -251,7 +251,8 @@ void main() {
     test('Fins classiques et autres fins', () {
       expect(suggestCheckout(99, 3, OutRule.double, BullMode.split),
           ['T19', '10', 'D16']);
-      expect(suggestCheckout(5, 3, OutRule.double, BullMode.split), ['1', 'D2']);
+      expect(
+          suggestCheckout(5, 3, OutRule.double, BullMode.split), ['1', 'D2']);
       final r = checkoutRoutes(100, 3, OutRule.double, BullMode.split);
       expect(r.first, ['T20', 'D20']);
       expect(r.length, 3);
@@ -263,8 +264,13 @@ void main() {
         if (l == 'BULL') return 50;
         if (l == '25') return b == BullMode.fat ? 50 : 25;
         final n = int.parse(l.replaceFirst(RegExp('^[DT]'), ''));
-        return l.startsWith('T') ? n * 3 : l.startsWith('D') ? n * 2 : n;
+        return l.startsWith('T')
+            ? n * 3
+            : l.startsWith('D')
+                ? n * 2
+                : n;
       }
+
       for (final out in OutRule.values) {
         for (final b in BullMode.values) {
           for (var rem = 1; rem <= 180; rem++) {
@@ -275,8 +281,11 @@ void main() {
                     reason: '$rem $r');
                 final last = r.last;
                 if (out == OutRule.double) {
-                  expect(last == 'BULL' || last.startsWith('D') ||
-                      (last == '25' && b == BullMode.fat), isTrue,
+                  expect(
+                      last == 'BULL' ||
+                          last.startsWith('D') ||
+                          (last == '25' && b == BullMode.fat),
+                      isTrue,
                       reason: '$rem $r');
                 }
               }

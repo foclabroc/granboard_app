@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.6.0
+
+- Cricket : Standard, Cut Throat, Caché, Cut Throat caché, Wildcard, No Score, Triple Only, en individuel ou en équipes (Team Cricket, marques et points communs), limite de manches réglable (20 par défaut)
+- Tableau des marques ( / , X , Ⓧ ) à côté de la cible, cibles cachées « ? » découvertes en les touchant, numéros Wildcard qui changent à chaque manche, SPOILER en Cut Throat
+- Annonces Cricket : marques de la manche, 5 marques et plus, White Horse
+- MATCH : 3 à 13 legs, jeu de chaque leg au choix (01 ou Cricket), le joueur qui commence change à chaque leg, résultats aux legs avec moyenne et MPR
+- Stats en ligne du Cricket : MPR (marques par manche), victoires, meilleure manche ; classements « Cricket MPR » et « Victoires Cricket » ; la note et la moyenne restent calculées sur le 01
+- Tout s'affiche aussi sur l'écran TV
+
 ## v0.5.1
 
 - Fins possibles : dès qu'on peut finir avec les fléchettes qui restent, la combinaison conseillée s'affiche en cases vertes (tableau classique des joueurs en Double Out), avec 2 autres possibilités en dessous

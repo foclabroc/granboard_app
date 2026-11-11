@@ -278,6 +278,24 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                         stat('180', '${n('n180')}'),
                       ],
                     ),
+                    const TvSection('Cricket',
+                        padding: EdgeInsets.fromLTRB(0, 14, 0, 6)),
+                    GridView.count(
+                      crossAxisCount: 4,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 6,
+                      crossAxisSpacing: 6,
+                      childAspectRatio: 2.0,
+                      children: [
+                        stat('Parties', '${n('cr_games')}'),
+                        stat('Victoires', '${n('cr_wins')}'),
+                        stat('MPR',
+                            (s['mpr'] as num?)?.toStringAsFixed(2) ?? '–'),
+                        stat('Meilleure manche',
+                            n('cr_best') == 0 ? '–' : '${n('cr_best')} M'),
+                      ],
+                    ),
                     const TvSection('Dernières parties',
                         padding: EdgeInsets.fromLTRB(0, 16, 0, 6)),
                     if (recent.isEmpty)
@@ -298,8 +316,10 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                         title: Text('${g['mode']}', style: Tv.title(17)),
                         subtitle: Text(_date('${g['date']}')),
                         trailing: Text(
-                            'MOY ${(g['avg'] as num?)?.toStringAsFixed(1) ?? '–'}'
-                            '${g['checkout'] == null ? '' : '  ·  FIN ${g['checkout']}'}',
+                            g['kind'] == 'cricket'
+                                ? 'MPR ${(g['mpr'] as num?)?.toStringAsFixed(2) ?? '–'}'
+                                : 'MOY ${(g['avg'] as num?)?.toStringAsFixed(1) ?? '–'}'
+                                    '${g['checkout'] == null ? '' : '  ·  FIN ${g['checkout']}'}',
                             style: Tv.label(13, color: Tv.text)),
                       ),
                   ],

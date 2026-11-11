@@ -171,6 +171,14 @@ class GranBoardDecoder {
 
   static String normalize(String s) => frameKey(s.codeUnits);
 
+  /// Trame d'une zone (tests, démonstrations).
+  static String? frameFor(int number, Ring ring) {
+    for (final e in _codes.entries) {
+      if (e.value.$1 == number && e.value.$2 == ring) return '${e.key}@';
+    }
+    return null;
+  }
+
   static DartHit hitFor(int number, Ring ring) {
     final multiplier = switch (ring) {
       Ring.triple => 3,

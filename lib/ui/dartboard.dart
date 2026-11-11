@@ -337,8 +337,8 @@ class _HitsPainter extends CustomPainter {
     // rouge comme sur le vert)
     for (final h in targets) {
       final path = _zonePath(c, r, h);
-      canvas.drawPath(
-          path, Paint()..color = Colors.white.withValues(alpha: 0.2 + 0.3 * pulse));
+      canvas.drawPath(path,
+          Paint()..color = Colors.white.withValues(alpha: 0.2 + 0.3 * pulse));
       canvas.drawPath(
           path,
           Paint()

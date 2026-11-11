@@ -4,12 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../audio.dart';
-import '../game/x01.dart';
+import '../game/darts_game.dart';
 import '../players.dart';
 import '../ui/dartboard.dart';
 import '../ui/game_fx.dart';
-import '../ui/game_page.dart' show GameLayout;
-import '../ui/results_page.dart';
+import '../ui/game_page.dart' show gameView, resultsPageFor;
 import '../ui/theme.dart';
 import 'tv_client.dart';
 
@@ -84,10 +83,11 @@ class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
     if (screen == 'game' && s?['game'] is Map) {
       body = _TvGame(state: s!, code: client.code);
     } else if (screen == 'results' && s?['game'] is Map) {
-      body = ResultsPage(
+      body = KeyedSubtree(
         key: ValueKey(jsonEncode(s!['game']).hashCode),
-        game: X01Game.fromJson(Map<String, dynamic>.from(s['game'] as Map)),
-        tv: true,
+        child: resultsPageFor(
+            gameFromJson(Map<String, dynamic>.from(s['game'] as Map)),
+            tv: true),
       );
     } else if (screen == 'lobby') {
       body = _Lobby(spin: _spin, host: '${s?['host'] ?? ''}', client: client);
@@ -305,7 +305,7 @@ class _TvGame extends StatefulWidget {
 class _TvGameState extends State<_TvGame> {
   final _splash = GlobalKey<GameSplashState>();
   late final _fx = GameFx(_splash, haptics: false);
-  X01Game? _game;
+  DartsGame? _game;
   String? _sig;
 
   @override
@@ -329,7 +329,7 @@ class _TvGameState extends State<_TvGame> {
     final g = _game;
     if (g == null || sig != _sig) {
       _sig = sig;
-      _game = X01Game.fromJson(j);
+      _game = gameFromJson(j);
       if (actions.isEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _fx.start(_game!));
       }
@@ -339,43 +339,38 @@ class _TvGameState extends State<_TvGame> {
     final extends_ = actions.length >= old.length &&
         List.generate(old.length, (i) => old[i] == actions[i]).every((x) => x);
     if (!extends_) {
-      _game = X01Game.fromJson(j); // annulation côté téléphone : sans effet
+      _game = gameFromJson(j); // annulation côté téléphone : sans effet
       return;
     }
     for (var i = old.length; i < actions.length; i++) {
       final a = actions[i];
       if (!g.applyLogEntry(a) || i != actions.length - 1 || first) continue;
-      if (a == 'n') {
-        _fx.afterNext(g);
-      } else {
-        _fx.afterDart(g,
-            g.currentTurn.darts.isEmpty ? null : g.currentTurn.darts.last.hit);
-      }
+      _fx.afterAction(g, a);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final g = _game!;
-    final s = g.settings;
+    final limit = g.roundLimit;
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
           child: Row(
             children: [
-              Text(s.name.toUpperCase(), style: Tv.title(30, color: Tv.gold)),
+              Text(g.title.toUpperCase(), style: Tv.title(30, color: Tv.gold)),
               const SizedBox(width: 14),
               Expanded(
-                child: Text(s.rulesLabel.toUpperCase(),
+                child: Text(g.rulesLabel.toUpperCase(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Tv.label(14)),
               ),
               Text(
-                s.roundLimit == null
+                limit == null
                     ? 'MANCHE ${g.round}'
-                    : 'MANCHE ${g.round}/${s.roundLimit}',
+                    : 'MANCHE ${g.round}/$limit',
                 style: Tv.title(22),
               ),
               const SizedBox(width: 16),
@@ -383,7 +378,7 @@ class _TvGameState extends State<_TvGame> {
             ],
           ),
         ),
-        Expanded(child: GameLayout(game: g, splashKey: _splash)),
+        Expanded(child: gameView(g, _splash)),
       ],
     );
   }

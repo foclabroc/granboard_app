@@ -6,11 +6,16 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../audio.dart';
 import '../board_service.dart';
+import '../game/cricket.dart';
+import '../game/darts_game.dart';
+import '../game/match.dart';
 import '../game/x01.dart';
 import '../granboard.dart';
 import '../players.dart';
 import '../tv_link.dart';
+import 'cricket_view.dart';
 import 'dartboard.dart';
+import 'match_view.dart';
 import 'game_fx.dart';
 import 'results_page.dart';
 import 'setup_page.dart' show kTeamColors, kTeamNames;
@@ -18,18 +23,22 @@ import 'sound_settings.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
-/// Partie X01 / Freeze en cours.
+/// Partie en cours (01 / Freeze avec [settings] + [players], ou [game] déjà
+/// prêt : Cricket…).
 class GamePage extends StatefulWidget {
-  final X01Settings settings;
-  final List<X01Player> players;
-  const GamePage({super.key, required this.settings, required this.players});
+  final X01Settings? settings;
+  final List<X01Player>? players;
+  final DartsGame? game;
+  const GamePage({super.key, this.settings, this.players, this.game})
+      : assert(game != null || (settings != null && players != null));
 
   @override
   State<GamePage> createState() => _GamePageState();
 }
 
 class _GamePageState extends State<GamePage> {
-  late final X01Game game = X01Game(widget.settings, widget.players);
+  late final DartsGame game =
+      widget.game ?? X01Game(widget.settings!, widget.players!);
   late final StreamSubscription<BoardEvent> _sub;
   final _splash = GlobalKey<GameSplashState>();
   late final _fx = GameFx(_splash);
@@ -91,7 +100,7 @@ class _GamePageState extends State<GamePage> {
       return;
     }
     setState(() => game.throwDart(hit));
-    _fx.afterDart(game, hit, outerRing: outerRing);
+    _fx.afterAnyDart(game, hit, outerRing: outerRing);
     _pushTv();
   }
 
@@ -99,7 +108,7 @@ class _GamePageState extends State<GamePage> {
     if (game.finished) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     setState(() => game.next());
-    _fx.afterNext(game);
+    _fx.afterAnyNext(game);
     _pushTv();
   }
 
@@ -114,12 +123,16 @@ class _GamePageState extends State<GamePage> {
 
   void _results() {
     // Envoi au serveur en arrière-plan : les résultats s'affichent tout de suite
-    _saving ??= PlayerStore.instance.recordX01(game);
+    final g = game;
+    _saving ??= switch (g) {
+      X01Game g => PlayerStore.instance.recordX01(g),
+      CricketGame g => PlayerStore.instance.recordCricket(g),
+      MatchGame m => PlayerStore.instance.recordMatch(m),
+      _ => Future.value(true),
+    };
     TvLink.instance.pushGame(game, screen: 'results');
-    Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-            builder: (_) => ResultsPage(game: game, saving: _saving)));
+    Navigator.pushReplacement(context,
+        MaterialPageRoute(builder: (_) => resultsPageFor(g, saving: _saving)));
   }
 
   Future<bool> _confirmQuit() async {
@@ -144,7 +157,14 @@ class _GamePageState extends State<GamePage> {
 
   @override
   Widget build(BuildContext context) {
-    final s = widget.settings;
+    final limit = game.roundLimit;
+    final actionBar = _ActionBar(
+      game: game,
+      onUndo: _undo,
+      onMiss: () => _dart(null),
+      onNext: _next,
+      onResults: _results,
+    );
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -158,8 +178,9 @@ class _GamePageState extends State<GamePage> {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(s.name.toUpperCase(), style: Tv.title(24, color: Tv.gold)),
-              Text(s.rulesLabel.toUpperCase(), style: Tv.label(11)),
+              Text(game.title.toUpperCase(),
+                  style: Tv.title(24, color: Tv.gold)),
+              Text(game.rulesLabel.toUpperCase(), style: Tv.label(11)),
             ],
           ),
           actions: [
@@ -174,9 +195,7 @@ class _GamePageState extends State<GamePage> {
                 children: [
                   Text('MANCHE', style: Tv.label(9)),
                   Text(
-                    s.roundLimit == null
-                        ? '${game.round}'
-                        : '${game.round}/${s.roundLimit}',
+                    limit == null ? '${game.round}' : '${game.round}/$limit',
                     style: Tv.title(18),
                   ),
                 ],
@@ -193,17 +212,7 @@ class _GamePageState extends State<GamePage> {
           children: [
             const BoardBanner(),
             Expanded(
-              child: GameLayout(
-                game: game,
-                splashKey: _splash,
-                actionBar: _ActionBar(
-                  game: game,
-                  onUndo: _undo,
-                  onMiss: () => _dart(null),
-                  onNext: _next,
-                  onResults: _results,
-                ),
-              ),
+              child: gameView(game, _splash, actionBar: actionBar),
             ),
           ],
         ),
@@ -211,6 +220,26 @@ class _GamePageState extends State<GamePage> {
     );
   }
 }
+
+/// Écran de partie selon le jeu (téléphone et TV).
+Widget gameView(DartsGame game, GlobalKey<GameSplashState> splash,
+        {Widget? actionBar}) =>
+    switch (game) {
+      MatchGame m => gameView(m.leg, splash, actionBar: actionBar),
+      CricketGame g =>
+        CricketLayout(game: g, splashKey: splash, actionBar: actionBar),
+      _ => GameLayout(
+          game: game as X01Game, splashKey: splash, actionBar: actionBar),
+    };
+
+/// Résultats selon le jeu.
+Widget resultsPageFor(DartsGame game,
+        {Future<bool>? saving, bool tv = false}) =>
+    switch (game) {
+      MatchGame m => MatchResultsPage(game: m, saving: saving, tv: tv),
+      CricketGame g => CricketResultsPage(game: g, saving: saving, tv: tv),
+      _ => ResultsPage(game: game as X01Game, saving: saving, tv: tv),
+    };
 
 /// Affichage d'une partie : cible animée | joueur en cours (+ boutons) |
 /// tableau des scores, avec les annonces animées par-dessus.
@@ -633,7 +662,7 @@ class _PlayerBar extends StatelessWidget {
 // ─── Boutons ───
 
 class _ActionBar extends StatelessWidget {
-  final X01Game game;
+  final DartsGame game;
   final VoidCallback onUndo;
   final VoidCallback onMiss;
   final VoidCallback onNext;
@@ -677,7 +706,10 @@ class _ActionBar extends StatelessWidget {
                   flex: 2,
                   child: _BarButton(
                       icon: Icons.skip_next,
-                      label: 'SUIVANT',
+                      label:
+                          game is MatchGame && (game as MatchGame).betweenLegs
+                              ? 'LEG SUIVANT'
+                              : 'SUIVANT',
                       primary: true,
                       onTap: onNext),
                 ),
