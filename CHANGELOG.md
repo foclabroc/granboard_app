@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.2
+
+- Calibration : étape « bordure extérieure » à la fin (GranBoard 3s). Une fléchette dans la bordure compte automatiquement comme ratée (0 point).
+
 ## v0.3.1
 
 - Calibration des cibles : Accueil › ⋮ › « Calibrer cette cible » (pour les GranBoard autres que la Dash, ex. 3s). La table est mémorisée pour chaque cible, et peut être copiée pour être intégrée à l'appli.

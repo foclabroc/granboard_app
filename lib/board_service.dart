@@ -52,7 +52,7 @@ class BoardService extends ChangeNotifier {
   bool get isConnected => status == BoardStatus.connected;
 
   /// Table calibrée de la cible connectée (null = table standard Dash).
-  Map<String, DartHit>? customTable;
+  Map<String, DartHit?>? customTable;
   bool get hasCustomTable => customTable != null;
 
   Future<void> _loadTable(String id) async {
@@ -62,7 +62,7 @@ class BoardService extends ChangeNotifier {
   }
 
   /// Enregistre la calibration pour la cible connectée (ou en mémoire seule).
-  Future<void> saveCustomTable(Map<String, DartHit>? table) async {
+  Future<void> saveCustomTable(Map<String, DartHit?>? table) async {
     customTable = table;
     final id = device?.remoteId.str ?? lastId;
     if (id != null) {

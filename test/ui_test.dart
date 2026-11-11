@@ -111,6 +111,17 @@ void main() {
     await tester.tap(find.text('PASSER'));
     await tester.pump();
     expect(find.text('VISE : SIMPLE EXTÉRIEUR 20'), findsOneWidget);
+
+    // Passe le reste puis teste l'étape bordure
+    for (var i = 2; i < kCalTargets.length; i++) {
+      await tester.tap(find.text('PASSER'));
+      await tester.pump();
+    }
+    expect(find.text('BORDURE EXTÉRIEURE'), findsOneWidget);
+    board.injectFrame('OUT1@'.codeUnits);
+    await tester.pump();
+    await tester.pump();
+    expect(find.textContaining('1 code(s) de bordure'), findsOneWidget);
     await tester.pumpAndSettle();
   });
 }

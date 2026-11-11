@@ -57,6 +57,13 @@ class ButtonEvent extends BoardEvent {
   String get label => 'BOUTON';
 }
 
+/// Fléchette dans la bordure extérieure (GranBoard 3s) : ratée, 0 point.
+class MissEvent extends BoardEvent {
+  const MissEvent();
+  @override
+  String get label => 'HORS CIBLE';
+}
+
 class UnknownEvent extends BoardEvent {
   final String raw;
   const UnknownEvent(this.raw);
@@ -168,15 +175,16 @@ class GranBoardDecoder {
     return DartHit(number, multiplier, ring);
   }
 
-  /// [custom] : table calibrée pour une cible précise (trame brute → zone).
-  /// Sans table, on utilise celle de la GranBoard Dash.
-  static BoardEvent decode(List<int> bytes, {Map<String, DartHit>? custom}) {
+  /// [custom] : table calibrée pour une cible précise (trame brute → zone,
+  /// null = bordure extérieure). Sans table, celle de la GranBoard Dash.
+  static BoardEvent decode(List<int> bytes, {Map<String, DartHit?>? custom}) {
     final s = frameKey(bytes);
     if (s == 'BTN@') return const ButtonEvent();
 
     if (custom != null) {
+      if (!custom.containsKey(s)) return UnknownEvent(s);
       final h = custom[s];
-      return h == null ? UnknownEvent(s) : HitEvent(h);
+      return h == null ? const MissEvent() : HitEvent(h);
     }
 
     if (!s.endsWith('@')) return UnknownEvent(s);
@@ -187,17 +195,24 @@ class GranBoardDecoder {
   }
 }
 
-/// Table de calibration sérialisable (trame brute → numéro + anneau).
+/// Table de calibration sérialisable : une ligne par trame,
+/// « trame⇥numéro⇥anneau » ou « trame⇥OUT » pour la bordure extérieure.
 class BoardTable {
-  static String encode(Map<String, DartHit> t) => [
+  static String encode(Map<String, DartHit?> t) => [
         for (final e in t.entries)
-          '${e.key}\t${e.value.number}\t${e.value.ring.index}'
+          e.value == null
+              ? '${e.key}\tOUT'
+              : '${e.key}\t${e.value!.number}\t${e.value!.ring.index}'
       ].join('\n');
 
-  static Map<String, DartHit> decode(String raw) {
-    final out = <String, DartHit>{};
+  static Map<String, DartHit?> decode(String raw) {
+    final out = <String, DartHit?>{};
     for (final line in raw.split('\n')) {
       final p = line.split('\t');
+      if (p.length == 2 && p[1] == 'OUT') {
+        out[p[0]] = null;
+        continue;
+      }
       if (p.length != 3) continue;
       final n = int.tryParse(p[1]);
       final r = int.tryParse(p[2]);

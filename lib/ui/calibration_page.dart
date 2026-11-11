@@ -53,6 +53,9 @@ class _CalibrationPageState extends State<CalibrationPage> {
 
   /// Trame enregistrée pour chaque zone (null = passée).
   final List<String?> _codes = [];
+
+  /// Codes de la bordure extérieure (3s), enregistrés après les 82 zones.
+  final List<String> _outCodes = [];
   String? _last;
 
   int get _index => _codes.length;
@@ -72,9 +75,25 @@ class _CalibrationPageState extends State<CalibrationPage> {
 
   void _onFrame(RawFrame f) {
     final key = GranBoardDecoder.frameKey(f.bytes);
-    if (key == 'BTN@' || _done) return;
+    if (key == 'BTN@') return;
     setState(() => _last = key);
     final used = _codes.indexOf(key);
+    if (_done) {
+      // Étape bordure : chaque nouveau code compte comme « hors cible »
+      if (used >= 0) {
+        HapticFeedback.heavyImpact();
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(
+              content: Text('Ce code est celui de ${kCalTargets[used].label}, '
+                  'pas de la bordure.')));
+      } else if (!_outCodes.contains(key)) {
+        HapticFeedback.lightImpact();
+        setState(() => _outCodes.add(key));
+      }
+      return;
+    }
+    if (_outCodes.contains(key)) return;
     if (used >= 0) {
       HapticFeedback.heavyImpact();
       ScaffoldMessenger.of(context)
@@ -94,13 +113,18 @@ class _CalibrationPageState extends State<CalibrationPage> {
   }
 
   void _back() {
+    if (_outCodes.isNotEmpty) {
+      setState(() => _outCodes.removeLast());
+      return;
+    }
     if (_codes.isEmpty) return;
     setState(() => _codes.removeLast());
   }
 
-  Map<String, DartHit> get _table => {
+  Map<String, DartHit?> get _table => {
         for (var i = 0; i < _codes.length; i++)
-          if (_codes[i] != null) _codes[i]!: kCalTargets[i].hit
+          if (_codes[i] != null) _codes[i]!: kCalTargets[i].hit,
+        for (final c in _outCodes) c: null,
       };
 
   Future<void> _save() async {
@@ -111,7 +135,9 @@ class _CalibrationPageState extends State<CalibrationPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('CALIBRATION ENREGISTRÉE', style: Tv.title(22)),
-        content: Text('${table.length} zones enregistrées pour cette cible.\n\n'
+        content: Text('${table.length - _outCodes.length} zones'
+            '${_outCodes.isEmpty ? '' : ' + ${_outCodes.length} code(s) de bordure'}'
+            ' enregistrés pour cette cible.\n\n'
             'Tu peux copier la table pour l\'envoyer au développeur : '
             'elle sera intégrée pour ce modèle de cible.'),
         actions: [
@@ -182,11 +208,26 @@ class _CalibrationPageState extends State<CalibrationPage> {
             const SizedBox(height: 16),
             Center(
               child: Text(
-                target == null ? 'TERMINÉ !' : 'VISE : ${target.label}',
+                target == null
+                    ? 'BORDURE EXTÉRIEURE'
+                    : 'VISE : ${target.label}',
                 textAlign: TextAlign.center,
-                style: Tv.title(30, color: target == null ? Tv.green : Tv.text),
+                style: Tv.title(30, color: target == null ? Tv.gold : Tv.text),
               ),
             ),
+            if (target == null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'Les 82 zones sont faites. Si ta cible a une bordure '
+                  'détectée autour des doubles (GranBoard 3s), lance '
+                  'plusieurs fléchettes tout autour dedans : elles compteront '
+                  'comme ratées. Sinon, enregistre directement.\n'
+                  '${_outCodes.length} code(s) de bordure enregistré(s).',
+                  textAlign: TextAlign.center,
+                  style: Tv.label(14, color: Tv.text),
+                ),
+              ),
             const SizedBox(height: 6),
             Center(
               child: Text(
@@ -208,7 +249,8 @@ class _CalibrationPageState extends State<CalibrationPage> {
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(52)),
-                    onPressed: _codes.isEmpty ? null : _back,
+                    onPressed:
+                        _codes.isEmpty && _outCodes.isEmpty ? null : _back,
                     icon: const Icon(Icons.undo),
                     label: const Text('RETOUR'),
                   ),

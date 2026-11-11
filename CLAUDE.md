@@ -7,6 +7,7 @@ Appli Flutter (Android) de fléchettes, connectée en Bluetooth LE à une cible 
 - v0.2.0 : X01 complet (301/501/701/901) + Freeze 01 en 2 équipes, options In/Out (Open/Double/Master), bull 25/50 ou 50/50, limite de manches ; profils joueurs + stats ; reconnexion auto à la dernière cible ; diagnostic des trames.
 - Mise à jour dans l'appli (comme Pixel Trade) : vérification de la dernière release GitHub au lancement + bouton dans l'accueil.
 - v0.3.0 : habillage « retransmission TV » (noir/or, police Barlow Condensed), cible dessinée avec impacts de la manche, annonces animées, annonceur vocal français (flutter_tts), bruitages + musique de menu, podium.
+- v0.3.2 : la 3s a une bordure détectée autour des doubles → étape « bordure extérieure » en fin de calibration (plusieurs codes possibles), décodée en `MissEvent` = fléchette ratée en partie.
 - v0.3.1 : calibration par cible (la GranBoard 3s d'un ami n'envoie pas les mêmes codes que la Dash : seul `BTN@` est commun).
 - Prévu : affichage TV plus tard (le moteur de jeu est déjà séparé de l'interface), d'autres jeux (Cricket…).
 
@@ -48,7 +49,7 @@ Appli Flutter (Android) de fléchettes, connectée en Bluetooth LE à une cible 
 - Le bouton de la cible envoie `BTN@`.
 - 4 zones par numéro : simple intérieur, triple, simple extérieur, double. Bull 25 = `8.0@`, Bull 50 = `4.0@` (compte comme double pour le double-out).
 - La table complète (GranBoard **Dash** de foclabroc) est dans `GranBoardDecoder._codes`.
-- Autres modèles (ex. **3s**) : codes différents. Calibration dans l'appli (`ui/calibration_page.dart`, 82 zones en tournant à partir du 20) → table brute « trame → zone » sauvegardée par cible (prefs `board_table_<remoteId>`, format `BoardTable` : `trame\tnuméro\tindex Ring` par ligne), appliquée par `BoardService.customTable` (`decode(bytes, custom:)` : avec table, seule la table compte, `BTN@` toujours reconnu). Bouton « Copier la table » pour me l'envoyer : à intégrer ensuite comme table intégrée du modèle (détection par nom BLE à prévoir). La cible n'accepte qu'une connexion BLE : fermer l'appli GranBoard officielle.
+- Autres modèles (ex. **3s**) : codes différents. Calibration dans l'appli (`ui/calibration_page.dart`, 82 zones en tournant à partir du 20) → table brute « trame → zone » sauvegardée par cible (prefs `board_table_<remoteId>`, format `BoardTable` : `trame\tnuméro\tindex Ring` par ligne, ou `trame\tOUT` pour la bordure → `MissEvent`), appliquée par `BoardService.customTable` (`decode(bytes, custom:)` : avec table, seule la table compte, `BTN@` toujours reconnu). Bouton « Copier la table » pour me l'envoyer : à intégrer ensuite comme table intégrée du modèle (détection par nom BLE à prévoir). La cible n'accepte qu'une connexion BLE : fermer l'appli GranBoard officielle.
 
 ## Stack
 

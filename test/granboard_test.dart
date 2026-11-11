@@ -53,9 +53,12 @@ void main() {
     final table = {
       '5.5@': GranBoardDecoder.hitFor(20, Ring.triple),
       'X9': GranBoardDecoder.hitFor(25, Ring.innerBull),
+      'O1@': null, // bordure extérieure
     };
     final back = BoardTable.decode(BoardTable.encode(table));
-    expect(back.length, 2);
+    expect(back.length, 3);
+    expect(GranBoardDecoder.decode('O1@'.codeUnits, custom: back),
+        isA<MissEvent>());
     final t20 = GranBoardDecoder.decode('5.5@'.codeUnits, custom: back);
     expect((t20 as HitEvent).hit.score, 60);
     final bull = GranBoardDecoder.decode('X9'.codeUnits, custom: back);

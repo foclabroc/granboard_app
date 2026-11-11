@@ -56,6 +56,9 @@ class _GamePageState extends State<GamePage> {
         _dart(hit);
       case ButtonEvent():
         _next();
+      case MissEvent():
+        _dart(null);
+        if (!game.finished) audio.play(Sfx.hit);
       case UnknownEvent(:final raw):
         _unknown(raw);
     }
