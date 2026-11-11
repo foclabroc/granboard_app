@@ -1,0 +1,79 @@
+import 'package:flutter/material.dart';
+
+import '../audio.dart';
+import 'theme.dart';
+
+/// Réglages des sons (feuille du bas).
+Future<void> showSoundSettings(BuildContext context) {
+  return showModalBottomSheet(
+    context: context,
+    backgroundColor: Tv.panel,
+    showDragHandle: true,
+    builder: (_) => const _SoundSheet(),
+  );
+}
+
+class _SoundSheet extends StatelessWidget {
+  const _SoundSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final a = AudioService.instance;
+    return ListenableBuilder(
+      listenable: a,
+      builder: (context, _) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const TvSection('Sons', padding: EdgeInsets.fromLTRB(16, 0, 16, 8)),
+            SwitchListTile(
+              secondary: const Icon(Icons.record_voice_over),
+              title: Text('Annonceur', style: Tv.title(18)),
+              subtitle: const Text('Scores, bust, joueur suivant, victoire'),
+              value: a.voice,
+              onChanged: a.setVoice,
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.graphic_eq),
+              title: Text('Effets sonores', style: Tv.title(18)),
+              value: a.effects,
+              onChanged: a.setEffects,
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.music_note),
+              title: Text('Musique des menus', style: Tv.title(18)),
+              value: a.music,
+              onChanged: a.setMusic,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  const Icon(Icons.volume_down, color: Tv.muted),
+                  Expanded(
+                    child: Slider(
+                      value: a.musicVolume,
+                      onChanged: a.music ? a.setMusicVolume : null,
+                    ),
+                  ),
+                  const Icon(Icons.volume_up, color: Tv.muted),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  a.play(Sfx.crowd);
+                  a.sayLater('Cent quatre-vingts !', 200);
+                },
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('Tester'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

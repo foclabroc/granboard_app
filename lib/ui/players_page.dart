@@ -10,7 +10,7 @@ class PlayersPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final store = PlayerStore.instance;
     return Scaffold(
-      appBar: AppBar(title: const Text('Joueurs')),
+      appBar: AppBar(title: const Text('JOUEURS')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final name = await askName(context);

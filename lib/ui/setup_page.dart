@@ -7,6 +7,7 @@ import '../board_service.dart';
 import '../game/x01.dart';
 import '../players.dart';
 import 'game_page.dart';
+import 'theme.dart';
 import 'widgets.dart';
 
 const _prefKey = 'x01_setup_v1';
@@ -153,13 +154,7 @@ class _SetupPageState extends State<SetupPage> {
     );
   }
 
-  Widget _section(String title) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-        child: Text(title,
-            style: TextStyle(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold)),
-      );
+  Widget _section(String title) => TvSection(title);
 
   @override
   Widget build(BuildContext context) {
@@ -168,7 +163,7 @@ class _SetupPageState extends State<SetupPage> {
         store.players.where((p) => !_selected.contains(p.id)).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Nouvelle partie')),
+      appBar: AppBar(title: const Text('NOUVELLE PARTIE')),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 24),
         children: [
@@ -232,7 +227,7 @@ class _SetupPageState extends State<SetupPage> {
             ),
           ),
           _section(
-              'Joueurs (${_selected.length}/$_maxPlayers) — ordre de lancer'),
+              'Joueurs ${_selected.length}/$_maxPlayers · ordre de lancer'),
           if (_selected.isNotEmpty)
             ReorderableListView(
               shrinkWrap: true,
@@ -287,8 +282,8 @@ class _SetupPageState extends State<SetupPage> {
                 child: FilledButton.icon(
                   onPressed: problem == null ? _startGame : null,
                   icon: const Icon(Icons.play_arrow),
-                  label: Text('Lancer ${_settings.name}',
-                      style: const TextStyle(fontSize: 18)),
+                  label: Text('LANCER ${_settings.name.toUpperCase()}',
+                      style: Tv.title(22, color: Colors.black)),
                 ),
               ),
             ],

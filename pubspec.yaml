@@ -1,7 +1,7 @@
 name: granboard_proto
 description: Appli de flechettes pour cible GranBoard
 publish_to: 'none'
-version: 0.2.0+2
+version: 0.3.0+3
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -16,6 +16,8 @@ dependencies:
   url_launcher: ^6.2.0
   open_filex: ^4.3.2
   wakelock_plus: ^1.8.0
+  audioplayers: ^6.8.1
+  flutter_tts: ^4.2.5
 
 dev_dependencies:
   flutter_test:
@@ -24,3 +26,18 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/sounds/
+    - assets/music/
+    - assets/images/
+  fonts:
+    - family: Barlow
+      fonts:
+        - asset: assets/fonts/BarlowCondensed-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/BarlowCondensed-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/BarlowCondensed-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/BarlowCondensed-ExtraBold.ttf
+          weight: 800

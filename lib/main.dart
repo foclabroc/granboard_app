@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'audio.dart';
 import 'board_service.dart';
 import 'players.dart';
 import 'ui/home_page.dart';
+import 'ui/theme.dart';
 import 'update_check.dart';
 
 Future<void> main() async {
@@ -10,6 +12,7 @@ Future<void> main() async {
   await Future.wait([
     BoardService.instance.init(),
     PlayerStore.instance.load(),
+    AudioService.instance.init(),
   ]);
   runApp(const GranBoardApp());
 }
@@ -22,11 +25,7 @@ class GranBoardApp extends StatelessWidget {
     return MaterialApp(
       title: 'GranBoard',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: const Color(0xFF2E7D32),
-        brightness: Brightness.dark,
-        useMaterial3: true,
-      ),
+      theme: Tv.theme(),
       home: UpdateGate(key: updateGateKey, child: const HomePage()),
     );
   }

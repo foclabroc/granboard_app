@@ -6,6 +6,7 @@ Appli Flutter (Android) de fléchettes, connectée en Bluetooth LE à une cible 
 
 - v0.2.0 : X01 complet (301/501/701/901) + Freeze 01 en 2 équipes, options In/Out (Open/Double/Master), bull 25/50 ou 50/50, limite de manches ; profils joueurs + stats ; reconnexion auto à la dernière cible ; diagnostic des trames.
 - Mise à jour dans l'appli (comme Pixel Trade) : vérification de la dernière release GitHub au lancement + bouton dans l'accueil.
+- v0.3.0 : habillage « retransmission TV » (noir/or, police Barlow Condensed), cible dessinée avec impacts de la manche, annonces animées, annonceur vocal français (flutter_tts), bruitages + musique de menu, podium.
 - Prévu : affichage TV plus tard (le moteur de jeu est déjà séparé de l'interface), d'autres jeux (Cricket…).
 
 ## Structure
@@ -15,7 +16,11 @@ Appli Flutter (Android) de fléchettes, connectée en Bluetooth LE à une cible 
 - `lib/board_service.dart` : connexion BLE partagée (singleton), flux `events` pour les jeux et `frames` pour le diagnostic, mémorise la dernière cible.
 - `lib/game/x01.dart` : moteur X01/Freeze **pur Dart** (aucune dépendance Flutter, réutilisable pour la TV). L'état est recalculé en rejouant la liste des actions (fléchette / suivant) : `undo()` retire la dernière. Contient aussi `suggestCheckout`.
 - `lib/players.dart` : profils joueurs + stats cumulées + historique (50 dernières parties), en `shared_preferences` (clé `players_v1`).
-- `lib/ui/` : `home_page` (accueil + carte cible), `connect_page` (recherche BLE), `diagnostic_page`, `setup_page` (réglages mémorisés, clé `x01_setup_v1`), `game_page`, `results_page`, `players_page`, `widgets`.
+- `lib/audio.dart` : `AudioService` (singleton) — effets (`Sfx`, pool audioplayers en lowLatency, contexte `mixWithOthers` pour ne pas couper la musique), musique de menu en boucle (coupée pendant une partie), annonceur `say`/`sayLater` (flutter_tts fr-FR). Réglages en prefs (clé `audio_v1`). Toute erreur audio est avalée : ne doit jamais gêner la partie.
+- `lib/ui/theme.dart` : palette `Tv` (noir/or/rouge/vert), `Tv.theme()`, `TvSection`, `TvBackground`. `lib/ui/dartboard.dart` : cible en `CustomPainter` (ordre des numéros `kBoardOrder`, zones touchées en surbrillance avec badge 1/2/3).
+- `lib/ui/` : `home_page` (accueil + carte cible), `connect_page` (recherche BLE), `diagnostic_page`, `setup_page` (réglages mémorisés, clé `x01_setup_v1`), `game_page`, `results_page`, `players_page`, `sound_settings`, `widgets`.
+- `assets/` : `sounds/*.ogg` et `music/menu.ogg` générés par `tools/make_sounds.py` (synthèse numpy/scipy + ffmpeg, libres de droits) ; icône générée par `tools/make_icon.py` (mipmaps Android + `assets/images/icon.png`) ; police Barlow Condensed (OFL, `assets/fonts/OFL.txt`).
+- Annonceur : texte des annonces dans `game_page.dart` (`_dart`, `_next`, `_onWin`).
 - `lib/update_check.dart` : mise à jour dans l'appli (API GitHub releases/latest, version lue dans le nom `granboard.VX.Y.Z.apk`, téléchargement puis installateur Android via `open_filex`).
 - `test/` : décodeur (`granboard_test`), règles X01/Freeze/checkout (`x01_test`), affichage des écrans à taille téléphone (`ui_test`, détecte les débordements).
 - `.github/workflows/apk.yml` : lancé à la main (Actions → APK Android → Run workflow). Tests, build, vérification de la signature, APK `granboard.VX.Y.Z.apk` en artefact ; case « publier » = release `vX.Y.Z` (notes tirées du `CHANGELOG.md`). Signé avec la clé debug de foclabroc (secret `DEBUG_KEYSTORE_B64`, même valeur que Pixel Trade), jamais commitée.
@@ -45,9 +50,9 @@ Appli Flutter (Android) de fléchettes, connectée en Bluetooth LE à une cible 
 
 ## Stack
 
-- `flutter_blue_plus` (1.x, pas de paramètre `license` sur `connect`), `permission_handler`, `shared_preferences`, `path_provider`, `url_launcher`, `open_filex`, `wakelock_plus`.
-- Vérifier avant de pousser : `flutter analyze` (0 problème) et `flutter test`.
-- Android : permissions BLE + `INTERNET` + `REQUEST_INSTALL_PACKAGES` dans `AndroidManifest.xml` ; `build.gradle.kts` = template Flutter/AGP 9 d'origine (ne pas réécrire avec `kotlinOptions`, refusé par AGP 9) + signature release via `android/key.properties` (écrit par la CI, gitignoré) comme Pixel Trade, sinon clé debug du PC. Sans ça, la CI signe avec une clé debug générée et la vérification d'empreinte échoue.
+- `flutter_blue_plus` (1.x, pas de paramètre `license` sur `connect`), `permission_handler`, `shared_preferences`, `path_provider`, `url_launcher`, `open_filex`, `wakelock_plus`, `audioplayers`, `flutter_tts`.
+- Vérifier avant de pousser : `flutter analyze` (0 problème) et `flutter test`. Pour relire le rendu, un test temporaire peut capturer les écrans (charger Barlow + MaterialIcons avec `FontLoader`, `RepaintBoundary.toImage`, trames simulées via `BoardService.injectFrame`) ; ne pas le commiter.
+- Android : permissions BLE + `INTERNET` + `REQUEST_INSTALL_PACKAGES` dans `AndroidManifest.xml` (+ query `TTS_SERVICE` pour l'annonceur) ; `build.gradle.kts` = template Flutter/AGP 9 d'origine (ne pas réécrire avec `kotlinOptions`, refusé par AGP 9) + signature release via `android/key.properties` (écrit par la CI, gitignoré) comme Pixel Trade, sinon clé debug du PC. Sans ça, la CI signe avec une clé debug générée et la vérification d'empreinte échoue.
 - Package Android : `com.example.granboard_proto`.
 
 ## Règles de travail

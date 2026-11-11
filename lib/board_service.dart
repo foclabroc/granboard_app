@@ -141,6 +141,10 @@ class BoardService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Simule une trame reçue (tests et captures d'écran).
+  @visibleForTesting
+  void injectFrame(List<int> bytes) => _onData(bytes);
+
   void _onData(List<int> bytes) {
     if (bytes.isEmpty) return;
     final e = GranBoardDecoder.decode(bytes);

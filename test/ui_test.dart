@@ -47,23 +47,23 @@ void main() {
       players: four,
     )));
     await tester.pumpAndSettle();
-    expect(find.text('Freeze 301'), findsOneWidget);
-    expect(find.text('Équipe A'), findsWidgets);
+    expect(find.text('FREEZE 301'), findsOneWidget);
+    expect(find.text('ÉQUIPE A'), findsWidgets);
 
-    await tester.tap(find.text('Raté'));
+    await tester.tap(find.text('RATÉ'));
     await tester.pump();
-    expect(find.text('Raté'), findsWidgets);
+    expect(find.text('RATÉ'), findsWidgets);
 
     for (var i = 0; i < 4; i++) {
-      await tester.tap(find.text('Suivant'));
+      await tester.tap(find.text('SUIVANT'));
       await tester.pump();
     }
     await tester.pumpAndSettle();
-    expect(find.text('Résultats'), findsOneWidget);
+    expect(find.text('RÉSULTATS'), findsOneWidget);
 
-    await tester.tap(find.text('Résultats'));
+    await tester.tap(find.text('RÉSULTATS'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Limite de 1 manches'), findsOneWidget);
+    expect(find.textContaining('LIMITE DE 1 MANCHES'), findsOneWidget);
     expect(PlayerStore.instance.players.first.games, 1);
   });
 
@@ -71,7 +71,7 @@ void main() {
     await phone(tester);
     await tester.pumpWidget(app(const SetupPage()));
     await tester.pumpAndSettle();
-    expect(find.text('Lancer 501'), findsOneWidget);
+    expect(find.text('LANCER 501'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Foc'), 200);
     await tester.tap(find.text('Foc'));
     await tester.pumpAndSettle();

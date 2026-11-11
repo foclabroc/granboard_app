@@ -1,15 +1,30 @@
 import 'package:flutter/material.dart';
 
+import '../audio.dart';
 import '../game/x01.dart';
 import '../players.dart';
 import 'game_page.dart';
 import 'setup_page.dart' show kTeamColors, kTeamNames;
+import 'theme.dart';
 import 'widgets.dart';
 
-/// Fin de partie : classement et statistiques.
-class ResultsPage extends StatelessWidget {
+/// Fin de partie : podium et statistiques.
+class ResultsPage extends StatefulWidget {
   final X01Game game;
   const ResultsPage({super.key, required this.game});
+
+  @override
+  State<ResultsPage> createState() => _ResultsPageState();
+}
+
+class _ResultsPageState extends State<ResultsPage> {
+  X01Game get game => widget.game;
+
+  @override
+  void initState() {
+    super.initState();
+    AudioService.instance.startMusic();
+  }
 
   /// Ordre d'affichage : gagnants d'abord, puis par reste croissant.
   List<int> get _ranking {
@@ -21,92 +36,161 @@ class ResultsPage extends StatelessWidget {
       final wa = game.winners.contains(a) ? 0 : 1;
       final wb = game.winners.contains(b) ? 0 : 1;
       if (wa != wb) return wa - wb;
-      return key(a).compareTo(key(b));
+      final k = key(a).compareTo(key(b));
+      if (k != 0) return k;
+      return game.stateOf(b).average.compareTo(game.stateOf(a).average);
     });
     return idx;
   }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final names = game.winners.map((i) => game.players[i].name).join(', ');
     final freeze = game.settings.freeze;
+    final ranking = _ranking;
     final winTeam = freeze && game.winners.isNotEmpty
         ? game.players[game.winners.first].team
         : null;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Résultats — ${game.settings.name}'),
         automaticallyImplyLeading: false,
+        title: Text('RÉSULTATS · ${game.settings.name.toUpperCase()}'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: TvBackground(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+          children: [
+            if (winTeam != null)
+              Center(
+                child: Text(kTeamNames[winTeam].toUpperCase(),
+                    style: Tv.title(26, color: kTeamColors[winTeam])),
+              ),
+            Center(
+              child: Text(
+                game.endReason == EndReason.checkout
+                    ? 'VICTOIRE EN ${game.round} MANCHE${game.round > 1 ? 'S' : ''}'
+                    : 'LIMITE DE ${game.settings.roundLimit} MANCHES',
+                style: Tv.label(14),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _Podium(game: game, ranking: ranking),
+            const SizedBox(height: 8),
+            const TvSection('Statistiques',
+                padding: EdgeInsets.fromLTRB(4, 14, 4, 8)),
+            for (final (rank, i) in ranking.indexed)
+              _StatCard(game: game, index: i, rank: rank + 1),
+          ],
+        ),
+      ),
+      bottomNavigationBar: Container(
+        color: Tv.panel,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(56)),
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.tune),
+                    label: const Text('RÉGLAGES'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(56)),
+                    onPressed: () => Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => GamePage(
+                              settings: game.settings, players: game.players)),
+                    ),
+                    icon: const Icon(Icons.replay),
+                    label: Text('REJOUER',
+                        style: Tv.title(20, color: Colors.black)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Podium extends StatelessWidget {
+  final X01Game game;
+  final List<int> ranking;
+  const _Podium({required this.game, required this.ranking});
+
+  @override
+  Widget build(BuildContext context) {
+    // Ordre visuel : 2e, 1er, 3e
+    final places = <(int, int)>[
+      if (ranking.length > 1) (ranking[1], 2),
+      (ranking[0], 1),
+      if (ranking.length > 2) (ranking[2], 3),
+    ];
+    const heights = {1: 110.0, 2: 78.0, 3: 56.0};
+    const medals = {1: Tv.gold, 2: Color(0xFFC0C4CC), 3: Color(0xFFCD7F32)};
+
+    return SizedBox(
+      height: 272,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Card(
-            color: cs.primaryContainer,
-            child: Padding(
-              padding: const EdgeInsets.all(20),
+          for (final (i, place) in places)
+            Expanded(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  const Text('🏆', style: TextStyle(fontSize: 48)),
-                  if (winTeam != null)
-                    Text(kTeamNames[winTeam],
-                        style: TextStyle(
-                            color: kTeamColors[winTeam],
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold)),
-                  Text(names,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 26, fontWeight: FontWeight.bold)),
-                  Text(
-                    game.endReason == EndReason.checkout
-                        ? 'Victoire en ${game.round} manche${game.round > 1 ? 's' : ''}'
-                        : 'Limite de ${game.settings.roundLimit} manches atteinte',
-                    style: TextStyle(color: cs.onPrimaryContainer),
+                  if (place == 1)
+                    const Text('🏆', style: TextStyle(fontSize: 34)),
+                  PlayerAvatar(
+                    name: game.players[i].name,
+                    color:
+                        PlayerStore.instance.byId(game.players[i].id)?.color ??
+                            Colors.grey,
+                    size: place == 1 ? 52 : 40,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(game.players[i].name.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Tv.title(place == 1 ? 22 : 17)),
+                  Text('MOY ${game.stateOf(i).average.toStringAsFixed(1)}',
+                      style: Tv.label(11)),
+                  const SizedBox(height: 4),
+                  Container(
+                    height: heights[place],
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          medals[place]!,
+                          medals[place]!.withValues(alpha: 0.35)
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(8)),
+                    ),
+                    alignment: Alignment.topCenter,
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text('$place',
+                        style: Tv.title(34, color: Colors.black)),
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          for (final (rank, i) in _ranking.indexed)
-            _StatCard(game: game, index: i, rank: rank + 1),
         ],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(56)),
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.tune),
-                  label: const Text('Réglages'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(56)),
-                  onPressed: () => Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => GamePage(
-                            settings: game.settings, players: game.players)),
-                  ),
-                  icon: const Icon(Icons.replay),
-                  label: const Text('Rejouer', style: TextStyle(fontSize: 18)),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -131,41 +215,46 @@ class _StatCard extends StatelessWidget {
             fit: BoxFit.scaleDown,
             child: Column(
               children: [
-                Text(value,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
-                Text(label,
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: Theme.of(context).colorScheme.outline)),
+                Text(value, style: Tv.title(22)),
+                Text(label.toUpperCase(), style: Tv.label(10)),
               ],
             ),
           ),
         );
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            Row(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        gradient: Tv.panelGradient,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: won ? Tv.gold : Tv.line),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Container(
+            color: Colors.black38,
+            padding: const EdgeInsets.fromLTRB(0, 0, 12, 0),
+            child: Row(
               children: [
-                Text('$rank.',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 8),
-                PlayerAvatar(name: p.name, color: color, size: 30),
-                const SizedBox(width: 8),
+                Container(width: 6, height: 40, color: color),
+                const SizedBox(width: 10),
+                Text('$rank', style: Tv.title(22, color: Tv.gold)),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: Text('${won ? '🏆 ' : ''}${p.name}',
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
+                  child: Text('${won ? '🏆 ' : ''}${p.name.toUpperCase()}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Tv.title(20)),
                 ),
-                Text('Reste ${s.remaining}'),
+                Text('RESTE ', style: Tv.label(11)),
+                Text('${s.remaining}', style: Tv.title(22)),
               ],
             ),
-            const SizedBox(height: 10),
-            Row(
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+            child: Row(
               children: [
                 stat('Moyenne', s.average.toStringAsFixed(1)),
                 stat('Fléchettes', '${s.darts}'),
@@ -175,8 +264,8 @@ class _StatCard extends StatelessWidget {
                 stat('Fin', s.checkout == null ? '–' : '${s.checkout}'),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
