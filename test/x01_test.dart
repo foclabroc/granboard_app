@@ -248,6 +248,51 @@ void main() {
     test('169 impossible en Double Out', () {
       expect(suggestCheckout(169, 3, OutRule.double, BullMode.split), isNull);
     });
+    test('Fins classiques et autres fins', () {
+      expect(suggestCheckout(99, 3, OutRule.double, BullMode.split),
+          ['T19', '10', 'D16']);
+      expect(suggestCheckout(5, 3, OutRule.double, BullMode.split), ['1', 'D2']);
+      final r = checkoutRoutes(100, 3, OutRule.double, BullMode.split);
+      expect(r.first, ['T20', 'D20']);
+      expect(r.length, 3);
+      // Il reste 2 fléchettes : 99 ne se fait plus qu'en 3
+      expect(checkoutRoutes(99, 2, OutRule.double, BullMode.split), isEmpty);
+    });
+    test('Toutes les fins proposées sont justes (2 à 170, toutes règles)', () {
+      int value(String l, BullMode b) {
+        if (l == 'BULL') return 50;
+        if (l == '25') return b == BullMode.fat ? 50 : 25;
+        final n = int.parse(l.replaceFirst(RegExp('^[DT]'), ''));
+        return l.startsWith('T') ? n * 3 : l.startsWith('D') ? n * 2 : n;
+      }
+      for (final out in OutRule.values) {
+        for (final b in BullMode.values) {
+          for (var rem = 1; rem <= 180; rem++) {
+            for (var darts = 1; darts <= 3; darts++) {
+              for (final r in checkoutRoutes(rem, darts, out, b)) {
+                expect(r.length, lessThanOrEqualTo(darts));
+                expect(r.map((l) => value(l, b)).reduce((x, y) => x + y), rem,
+                    reason: '$rem $r');
+                final last = r.last;
+                if (out == OutRule.double) {
+                  expect(last == 'BULL' || last.startsWith('D') ||
+                      (last == '25' && b == BullMode.fat), isTrue,
+                      reason: '$rem $r');
+                }
+              }
+            }
+          }
+          // En Double Out, toutes les fins de 2 à 170 existent sauf 7 nombres
+          if (out == OutRule.double) {
+            final none = [
+              for (var rem = 2; rem <= 170; rem++)
+                if (checkoutRoutes(rem, 3, out, b).isEmpty) rem
+            ];
+            expect(none, [159, 162, 163, 165, 166, 168, 169]);
+          }
+        }
+      }
+    });
     test('Pas de suggestion si plus assez de fléchettes', () {
       expect(suggestCheckout(100, 1, OutRule.double, BullMode.split), isNull);
     });

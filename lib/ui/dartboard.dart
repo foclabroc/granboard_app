@@ -231,10 +231,14 @@ class AnimatedDartboard extends StatefulWidget {
   final bool bust;
   final bool win;
   final Color dartColor;
+
+  /// Zone à viser pour finir (contour vert qui pulse).
+  final List<DartHit> targets;
   const AnimatedDartboard({
     super.key,
     required this.size,
     required this.hits,
+    this.targets = const [],
     this.bust = false,
     this.win = false,
     this.dartColor = Tv.gold,
@@ -288,6 +292,7 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
                 builder: (context, _) => CustomPaint(
                   painter: _HitsPainter(
                     hits: widget.hits,
+                    targets: widget.targets,
                     impact: _impact.value,
                     pulse: _pulse.value,
                     flash: _flash.value,
@@ -306,6 +311,7 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
 
 class _HitsPainter extends CustomPainter {
   final List<DartHit> hits;
+  final List<DartHit> targets;
   final double impact; // 0 → 1 pour la dernière fléchette
   final double pulse;
   final double flash;
@@ -313,6 +319,7 @@ class _HitsPainter extends CustomPainter {
   final Color dartColor;
   _HitsPainter({
     required this.hits,
+    this.targets = const [],
     required this.impact,
     required this.pulse,
     required this.flash,
@@ -325,6 +332,27 @@ class _HitsPainter extends CustomPainter {
     final c = size.center(Offset.zero);
     final outer = size.width / 2;
     final r = outer - outer * 0.15; // même calcul que _BoardPainter
+
+    // Zone à viser pour finir : contour blanc qui pulse (visible sur le
+    // rouge comme sur le vert)
+    for (final h in targets) {
+      final path = _zonePath(c, r, h);
+      canvas.drawPath(
+          path, Paint()..color = Colors.white.withValues(alpha: 0.2 + 0.3 * pulse));
+      canvas.drawPath(
+          path,
+          Paint()
+            ..color = Tv.goldLight.withValues(alpha: 0.5 + 0.4 * pulse)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = r * 0.035
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.02));
+      canvas.drawPath(
+          path,
+          Paint()
+            ..color = Colors.white
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = r * 0.014);
+    }
 
     // Zones touchées : halo qui pulse
     for (var k = 0; k < hits.length; k++) {

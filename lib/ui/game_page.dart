@@ -243,6 +243,9 @@ class GameLayout extends StatelessWidget {
                     bust: turn.isBust,
                     win: game.finished && game.endReason == EndReason.checkout,
                     dartColor: _colorOf(game.currentPlayer),
+                    targets: game.checkoutOptions.isEmpty
+                        ? const []
+                        : targetHits(game.checkoutOptions.first.first),
                   ),
                 );
               },
@@ -286,6 +289,7 @@ class _CurrentPanel extends StatelessWidget {
     String status;
     Color statusColor = Tv.text;
     Color accent = Tv.gold;
+    var routes = const <List<String>>[];
 
     if (game.finished) {
       final names = game.winners.map((i) => game.players[i].name).join(', ');
@@ -310,8 +314,8 @@ class _CurrentPanel extends StatelessWidget {
       statusColor = Tv.ice;
       accent = Tv.ice;
     } else {
-      final hint = game.checkoutHint;
-      status = hint == null ? '' : hint.join('  ·  ');
+      routes = game.checkoutOptions;
+      status = '';
       statusColor = Tv.green;
     }
 
@@ -355,10 +359,13 @@ class _CurrentPanel extends StatelessWidget {
                   style: Tv.title(110, color: Colors.white)),
             ),
           ),
-          Text(status,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Tv.title(17, color: statusColor)),
+          if (routes.isNotEmpty)
+            _CheckoutRow(routes: routes)
+          else
+            Text(status,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Tv.title(17, color: statusColor)),
           const SizedBox(height: 6),
           Row(
             children: [
@@ -398,6 +405,74 @@ class _CurrentPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Fin possible : la combinaison conseillée en cases vertes, puis les autres.
+class _CheckoutRow extends StatelessWidget {
+  final List<List<String>> routes;
+  const _CheckoutRow({required this.routes});
+
+  @override
+  Widget build(BuildContext context) {
+    final main = routes.first;
+    final others = routes.skip(1).map((r) => r.join(' ')).join('  ·  ');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 30,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Tv.green,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Text('FIN', style: Tv.title(14, color: Colors.black)),
+                ),
+                const SizedBox(width: 6),
+                for (final d in main)
+                  Container(
+                    height: 28,
+                    margin: const EdgeInsets.only(right: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Tv.green.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Tv.green, width: 1.5),
+                    ),
+                    child: Text(d, style: Tv.title(19, color: Colors.white)),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (others.isNotEmpty)
+          Text('ou $others',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Tv.title(14, color: Tv.muted)),
+      ],
+    );
+  }
+}
+
+/// Zone visée par une fléchette de fin (« T20 », « D16 », « 5 », « BULL »).
+List<DartHit> targetHits(String label) {
+  if (label == 'BULL') return const [DartHit(25, 2, Ring.innerBull)];
+  if (label == '25') return const [DartHit(25, 1, Ring.outerBull)];
+  final n = int.tryParse(label.replaceFirst(RegExp('^[DT]'), ''));
+  if (n == null) return const [];
+  if (label.startsWith('T')) return [DartHit(n, 3, Ring.triple)];
+  if (label.startsWith('D')) return [DartHit(n, 2, Ring.double)];
+  return [DartHit(n, 1, Ring.singleInner), DartHit(n, 1, Ring.singleOuter)];
 }
 
 class _DartSlot extends StatelessWidget {

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5.1
+
+- Fins possibles : dès qu'on peut finir avec les fléchettes qui restent, la combinaison conseillée s'affiche en cases vertes (tableau classique des joueurs en Double Out), avec 2 autres possibilités en dessous
+- La zone à viser pour la prochaine fléchette clignote sur la cible
+- Aussi sur l'écran TV
+
 ## v0.5.0
 
 - Écran TV : la même appli, installée sur une Android TV, démarre en mode écran. Elle affiche un code ; sur le téléphone, Accueil › icône TV › entre le code
