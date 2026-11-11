@@ -9,7 +9,9 @@ import '../board_service.dart';
 import '../game/x01.dart';
 import '../granboard.dart';
 import '../players.dart';
+import '../tv_link.dart';
 import 'dartboard.dart';
+import 'game_fx.dart';
 import 'results_page.dart';
 import 'setup_page.dart' show kTeamColors, kTeamNames;
 import 'sound_settings.dart';
@@ -29,7 +31,8 @@ class GamePage extends StatefulWidget {
 class _GamePageState extends State<GamePage> {
   late final X01Game game = X01Game(widget.settings, widget.players);
   late final StreamSubscription<BoardEvent> _sub;
-  final _splash = GlobalKey<_SplashState>();
+  final _splash = GlobalKey<GameSplashState>();
+  late final _fx = GameFx(_splash);
   final audio = AudioService.instance;
 
   @override
@@ -38,8 +41,8 @@ class _GamePageState extends State<GamePage> {
     _sub = BoardService.instance.events.listen(_onEvent);
     WakelockPlus.enable().catchError((_) {});
     audio.stopMusic();
-    audio.sayLater(
-        '${widget.settings.name}. ${game.currentPlayer.name}, à toi.', 400);
+    _fx.start(game);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pushTv());
   }
 
   @override
@@ -56,8 +59,7 @@ class _GamePageState extends State<GamePage> {
       case ButtonEvent():
         _next();
       case MissEvent():
-        _dart(null);
-        if (!game.finished) audio.play(Sfx.hit);
+        _dart(null, outerRing: true);
       case UnknownEvent(:final raw):
         _unknown(raw);
     }
@@ -76,7 +78,7 @@ class _GamePageState extends State<GamePage> {
     ));
   }
 
-  void _dart(DartHit? hit) {
+  void _dart(DartHit? hit, {bool outerRing = false}) {
     if (game.finished) return;
     if (game.turnOver) {
       HapticFeedback.heavyImpact();
@@ -89,93 +91,31 @@ class _GamePageState extends State<GamePage> {
       return;
     }
     setState(() => game.throwDart(hit));
-    final turn = game.currentTurn;
-
-    if (game.finished) {
-      _onWin();
-      return;
-    }
-    if (turn.isBust) {
-      HapticFeedback.heavyImpact();
-      audio.play(Sfx.bust);
-      audio.sayLater(
-          turn.bust == BustReason.frozen ? 'Bust ! Équipe gelée.' : 'Bust !',
-          250);
-      _splash.currentState?.show('BUST', Tv.red);
-      return;
-    }
-
-    HapticFeedback.lightImpact();
-    if (hit != null) {
-      audio.play(hit.isBull
-          ? Sfx.bull
-          : hit.multiplier == 3
-              ? Sfx.triple
-              : hit.multiplier == 2
-                  ? Sfx.double
-                  : Sfx.hit);
-    }
-
-    if (turn.darts.length == 3) {
-      final total = turn.total;
-      if (total == 180) {
-        audio.play(Sfx.crowd);
-        audio.sayLater('Cent quatre-vingts !', 500);
-        _splash.currentState?.show('180', Tv.gold, big: true);
-      } else if (total >= 100) {
-        audio.play(Sfx.ton);
-        audio.sayLater('$total !', 400);
-        _splash.currentState?.show('$total', Tv.gold);
-      } else {
-        audio.sayLater(total == 0 ? 'Aucun point' : '$total', 400);
-      }
-    }
-  }
-
-  void _onWin() {
-    HapticFeedback.heavyImpact();
-    audio.play(Sfx.win);
-    Timer(const Duration(milliseconds: 600), () => audio.play(Sfx.crowd));
-    final names = game.winners.map((i) => game.players[i].name).join(' et ');
-    final team = game.settings.freeze
-        ? '${kTeamNames[game.players[game.winners.first].team]} : '
-        : '';
-    if (game.endReason == EndReason.checkout) {
-      audio.sayLater('Partie gagnée ! Victoire de $team$names !', 900);
-      _splash.currentState?.show('VICTOIRE', Tv.gold, big: true);
-    } else {
-      audio.sayLater('Fin de la partie. Victoire de $team$names.', 700);
-      _splash.currentState?.show('FIN', Tv.gold, big: true);
-    }
+    _fx.afterDart(game, hit, outerRing: outerRing);
+    _pushTv();
   }
 
   void _next() {
     if (game.finished) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     setState(() => game.next());
-    if (game.finished) {
-      _onWin();
-      return;
-    }
-    audio.play(Sfx.next);
-    final p = game.currentPlayer;
-    final s = game.currentState;
-    var text = p.name;
-    if (game.isFrozen(game.current)) {
-      text += ', ton équipe est gelée';
-    } else if (s.opened && s.remaining <= 170) {
-      text += ', il te reste ${s.remaining}';
-    }
-    audio.sayLater(text, 250);
+    _fx.afterNext(game);
+    _pushTv();
   }
 
-  void _undo() => setState(() => game.undo());
+  void _undo() {
+    setState(() => game.undo());
+    _pushTv();
+  }
+
+  void _pushTv() => TvLink.instance.pushGame(game);
 
   Future<bool>? _saving;
 
   void _results() {
     // Envoi au serveur en arrière-plan : les résultats s'affichent tout de suite
     _saving ??= PlayerStore.instance.recordX01(game);
+    TvLink.instance.pushGame(game, screen: 'results');
     Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -249,60 +189,22 @@ class _GamePageState extends State<GamePage> {
             ),
           ],
         ),
-        body: Stack(
+        body: Column(
           children: [
-            Column(
-              children: [
-                const BoardBanner(),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Grande cible animée
-                      LayoutBuilder(
-                        builder: (context, c) {
-                          final size = c.maxHeight - 12;
-                          final turn = game.currentTurn;
-                          return Padding(
-                            padding: const EdgeInsets.all(6),
-                            child: AnimatedDartboard(
-                              size: size,
-                              hits: [
-                                for (final d in turn.darts)
-                                  if (d.hit != null) d.hit!
-                              ],
-                              bust: turn.isBust,
-                              win: game.finished &&
-                                  game.endReason == EndReason.checkout,
-                              dartColor: _colorOf(game.currentPlayer),
-                            ),
-                          );
-                        },
-                      ),
-                      // Joueur en cours + boutons
-                      Expanded(
-                        flex: 5,
-                        child: Column(
-                          children: [
-                            Expanded(child: _CurrentPanel(game: game)),
-                            _ActionBar(
-                              game: game,
-                              onUndo: _undo,
-                              onMiss: () => _dart(null),
-                              onNext: _next,
-                              onResults: _results,
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Tableau des scores
-                      Expanded(flex: 4, child: _Scoreboard(game: game)),
-                    ],
-                  ),
+            const BoardBanner(),
+            Expanded(
+              child: GameLayout(
+                game: game,
+                splashKey: _splash,
+                actionBar: _ActionBar(
+                  game: game,
+                  onUndo: _undo,
+                  onMiss: () => _dart(null),
+                  onNext: _next,
+                  onResults: _results,
                 ),
-              ],
+              ),
             ),
-            Positioned.fill(child: IgnorePointer(child: _Splash(key: _splash))),
           ],
         ),
       ),
@@ -310,83 +212,61 @@ class _GamePageState extends State<GamePage> {
   }
 }
 
-Color _colorOf(X01Player p) => PlayerStore.instance.colorOf(p.id);
-
-// ─── Annonce animée (180, BUST, VICTOIRE) ───
-
-class _Splash extends StatefulWidget {
-  const _Splash({super.key});
-  @override
-  State<_Splash> createState() => _SplashState();
-}
-
-class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1600));
-  String _text = '';
-  Color _color = Tv.gold;
-  bool _big = false;
-
-  void show(String text, Color color, {bool big = false}) {
-    setState(() {
-      _text = text;
-      _color = color;
-      _big = big;
-    });
-    _c.forward(from: 0);
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
+/// Affichage d'une partie : cible animée | joueur en cours (+ boutons) |
+/// tableau des scores, avec les annonces animées par-dessus.
+/// Utilisé par le téléphone et par l'écran TV.
+class GameLayout extends StatelessWidget {
+  final X01Game game;
+  final GlobalKey<GameSplashState> splashKey;
+  final Widget? actionBar;
+  const GameLayout(
+      {super.key, required this.game, required this.splashKey, this.actionBar});
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (context, _) {
-        final v = _c.value;
-        if (v == 0 || v == 1) return const SizedBox.shrink();
-        final scale = Curves.elasticOut.transform((v * 2.2).clamp(0, 1));
-        final opacity = v < 0.75 ? 1.0 : (1 - (v - 0.75) / 0.25);
-        return Opacity(
-          opacity: opacity.clamp(0, 1),
-          child: Container(
-            color: Colors.black.withValues(alpha: 0.35 * opacity),
-            alignment: Alignment.center,
-            child: Transform.scale(
-              scale: 0.4 + 0.6 * scale,
-              child: Transform.rotate(
-                angle: -0.06,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 28, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    border: Border.all(color: _color, width: 4),
-                    boxShadow: [
-                      BoxShadow(
-                          color: _color.withValues(alpha: 0.6), blurRadius: 40)
+    return Stack(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LayoutBuilder(
+              builder: (context, c) {
+                final turn = game.currentTurn;
+                return Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: AnimatedDartboard(
+                    size: c.maxHeight - 12,
+                    hits: [
+                      for (final d in turn.darts)
+                        if (d.hit != null) d.hit!
                     ],
+                    bust: turn.isBust,
+                    win: game.finished && game.endReason == EndReason.checkout,
+                    dartColor: _colorOf(game.currentPlayer),
                   ),
-                  child: FittedBox(
-                    child: Text(
-                      _text,
-                      style: Tv.title(_big ? 120 : 90, color: _color)
-                          .copyWith(letterSpacing: 4),
-                    ),
-                  ),
-                ),
+                );
+              },
+            ),
+            Expanded(
+              flex: 5,
+              child: Column(
+                children: [
+                  Expanded(child: _CurrentPanel(game: game)),
+                  if (actionBar != null) actionBar!,
+                ],
               ),
             ),
-          ),
-        );
-      },
+            Expanded(flex: 4, child: _Scoreboard(game: game)),
+          ],
+        ),
+        Positioned.fill(
+            child: IgnorePointer(child: GameSplash(key: splashKey))),
+      ],
     );
   }
 }
+
+Color _colorOf(X01Player p) => PlayerStore.instance.colorOf(p.id);
 
 // ─── Joueur en cours (bandeau TV) ───
 

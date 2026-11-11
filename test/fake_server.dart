@@ -6,6 +6,8 @@ class FakeServer {
   final sessions = <String, int>{}; // jeton → id
   final games = <String, Map<String, dynamic>>{}; // cid → partie
   bool offline = false;
+  final tvRooms =
+      <String, Map<String, dynamic>>{}; // code → {key, host, state, seq}
   int _next = 1;
 
   void install() => GbServer.debugRpc = call;
@@ -64,6 +66,44 @@ class FakeServer {
           'rank': null,
           'recent': [],
         };
+      case 'gb_tv_open':
+        final code = 'AB${tvRooms.length + 10}'.substring(0, 4);
+        tvRooms[code] = {
+          'key': 'k$code',
+          'host': null,
+          'state': null,
+          'seq': 0
+        };
+        return {
+          'code': code,
+          'key': 'k$code',
+          'topic': 'rc_000000000000000000000000'
+        };
+      case 'gb_tv_link':
+        final r = tvRooms[(b['p_code'] as String).toUpperCase()];
+        if (r == null) return {'error': 'tv_code'};
+        r['host'] = 'h${r['seq']}';
+        r['seq'] = (r['seq'] as int) + 1;
+        r['state'] = {'screen': 'lobby', 'host': b['p_name']};
+        return {
+          'code': (b['p_code'] as String).toUpperCase(),
+          'host_key': r['host']
+        };
+      case 'gb_tv_push':
+        final r = tvRooms[b['p_code']];
+        if (r == null || r['host'] != b['p_host_key']) {
+          throw const ApiError('tv_host');
+        }
+        r['seq'] = (r['seq'] as int) + 1;
+        r['state'] = b['p_state'];
+        return r['seq'];
+      case 'gb_tv_get':
+        final r = tvRooms[b['p_code']];
+        if (r == null || r['key'] != b['p_key']) return {'error': 'tv_gone'};
+        if ((r['seq'] as int) <= (b['p_since'] as int)) {
+          return {'seq': r['seq']};
+        }
+        return {'seq': r['seq'], 'state': r['state']};
       case 'gb_top':
         return [
           for (final e in accounts.entries)

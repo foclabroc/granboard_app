@@ -65,6 +65,24 @@ class X01Settings {
 
   String get name => freeze ? 'Freeze $startScore' : '$startScore';
 
+  Map<String, dynamic> toJson() => {
+        'start': startScore,
+        'in': inRule.index,
+        'out': outRule.index,
+        'bull': bullMode.index,
+        if (roundLimit != null) 'rounds': roundLimit,
+        'freeze': freeze,
+      };
+
+  factory X01Settings.fromJson(Map<String, dynamic> j) => X01Settings(
+        startScore: (j['start'] as num?)?.toInt() ?? 501,
+        inRule: InRule.values[(j['in'] as num?)?.toInt() ?? 0],
+        outRule: OutRule.values[(j['out'] as num?)?.toInt() ?? 1],
+        bullMode: BullMode.values[(j['bull'] as num?)?.toInt() ?? 0],
+        roundLimit: (j['rounds'] as num?)?.toInt(),
+        freeze: j['freeze'] as bool? ?? false,
+      );
+
   String get rulesLabel => [
         inRule.label,
         outRule.label,
@@ -81,6 +99,14 @@ class X01Player {
   final int team;
 
   const X01Player({required this.id, required this.name, this.team = 0});
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'team': team};
+
+  factory X01Player.fromJson(Map<String, dynamic> j) => X01Player(
+        id: '${j['id']}',
+        name: '${j['name']}',
+        team: (j['team'] as num?)?.toInt() ?? 0,
+      );
 }
 
 /// Une fléchette lancée : [hit] null = ratée (hors cible ou bouton « Raté »).
@@ -199,6 +225,56 @@ class X01Game {
   EndReason? get endReason => _endReason;
   List<int> get winners => List.unmodifiable(_winners);
   bool get canUndo => _actions.isNotEmpty;
+
+  /// Nombre d'actions jouées (fléchettes + « suivant »).
+  int get actionCount => _actions.length;
+
+  // ─── Sérialisation (écran TV, jeu à distance) ───
+  // Actions : « n » = suivant, « m » = ratée, « d:<numéro>:<anneau> » = fléchette.
+
+  List<String> get actionLog => [
+        for (final a in _actions)
+          switch (a) {
+            _NextAction() => 'n',
+            _DartAction(:final hit) =>
+              hit == null ? 'm' : 'd:${hit.number}:${hit.ring.index}',
+          }
+      ];
+
+  Map<String, dynamic> toJson() => {
+        'settings': settings.toJson(),
+        'players': [for (final p in players) p.toJson()],
+        'actions': actionLog,
+      };
+
+  /// Rejoue une partie envoyée par [toJson] (actions invalides ignorées).
+  factory X01Game.fromJson(Map<String, dynamic> j) {
+    final g = X01Game(
+      X01Settings.fromJson(Map<String, dynamic>.from(j['settings'] as Map)),
+      [
+        for (final p in (j['players'] as List))
+          X01Player.fromJson(Map<String, dynamic>.from(p as Map))
+      ],
+    );
+    for (final a in (j['actions'] as List? ?? const [])) {
+      g.applyLogEntry('$a');
+    }
+    return g;
+  }
+
+  /// Applique une action du journal ; renvoie false si elle est refusée.
+  bool applyLogEntry(String a) {
+    if (a == 'n') return next();
+    if (a == 'm') return throwDart(null);
+    final p = a.split(':');
+    if (p.length != 3 || p[0] != 'd') return false;
+    final n = int.tryParse(p[1]);
+    final r = int.tryParse(p[2]);
+    if (n == null || r == null || r < 0 || r >= Ring.values.length) {
+      return false;
+    }
+    return throwDart(GranBoardDecoder.hitFor(n, Ring.values[r]));
+  }
 
   PlayerState stateOf(int i) => _states[i];
 

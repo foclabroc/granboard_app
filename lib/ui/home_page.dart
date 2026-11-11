@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../audio.dart';
 import '../board_service.dart';
+import '../tv_link.dart';
 import '../update_check.dart';
 import 'calibration_page.dart';
 import 'connect_page.dart';
@@ -12,6 +13,7 @@ import 'ranking_page.dart';
 import 'setup_page.dart';
 import 'sound_settings.dart';
 import 'theme.dart';
+import 'tv_sheet.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -31,6 +33,7 @@ class _HomePageState extends State<HomePage>
   void initState() {
     super.initState();
     AudioService.instance.startMusic();
+    TvLink.instance.pushLobby();
     // Reconnexion automatique à la dernière cible
     if (board.lastId != null && !board.isConnected) {
       WidgetsBinding.instance.addPostFrameCallback((_) => board.reconnect());
@@ -55,6 +58,7 @@ class _HomePageState extends State<HomePage>
   Future<void> _open(Widget page) async {
     await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
     AudioService.instance.startMusic();
+    TvLink.instance.pushLobby();
   }
 
   @override
@@ -85,6 +89,19 @@ class _HomePageState extends State<HomePage>
                         const Spacer(),
                         Text('V$kAppVersion',
                             style: Tv.label(11, color: Tv.line)),
+                        ListenableBuilder(
+                          listenable: TvLink.instance,
+                          builder: (context, _) => IconButton(
+                            tooltip: 'Écran TV',
+                            icon: Icon(
+                                TvLink.instance.linked
+                                    ? Icons.connected_tv
+                                    : Icons.tv,
+                                color:
+                                    TvLink.instance.linked ? Tv.green : null),
+                            onPressed: () => showTvSheet(context),
+                          ),
+                        ),
                         IconButton(
                           tooltip: 'Sons',
                           icon: const Icon(Icons.volume_up),

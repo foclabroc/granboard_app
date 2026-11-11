@@ -138,7 +138,11 @@ class PlayerStore extends ChangeNotifier {
     return null;
   }
 
-  Color colorOf(String id) => byId(id)?.color ?? kGuestColor;
+  /// Couleurs reçues du téléphone (écran TV : il ne connaît pas les comptes).
+  final Map<String, Color> remoteColors = {};
+
+  Color colorOf(String id) =>
+      byId(id)?.color ?? remoteColors[id] ?? kGuestColor;
 
   int _freeColor() {
     final used = players.map((p) => p.colorIndex).toSet();

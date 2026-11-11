@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:granboard_proto/game/x01.dart';
 import 'package:granboard_proto/granboard.dart';
@@ -249,5 +251,32 @@ void main() {
     test('Pas de suggestion si plus assez de fléchettes', () {
       expect(suggestCheckout(100, 1, OutRule.double, BullMode.split), isNull);
     });
+  });
+
+  test('Rejeu : une partie sérialisée redonne exactement le même état', () {
+    final g = X01Game(
+        const X01Settings(startScore: 301, freeze: true, roundLimit: 10),
+        const [
+          X01Player(id: '1', name: 'A1', team: 0),
+          X01Player(id: '2', name: 'B1', team: 1),
+          X01Player(id: '3', name: 'A2', team: 0),
+          X01Player(id: '4', name: 'B2', team: 1),
+        ]);
+    g.throwDart(t(20));
+    g.throwDart(null);
+    g.throwDart(bull50);
+    g.next();
+    g.throwDart(d(16));
+    g.next();
+    final copy = X01Game.fromJson(
+        Map<String, dynamic>.from(jsonDecode(jsonEncode(g.toJson())) as Map));
+    expect(copy.actionCount, g.actionCount);
+    expect(copy.current, g.current);
+    expect(copy.settings.freeze, isTrue);
+    for (var i = 0; i < 4; i++) {
+      expect(copy.stateOf(i).remaining, g.stateOf(i).remaining);
+      expect(copy.players[i].team, g.players[i].team);
+    }
+    expect(copy.currentTurn.darts.length, g.currentTurn.darts.length);
   });
 }

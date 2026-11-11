@@ -14,7 +14,11 @@ class ResultsPage extends StatefulWidget {
 
   /// Envoi de la partie au serveur (true = enregistrée en ligne).
   final Future<bool>? saving;
-  const ResultsPage({super.key, required this.game, this.saving});
+
+  /// Écran TV : pas de boutons (tout se pilote depuis le téléphone).
+  final bool tv;
+  const ResultsPage(
+      {super.key, required this.game, this.saving, this.tv = false});
 
   @override
   State<ResultsPage> createState() => _ResultsPageState();
@@ -83,7 +87,9 @@ class _ResultsPageState extends State<ResultsPage> {
                   Text(
                     game.endReason == EndReason.checkout
                         ? 'VICTOIRE EN ${game.round} MANCHE${game.round > 1 ? 'S' : ''}'
-                        : 'LIMITE DE ${game.settings.roundLimit} MANCHES',
+                        : game.endReason == EndReason.roundLimit
+                            ? 'LIMITE DE ${game.settings.roundLimit} MANCHES'
+                            : 'PARTIE ARRÊTÉE',
                     style: Tv.label(13),
                   ),
                   Expanded(
@@ -117,43 +123,46 @@ class _ResultsPageState extends State<ResultsPage> {
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        color: Tv.panel,
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(46)),
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.tune),
-                    label: const Text('RÉGLAGES'),
+      bottomNavigationBar: widget.tv
+          ? null
+          : Container(
+              color: Tv.panel,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(46)),
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.tune),
+                          label: const Text('RÉGLAGES'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(46)),
+                          onPressed: () => Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => GamePage(
+                                    settings: game.settings,
+                                    players: game.players)),
+                          ),
+                          icon: const Icon(Icons.replay),
+                          label: Text('REJOUER',
+                              style: Tv.title(20, color: Colors.black)),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(46)),
-                    onPressed: () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => GamePage(
-                              settings: game.settings, players: game.players)),
-                    ),
-                    icon: const Icon(Icons.replay),
-                    label: Text('REJOUER',
-                        style: Tv.title(20, color: Colors.black)),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
-      ),
     );
   }
 }

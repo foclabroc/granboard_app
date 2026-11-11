@@ -17,6 +17,22 @@ class AudioService extends ChangeNotifier {
   static const _prefKey = 'audio_v1';
 
   bool voice = true;
+
+  /// Coupé quand une TV est reliée (le son passe sur la TV).
+  bool _muted = false;
+  bool get muted => _muted;
+  set muted(bool v) {
+    if (_muted == v) return;
+    _muted = v;
+    if (v) {
+      _music?.stop().catchError((_) {});
+      _tts?.stop().catchError((_) => 0);
+    } else if (_musicWanted) {
+      startMusic();
+    }
+    notifyListeners();
+  }
+
   bool effects = true;
   bool music = true;
   double musicVolume = 0.35;
@@ -120,7 +136,7 @@ class AudioService extends ChangeNotifier {
 
   /// Effet sonore (plusieurs peuvent se superposer).
   void play(Sfx s) {
-    if (!effects || _pool.isEmpty) return;
+    if (_muted || !effects || _pool.isEmpty) return;
     final p = _pool[_poolIndex];
     _poolIndex = (_poolIndex + 1) % _pool.length;
     () async {
@@ -135,7 +151,7 @@ class AudioService extends ChangeNotifier {
   /// Annonce vocale (coupe l'annonce précédente).
   void say(String text) {
     final tts = _tts;
-    if (!voice || tts == null) return;
+    if (_muted || !voice || tts == null) return;
     () async {
       try {
         await tts.stop();
@@ -151,7 +167,7 @@ class AudioService extends ChangeNotifier {
   void startMusic() {
     _musicWanted = true;
     final m = _music;
-    if (!music || m == null) return;
+    if (_muted || !music || m == null) return;
     () async {
       try {
         if (m.state == PlayerState.playing) return;
