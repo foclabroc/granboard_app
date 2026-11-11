@@ -189,4 +189,58 @@ void main() {
       expect(g.round, 1, reason: k.name);
     }
   });
+
+  test('Golf : meilleure fléchette du trou, le plus petit total gagne', () {
+    final g = game(PracticeKind.golf);
+    turn(g, [s(1), t(1), null]); // A : 1 coup
+    turn(g, [null, null, null]); // B : 5
+    expect(g.stateOf(0).score, 1);
+    expect(g.stateOf(1).score, 5);
+    for (var i = 2; i <= 9; i++) {
+      turn(g, [d(i), null, null]);
+      turn(g, [s(i), null, null]);
+    }
+    expect(g.finished, isTrue);
+    expect(g.winners, [0]);
+  });
+
+  test('Scram : A ferme, B marque, puis on échange', () {
+    final g = game(PracticeKind.scram);
+    turn(g, [s(20), s(19), s(18)]); // A ferme 20 19 18
+    turn(g, [t(20), t(17), null]); // B : 20 fermé → rien, T17 = 51
+    expect(g.stateOf(1).score, 51);
+    turn(g, [s(17), s(16), s(15)]);
+    turn(g, [null, null, null]); // B
+    g.throwDart(ob); // A ferme le bull : tout fermé → partie 2
+    expect(g.shared['phase'], 2);
+    expect(g.turnOver, isTrue);
+  });
+
+  test('Football : bull = ballon, doubles = buts, manche sans but = ballon perdu',
+      () {
+    final g = game(PracticeKind.football, goal: 2);
+    turn(g, [ib, d(5), null]); // A : ballon + 1 but
+    expect(g.stateOf(0).score, 1);
+    turn(g, [null, null, null]); // B
+    turn(g, [s(3), null, null]); // A : pas de but → ballon perdu
+    expect(g.shared['ball'], -1);
+    turn(g, [ib, d(1), d(2)]); // B : 2 buts
+    expect(g.finished, isTrue);
+    expect(g.winners, [1]);
+  });
+
+  test('Patate chaude : toucher le numéro passe la bombe, mèche éteinte = -1 vie',
+      () {
+    final g = game(PracticeKind.hotPotato);
+    final n = (g.rules as dynamic).number(g) as int;
+    g.throwDart(s(n));
+    expect(g.turnOver, isTrue);
+    g.next();
+    expect(g.current, 1); // B a la bombe
+    for (var i = 0; i < 6 && g.stateOf(1).lives == 3; i++) {
+      g.throwDart(null);
+      if (g.turnOver) g.next();
+    }
+    expect(g.stateOf(1).lives, 2);
+  });
 }

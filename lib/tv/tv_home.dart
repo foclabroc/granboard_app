@@ -63,6 +63,10 @@ class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
     }
     // Le téléphone choisit quel appareil joue le son
     AudioService.instance.muted = s != null && s['sound'] == false;
+    // … et le style de la cible
+    if (s?['skin'] is String) {
+      BoardSkin.current.value = BoardSkin.byId(s!['skin']);
+    }
     final screen = s?['screen'] as String?;
     if (screen != _screen) {
       _screen = screen;

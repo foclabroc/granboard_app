@@ -8,6 +8,7 @@ import 'audio.dart';
 import 'game/darts_game.dart';
 import 'players.dart';
 import 'server.dart';
+import 'ui/dartboard.dart' show BoardSkin;
 
 /// Un écran relié (TV, tablette…), un salon par écran sur le serveur.
 class TvScreen {
@@ -172,7 +173,11 @@ class TvLink extends ChangeNotifier {
     _last = state;
     for (final s in screens) {
       // Chaque écran sait s'il doit jouer le son
-      _pending[s.code] = {...state, 'sound': soundOn == s.code};
+      _pending[s.code] = {
+        ...state,
+        'sound': soundOn == s.code,
+        'skin': BoardSkin.current.value.id,
+      };
       if (!_sending.contains(s.code)) _flush(s);
     }
   }

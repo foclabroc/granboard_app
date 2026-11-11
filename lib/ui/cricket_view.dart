@@ -351,7 +351,7 @@ class _MarksArena extends StatelessWidget {
                                     ? 'T${g.targets[t].number}'
                                     : g.targets[t].number == 25
                                         ? 'B'
-                                        : '${g.targets[t].number}',
+                                        : g.targets[t].label,
                             style: Tv.title(rowH * 0.62,
                                 color: g.dead(t)
                                     ? Tv.muted

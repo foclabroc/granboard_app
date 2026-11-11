@@ -20,6 +20,7 @@ enum CricketVariant {
   wildcard,
   noScore,
   tripleOnly,
+  mickeyMouse,
 }
 
 extension CricketVariantInfo on CricketVariant {
@@ -31,6 +32,7 @@ extension CricketVariantInfo on CricketVariant {
         CricketVariant.wildcard => 'Wildcard',
         CricketVariant.noScore => 'No Score',
         CricketVariant.tripleOnly => 'Triple Only',
+        CricketVariant.mickeyMouse => 'Mickey Mouse',
       };
 
   String get help => switch (this) {
@@ -54,6 +56,9 @@ extension CricketVariantInfo on CricketVariant {
           'Pas de points : le premier qui ferme tout gagne.',
         CricketVariant.tripleOnly =>
           '20 à 15 sans Bull, seuls les triples comptent (un triple ferme).',
+        CricketVariant.mickeyMouse =>
+          '20 à 12, puis Doubles, Triples et Bull. N\'importe quel double '
+              'ou triple marque sur « D » ou « T » quand son numéro ne sert plus.',
       };
 
   bool get cutThroat =>
@@ -115,12 +120,24 @@ class CricketSettings {
 }
 
 /// Une cible du Cricket (25 = Bull).
+/// Cibles spéciales du Mickey Mouse.
+const kDoublesTarget = 101;
+const kTriplesTarget = 102;
+
 class CricketTarget {
   int number;
   bool revealed;
   CricketTarget(this.number, {this.revealed = true});
 
-  String get label => number == 25 ? 'BULL' : '$number';
+  String get label => switch (number) {
+        25 => 'BULL',
+        kDoublesTarget => 'D',
+        kTriplesTarget => 'T',
+        _ => '$number',
+      };
+
+  /// Cible « Doubles » ou « Triples » (Mickey Mouse).
+  bool get special => number == kDoublesTarget || number == kTriplesTarget;
 }
 
 class CricketDart {
@@ -354,6 +371,13 @@ class CricketGame implements DartsGame {
     switch (variant) {
       case CricketVariant.tripleOnly:
         return [for (var n = 20; n >= 15; n--) CricketTarget(n)];
+      case CricketVariant.mickeyMouse:
+        return [
+          for (var n = 20; n >= 12; n--) CricketTarget(n),
+          CricketTarget(kDoublesTarget),
+          CricketTarget(kTriplesTarget),
+          CricketTarget(25),
+        ];
       case CricketVariant.hidden:
       case CricketVariant.hiddenCutThroat:
         final pool = [for (var n = 1; n <= 20; n++) n, 25]..shuffle(rnd);
@@ -407,8 +431,25 @@ class CricketGame implements DartsGame {
       return true;
     }
     final number = hit.isBull ? 25 : hit.number;
-    final slot = targets.indexWhere((x) => x.number == number);
-    final m = slot < 0 ? 0 : _marksFor(hit);
+    var slot = targets.indexWhere((x) => x.number == number);
+    var m = slot < 0 ? 0 : _marksFor(hit);
+    // Mickey Mouse : un double / triple dont le numéro ne sert plus marque
+    // 1 sur « D » / « T »
+    if (variant == CricketVariant.mickeyMouse && !hit.isBull) {
+      final sp = hit.ring == Ring.double
+          ? targets.indexWhere((x) => x.number == kDoublesTarget)
+          : hit.ring == Ring.triple
+              ? targets.indexWhere((x) => x.number == kTriplesTarget)
+              : -1;
+      final side = sideOf(_current);
+      final useless = slot < 0 ||
+          (closedBy(side, slot) &&
+              _sides.every((o) => o == side || closedBy(o, slot)));
+      if (sp >= 0 && useless) {
+        slot = sp;
+        m = 1;
+      }
+    }
     if (slot < 0 || m == 0) {
       t.darts.add(CricketDart(hit));
       return true;
@@ -428,7 +469,7 @@ class CricketGame implements DartsGame {
     var counted = closing;
     var points = 0;
     if (extra > 0 && variant.scoring) {
-      final value = number * extra;
+      final value = targets[slot].special ? hit.score * extra : number * extra;
       final open = [
         for (final s in _sides)
           if (s != side && !closedBy(s, slot)) s

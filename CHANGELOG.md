@@ -10,6 +10,10 @@
 - Entraînement : Count Up (et défi 99 fléchettes), Target 20, Target Bull, Choix de cible, Target Hat, Target Horse, Half It, Delta Shoot, Rotation, Shoot Force, Oniren, CR Count Up, CR Multiple, Bob's 27, Finition 121, Spider, Pirates ; zones à viser en surbrillance sur la cible, annonces (÷ 2, hat trick, araignée abattue, navire coulé…)
 - Fête : Fun Mission, All Fives, Beyond Top, Kick Down, Two Line, Shanghai, Hyper Bull, Cache-cache, Killer, Treasure Hunt, Morpion, Baseball (grilles à l'écran pour Two Line, Morpion et Cache-cache)
 - Meilleurs scores d'entraînement et de fête en ligne : classement par jeu (onglet « Entraînement ») et meilleurs scores sur le profil
+- Nouveaux jeux : Cricket Mickey Mouse (20 à 12, Doubles, Triples, Bull), Golf (9 ou 18 trous), Scram (2 joueurs : l'un ferme, l'autre marque, puis on échange), Football (le bull prend le ballon, les doubles sont des buts), Patate chaude (toucher le numéro passe la bombe avant que la mèche s'éteigne)
+- Nouvel accueil en grille de jeux : grande tuile 01, Cricket, Match, Entraînement, Fête ; état de la cible, TV, classements, sons et joueur en haut
+- Style de la cible au choix : Classique ou Pub en bois (menu ⋮ de l'accueil), aussi sur l'écran TV
+- Joueurs invités en couleurs différentes
 - Tout s'affiche aussi sur l'écran TV
 
 ## v0.5.1

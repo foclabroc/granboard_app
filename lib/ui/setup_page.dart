@@ -14,15 +14,18 @@ import 'game_page.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
-const _prefKey = 'x01_setup_v1';
+const kSetupPrefKey = 'x01_setup_v1';
+const _prefKey = kSetupPrefKey;
 const _maxPlayers = 8;
 const _limits = <int?>[null, 10, 15, 20, 25, 30];
 const kTeamNames = ['Équipe A', 'Équipe B'];
 const kTeamColors = [Color(0xFFE53935), Color(0xFF1E88E5)];
 
-/// Réglages d'une partie X01 / Freeze.
+/// Réglages d'une partie : 01, Cricket, Match, Entraînement, Fête.
 class SetupPage extends StatefulWidget {
-  const SetupPage({super.key});
+  /// Famille de jeux ouverte d'office : x01, cricket, match, practice, party.
+  final String? kind;
+  const SetupPage({super.key, this.kind});
 
   @override
   State<SetupPage> createState() => _SetupPageState();
@@ -62,6 +65,7 @@ class _SetupPageState extends State<SetupPage> {
   }
 
   Future<void> _load() async {
+    if (widget.kind != null) setState(() => _kind = widget.kind!);
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_prefKey);
     if (raw == null) return;
@@ -74,7 +78,7 @@ class _SetupPageState extends State<SetupPage> {
         _out = OutRule.values[j['out'] as int? ?? 1];
         _bull = BullMode.values[j['bull'] as int? ?? 0];
         _limit = j['limit'] as int?;
-        _kind = j['kind'] as String? ?? 'x01';
+        _kind = widget.kind ?? j['kind'] as String? ?? 'x01';
         _variant = CricketVariant.values.firstWhere(
             (v) => v.name == j['variant'],
             orElse: () => CricketVariant.standard);

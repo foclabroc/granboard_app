@@ -7,6 +7,7 @@ import 'board_service.dart';
 import 'players.dart';
 import 'tv/tv_home.dart';
 import 'tv_link.dart';
+import 'ui/dartboard.dart' show BoardSkin;
 import 'ui/home_page.dart';
 import 'ui/theme.dart';
 import 'update_check.dart';
@@ -44,6 +45,7 @@ Future<void> main() async {
   final tv = androidTv || await detectTv();
   await Future.wait([
     AudioService.instance.init(),
+    BoardSkin.load(),
     if (!tv) BoardService.instance.init(),
     if (!tv) PlayerStore.instance.load(),
   ]);

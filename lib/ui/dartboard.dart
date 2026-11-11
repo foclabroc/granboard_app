@@ -1,9 +1,88 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../granboard.dart';
 import 'theme.dart';
+
+/// Style de la cible dessinée (choisi dans l'accueil, envoyé à la TV).
+class BoardSkin {
+  final String id;
+  final String name;
+  final Color background;
+  final List<Color>? wood; // anneau des numéros en bois (dégradé)
+  final Color rim;
+  final Color singleDark;
+  final Color singleLight;
+  final Color ringA; // doubles / triples des segments pairs
+  final Color ringB;
+  final Color wire;
+  final Color numbers;
+  const BoardSkin({
+    required this.id,
+    required this.name,
+    required this.background,
+    this.wood,
+    required this.rim,
+    required this.singleDark,
+    required this.singleLight,
+    required this.ringA,
+    required this.ringB,
+    required this.wire,
+    required this.numbers,
+  });
+
+  static const classic = BoardSkin(
+    id: 'classic',
+    name: 'Classique',
+    background: Color(0xFF0B0B0E),
+    rim: Tv.gold,
+    singleDark: Color(0xFF121216),
+    singleLight: Tv.cream,
+    ringA: Tv.red,
+    ringB: Tv.green,
+    wire: Color(0xFF7D7D86),
+    numbers: Tv.text,
+  );
+
+  static const pub = BoardSkin(
+    id: 'pub',
+    name: 'Pub en bois',
+    background: Color(0xFF2A1607),
+    wood: [Color(0xFF5A3214), Color(0xFF7B4720), Color(0xFF3A1F0B)],
+    rim: Color(0xFFC8A75A),
+    singleDark: Color(0xFF1D1A17),
+    singleLight: Color(0xFFE8D7B3),
+    ringA: Color(0xFFA32019),
+    ringB: Color(0xFF1D6337),
+    wire: Color(0xFFC8A75A),
+    numbers: Color(0xFFF3E3B8),
+  );
+
+  static const all = [classic, pub];
+  static BoardSkin byId(String? id) =>
+      all.firstWhere((s) => s.id == id, orElse: () => classic);
+
+  /// Style en cours (toutes les cibles dessinées l'écoutent).
+  static final current = ValueNotifier<BoardSkin>(classic);
+  static const _pref = 'board_skin';
+
+  static Future<void> load() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      current.value = byId(p.getString(_pref));
+    } catch (_) {}
+  }
+
+  static Future<void> choose(BoardSkin s) async {
+    current.value = s;
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString(_pref, s.id);
+    } catch (_) {}
+  }
+}
 
 /// Ordre des numéros dans le sens des aiguilles, en partant du haut.
 const kBoardOrder = [
@@ -24,19 +103,37 @@ class Dartboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox.square(
-      dimension: size,
-      child: CustomPaint(
-        painter: _BoardPainter(highlights, showNumbers),
+    return ValueListenableBuilder<BoardSkin>(
+      valueListenable: BoardSkin.current,
+      builder: (context, skin, _) => SizedBox.square(
+        dimension: size,
+        child: CustomPaint(
+          painter: _BoardPainter(highlights, showNumbers, skin: skin),
+        ),
       ),
     );
   }
 }
 
+/// Aperçu d'un style de cible (sans changer le style en cours).
+class DartboardPreview extends StatelessWidget {
+  final BoardSkin skin;
+  final double size;
+  const DartboardPreview({super.key, required this.skin, required this.size});
+
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+        dimension: size,
+        child: CustomPaint(painter: _BoardPainter(const [], true, skin: skin)),
+      );
+}
+
 class _BoardPainter extends CustomPainter {
   final List<DartHit> highlights;
   final bool showNumbers;
-  _BoardPainter(this.highlights, this.showNumbers);
+  final BoardSkin skin;
+  _BoardPainter(this.highlights, this.showNumbers,
+      {this.skin = BoardSkin.classic});
 
   // Rayons relatifs (1 = bord extérieur de la zone des doubles)
   static const rDoubleOut = 1.0;
@@ -46,9 +143,6 @@ class _BoardPainter extends CustomPainter {
   static const rBullOut = 0.094;
   static const rBullIn = 0.037;
 
-  static const black = Color(0xFF121216);
-  static const wire = Color(0xFF7D7D86);
-
   @override
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
@@ -56,33 +150,55 @@ class _BoardPainter extends CustomPainter {
     final numbersBand = showNumbers ? outer * 0.15 : outer * 0.04;
     final r = outer - numbersBand;
 
-    // Fond + anneau or
-    canvas.drawCircle(c, outer, Paint()..color = const Color(0xFF0B0B0E));
+    // Fond (bois verni pour le style pub) + cerclage
+    final wood = skin.wood;
+    if (wood != null) {
+      canvas.drawCircle(
+          c,
+          outer,
+          Paint()
+            ..shader = RadialGradient(
+              colors: wood,
+              stops: [r / outer, (r / outer + 1) / 2, 1],
+            ).createShader(Rect.fromCircle(center: c, radius: outer)));
+      // Veines du bois
+      final grain = Paint()
+        ..color = Colors.black.withValues(alpha: 0.18)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(0.6, outer * 0.006);
+      for (var k = 0; k < 18; k++) {
+        final rr = r + (outer - r) * (k + 0.5) / 18;
+        canvas.drawArc(Rect.fromCircle(center: c, radius: rr), k * 0.7,
+            1.8 + (k % 3) * 0.6, false, grain);
+      }
+    } else {
+      canvas.drawCircle(c, outer, Paint()..color = skin.background);
+    }
     canvas.drawCircle(
         c,
         outer - 1,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = math.max(2, outer * 0.025)
-          ..color = Tv.gold);
+          ..color = skin.rim);
 
     const seg = 2 * math.pi / 20;
     for (var i = 0; i < 20; i++) {
       final a0 = -math.pi / 2 - seg / 2 + i * seg;
       final even = i % 2 == 0;
-      final single = even ? black : Tv.cream;
-      final ring = even ? Tv.red : Tv.green;
+      final single = even ? skin.singleDark : skin.singleLight;
+      final ring = even ? skin.ringA : skin.ringB;
       _wedge(canvas, c, r * rDoubleIn, r * rTripleOut, a0, seg, single);
       _wedge(canvas, c, r * rTripleIn, r * rBullOut, a0, seg, single);
       _wedge(canvas, c, r * rDoubleOut, r * rDoubleIn, a0, seg, ring);
       _wedge(canvas, c, r * rTripleOut, r * rTripleIn, a0, seg, ring);
     }
-    canvas.drawCircle(c, r * rBullOut, Paint()..color = Tv.green);
-    canvas.drawCircle(c, r * rBullIn, Paint()..color = Tv.red);
+    canvas.drawCircle(c, r * rBullOut, Paint()..color = skin.ringB);
+    canvas.drawCircle(c, r * rBullIn, Paint()..color = skin.ringA);
 
     // Fils
     final wirePaint = Paint()
-      ..color = wire
+      ..color = skin.wire
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(0.6, r * 0.006);
     for (final rr in [rDoubleOut, rDoubleIn, rTripleOut, rTripleIn, rBullOut]) {
@@ -114,7 +230,7 @@ class _BoardPainter extends CustomPainter {
               fontFamily: Tv.font,
               fontWeight: FontWeight.w800,
               fontSize: numbersBand * 0.78,
-              color: hit ? Tv.goldLight : Tv.text,
+              color: hit ? Tv.goldLight : skin.numbers,
             ),
           ),
           textDirection: TextDirection.ltr,
@@ -196,7 +312,9 @@ class _BoardPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_BoardPainter old) =>
-      old.highlights != highlights || old.showNumbers != showNumbers;
+      old.highlights != highlights ||
+      old.showNumbers != showNumbers ||
+      old.skin != skin;
 }
 
 // ─── Cible animée (écran de partie) ───────────────────────────────────────
@@ -282,8 +400,11 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
         child: Stack(
           children: [
             Positioned.fill(
-              child: CustomPaint(
-                painter: _BoardPainter(const [], true),
+              child: ValueListenableBuilder<BoardSkin>(
+                valueListenable: BoardSkin.current,
+                builder: (context, skin, _) => CustomPaint(
+                  painter: _BoardPainter(const [], true, skin: skin),
+                ),
               ),
             ),
             Positioned.fill(

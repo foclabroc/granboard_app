@@ -246,4 +246,19 @@ void main() {
     g.throwDart(t(20));
     expect(gameFromJson(g.toJson()), isA<X01Game>());
   });
+
+  test('Mickey Mouse : 20 à 12 + D, T, B ; double inutile = 1 marque sur D', () {
+    final g = CricketGame(
+        const CricketSettings(variant: CricketVariant.mickeyMouse),
+        const [X01Player(id: 'a', name: 'A'), X01Player(id: 'b', name: 'B')]);
+    expect(g.targets.map((t) => t.label).toList(),
+        ['20', '19', '18', '17', '16', '15', '14', '13', '12', 'D', 'T', 'BULL']);
+    g.throwDart(const DartHit(5, 2, Ring.double)); // 5 n'est pas une cible
+    expect(g.marksOf(0, 9), 1);
+    g.throwDart(const DartHit(12, 3, Ring.triple)); // ferme le 12
+    expect(g.marksOf(0, 8), 3);
+    expect(g.marksOf(0, 10), 0);
+    g.throwDart(const DartHit(7, 3, Ring.triple)); // T7 → T
+    expect(g.marksOf(0, 10), 1);
+  });
 }

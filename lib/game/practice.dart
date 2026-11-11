@@ -45,6 +45,10 @@ enum PracticeKind {
   treasureHunt,
   ticTacToe,
   baseball,
+  golf,
+  scram,
+  football,
+  hotPotato,
 }
 
 /// Réglages proposés pour chaque jeu.
@@ -223,6 +227,18 @@ const kPracticeInfo = <PracticeKind, PracticeInfo>{
   PracticeKind.baseball: PracticeInfo('Baseball',
       '9 manches : manche 1 = le 1… Simple = 1 point, double = 2, triple = 3. Égalité = manches en plus (12 au plus).',
       party: true),
+  PracticeKind.golf: PracticeInfo('Golf',
+      'Trou 1 = le 1, trou 2 = le 2… Ta meilleure fléchette compte : triple = 1 coup, double = 2, simple = 3, rien = 5. Le plus petit total gagne.',
+      rounds: [9, 18], defaultRounds: 9, party: true),
+  PracticeKind.scram: PracticeInfo('Scram',
+      '20 à 15 et bull. 1re partie : A ferme (une touche suffit), B marque des points sur ce qui reste ouvert. 2e partie : on échange. Le meilleur total gagne.',
+      party: true, minPlayers: 2, maxPlayers: 2),
+  PracticeKind.football: PracticeInfo('Football',
+      'Touche le bull pour avoir le ballon. Avec le ballon, chaque double = un but ; une manche sans double rend le ballon. Un bull de l\'adversaire le lui donne. Le premier à 5 buts gagne.',
+      goals: [3, 5, 10], defaultGoal: 5, party: true, minPlayers: 2),
+  PracticeKind.hotPotato: PracticeInfo('Patate chaude',
+      'Une bombe sur un numéro, avec une mèche de 3 à 6 fléchettes. Touche son numéro pour la passer au suivant. Si la mèche s\'éteint dans tes mains : une vie en moins (3 vies). Le dernier survivant gagne.',
+      party: true, minPlayers: 2),
 };
 
 class PracticeSettings {
@@ -623,6 +639,10 @@ abstract class PracticeRules {
         PracticeKind.treasureHunt => _Treasure(s),
         PracticeKind.ticTacToe => _TicTacToe(s),
         PracticeKind.baseball => _Baseball(s),
+        PracticeKind.golf => _Golf(s),
+        PracticeKind.scram => _Scram(s),
+        PracticeKind.football => _Football(s),
+        PracticeKind.hotPotato => _HotPotato(s),
       };
 
   void init(PracticeGame g, int p, PracticePlayer st) {}
@@ -2428,5 +2448,258 @@ class _Baseball extends PracticeRules {
     d.ok = true;
     d.points = h.multiplier;
     g.stateOf(p).score += d.points;
+  }
+}
+
+class _Golf extends PracticeRules {
+  _Golf(super.s);
+  @override
+  int? roundLimit(PracticeGame g) => s.roundsOrDefault;
+  @override
+  String rulesLabel(PracticeGame g) =>
+      '${s.roundsOrDefault} trous · le moins de coups gagne';
+  @override
+  String target(PracticeGame g, int p) => 'TROU ${g.round} : LE ${_hole(g)}';
+  int _hole(PracticeGame g) => ((g.round - 1) % 20) + 1;
+  @override
+  List<DartHit> zones(PracticeGame g, int p) => _numberZones(_hole(g));
+  @override
+  String info(PracticeGame g, int p) => 'COUPS';
+  static int _strokes(DartHit? h, int hole) {
+    if (h == null || h.isBull || h.number != hole) return 5;
+    return switch (h.multiplier) { 3 => 1, 2 => 2, _ => 3 };
+  }
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final k = _strokes(d.hit, _hole(g));
+    d.ok = k < 5;
+  }
+
+  @override
+  void onTurnEnd(PracticeGame g, int p, PracticeTurn t) {
+    final best = t.darts.fold(5, (a, d) => min(a, _strokes(d.hit, _hole(g))));
+    g.stateOf(p).score += best;
+    t.note = switch (best) {
+      1 => 'BIRDIE : 1 COUP',
+      2 => 'PAR : 2 COUPS',
+      3 => '3 COUPS',
+      _ => 'RATÉ : 5 COUPS',
+    };
+  }
+
+  @override
+  int compare(PracticeGame g, int a, int b) =>
+      g.stateOf(a).score.compareTo(g.stateOf(b).score);
+}
+
+class _Scram extends PracticeRules {
+  _Scram(super.s);
+  static const _targets = [20, 19, 18, 17, 16, 15, 25];
+
+  int phase(PracticeGame g) => (g.shared['phase'] as int?) ?? 1;
+  int stopper(PracticeGame g) => phase(g) == 1 ? 0 : 1;
+  Set<int> closed(PracticeGame g) =>
+      (g.shared['closed'] ??= <int>{}) as Set<int>;
+
+  @override
+  int? roundLimit(PracticeGame g) => 40;
+  @override
+  String rulesLabel(PracticeGame g) => 'Partie ${phase(g)}/2';
+  @override
+  String target(PracticeGame g, int p) =>
+      p == stopper(g) ? 'FERME LES NUMÉROS' : 'MARQUE SUR LES OUVERTS';
+  @override
+  String info(PracticeGame g, int p) =>
+      p == stopper(g) ? 'FERMEUR' : 'MARQUEUR';
+  @override
+  List<DartHit> zones(PracticeGame g, int p) => [
+        for (final n in _targets)
+          if (!closed(g).contains(n)) ..._numberZones(n)
+      ];
+  @override
+  PracticeGrid grid(PracticeGame g) => PracticeGrid(7, [
+        for (final n in _targets)
+          PracticeCell(n == 25 ? 'B' : '$n',
+              owner: closed(g).contains(n) ? stopper(g) : null,
+              open: closed(g).contains(n),
+              sub: closed(g).contains(n) ? 'FERMÉ' : 'OUVERT'),
+      ]);
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final h = d.hit;
+    if (h == null) return;
+    final n = _numOf(h);
+    if (!_targets.contains(n) || closed(g).contains(n)) return;
+    d.ok = true;
+    if (p == stopper(g)) {
+      closed(g).add(n);
+      if (closed(g).length == _targets.length) {
+        if (phase(g) == 1) {
+          g.shared['phase'] = 2;
+          closed(g).clear();
+          t.note = 'TOUT FERMÉ : ON ÉCHANGE !';
+          t.maxDarts = t.darts.length;
+        } else {
+          g.shared['phase'] = 3;
+          t.note = 'TOUT FERMÉ : FIN';
+        }
+      }
+    } else {
+      d.points = _value(h, s.bull);
+      g.stateOf(p).score += d.points;
+    }
+  }
+
+  @override
+  bool over(PracticeGame g) => phase(g) == 3;
+}
+
+class _Football extends PracticeRules {
+  _Football(super.s);
+
+  int ball(PracticeGame g) => (g.shared['ball'] as int?) ?? -1;
+
+  @override
+  bool get goalEndsGame => true;
+  @override
+  int? roundLimit(PracticeGame g) => 40;
+  @override
+  String rulesLabel(PracticeGame g) => '${s.goalOrDefault} buts pour gagner';
+  @override
+  String target(PracticeGame g, int p) =>
+      ball(g) == p ? 'MARQUE : UN DOUBLE' : 'PRENDS LE BALLON : BULL';
+  @override
+  String info(PracticeGame g, int p) => ball(g) == p ? 'AU BALLON' : '';
+  @override
+  List<DartHit> zones(PracticeGame g, int p) => ball(g) == p
+      ? [for (var i = 1; i <= 20; i++) DartHit(i, 2, Ring.double)]
+      : _numberZones(25);
+
+  @override
+  void onTurnStart(PracticeGame g, int p) => g.shared['goals'] = 0;
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final h = d.hit;
+    if (h == null) return;
+    final st = g.stateOf(p);
+    if (h.isBull) {
+      d.ok = true;
+      if (ball(g) != p) {
+        g.shared['ball'] = p;
+        t.note = 'BALLON PRIS !';
+      }
+      return;
+    }
+    if (ball(g) == p && h.ring == Ring.double) {
+      d.ok = true;
+      d.points = 1;
+      st.score++;
+      g.shared['goals'] = (g.shared['goals'] as int? ?? 0) + 1;
+      t.note = 'BUUUT ! ${g.players[p].name}';
+      if (st.score >= s.goalOrDefault) st.done = true;
+    }
+  }
+
+  @override
+  void onTurnEnd(PracticeGame g, int p, PracticeTurn t) {
+    // Avec le ballon, une manche sans but le rend
+    final hadBall = t.darts.any((d) => d.hit?.isBull ?? false) || ball(g) == p;
+    if (ball(g) == p && (g.shared['goals'] as int? ?? 0) == 0 && hadBall) {
+      final took = t.darts.any((d) => d.hit?.isBull ?? false);
+      if (!took) {
+        g.shared['ball'] = -1;
+        t.note = 'BALLON PERDU';
+      }
+    }
+  }
+}
+
+class _HotPotato extends PracticeRules {
+  _HotPotato(super.s);
+
+  int holder(PracticeGame g) => (g.shared['holder'] as int?) ?? 0;
+  int number(PracticeGame g) =>
+      (g.shared['num'] as int?) ?? 1 + Random(s.seed).nextInt(20);
+  int fuse(PracticeGame g) =>
+      (g.shared['fuse'] as int?) ?? 3 + Random(s.seed + 1).nextInt(4);
+
+  void _newBomb(PracticeGame g, int to) {
+    final k = (g.shared['bombs'] as int? ?? 0) + 1;
+    g.shared['bombs'] = k;
+    final r = Random(s.seed * 41 + k);
+    var n = 1 + r.nextInt(20);
+    if (n == number(g)) n = n % 20 + 1;
+    g.shared['num'] = n;
+    g.shared['fuse'] = 3 + r.nextInt(4);
+    g.shared['holder'] = to;
+  }
+
+  int _nextAlive(PracticeGame g, int from) {
+    final n = g.players.length;
+    for (var k = 1; k <= n; k++) {
+      final i = (from + k) % n;
+      if (!g.stateOf(i).out) return i;
+    }
+    return from;
+  }
+
+  @override
+  void init(PracticeGame g, int p, PracticePlayer st) => st.lives = 3;
+  @override
+  int? roundLimit(PracticeGame g) => 99;
+  @override
+  String rulesLabel(PracticeGame g) => '3 vies · dernier survivant';
+  @override
+  String target(PracticeGame g, int p) =>
+      'BOMBE SUR LE ${number(g)} · MÈCHE ${fuse(g)}';
+  @override
+  String scoreText(PracticeGame g, int p) => '${g.stateOf(p).lives}';
+  @override
+  String info(PracticeGame g, int p) =>
+      'VIES${holder(g) == p ? ' · À LA BOMBE' : ''}';
+  @override
+  List<DartHit> zones(PracticeGame g, int p) => _numberZones(number(g));
+
+  @override
+  bool skipTurn(PracticeGame g, int p) => p != holder(g);
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final h = d.hit;
+    if (h != null && !h.isBull && h.number == number(g)) {
+      d.ok = true;
+      final to = _nextAlive(g, p);
+      t.note = 'BOMBE PASSÉE À ${g.players[to].name.toUpperCase()}';
+      _newBomb(g, to);
+      t.maxDarts = t.darts.length;
+      return;
+    }
+    final left = fuse(g) - 1;
+    g.shared['fuse'] = left;
+    if (left <= 0) {
+      final st = g.stateOf(p);
+      st.lives--;
+      t.note = 'BOUM ! ${g.players[p].name.toUpperCase()} -1 VIE';
+      if (st.lives <= 0) st.out = true;
+      _newBomb(g, _nextAlive(g, p));
+      t.maxDarts = t.darts.length;
+    }
+  }
+
+  @override
+  bool over(PracticeGame g) =>
+      List.generate(g.players.length, (i) => i)
+          .where((i) => !g.stateOf(i).out)
+          .length <=
+      1;
+
+  @override
+  int compare(PracticeGame g, int a, int b) {
+    final oa = g.stateOf(a).out ? 1 : 0, ob = g.stateOf(b).out ? 1 : 0;
+    if (oa != ob) return oa - ob;
+    return g.stateOf(b).lives.compareTo(g.stateOf(a).lives);
   }
 }
