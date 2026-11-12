@@ -72,6 +72,10 @@ class GameFx {
   /// bull) : son bruitage habituel est remplacé par le son de la vidéo.
   HitClip? _clip;
 
+  /// La vidéo de la fléchette a son propre son : l'annonce de la manche
+  /// (total, marques) attend qu'elle soit finie.
+  int get _wait => _clip == null ? 0 : 1300;
+
   /// Après une fléchette, quel que soit le jeu.
   void afterAnyDart(DartsGame game, DartHit? hit, {bool outerRing = false}) {
     AwardPlayer.stop();
@@ -289,10 +293,10 @@ class GameFx {
         _show('180', Tv.gold, big: true);
       } else if (total >= 100) {
         audio.play(Sfx.ton);
-        audio.sayLater('$total !', 400);
+        audio.sayLater('$total !', 400 + _wait);
         _show('$total', Tv.gold);
       } else {
-        audio.sayLater(total == 0 ? 'Aucun point' : '$total', 400);
+        audio.sayLater(total == 0 ? 'Aucun point' : '$total', 400 + _wait);
       }
     }
   }
@@ -329,7 +333,7 @@ class GameFx {
     final last = t.darts.isEmpty ? null : t.darts.last;
     if (last != null && last.revealed) {
       final n = last.hit!.isBull ? 'Bull' : '${last.hit!.number}';
-      audio.sayLater('$n découvert !', 250);
+      audio.sayLater('$n découvert !', 250 + _wait);
     }
     if (t.darts.length == 3) {
       final m = t.marks;
@@ -347,7 +351,7 @@ class GameFx {
         _show('WHITE HORSE', Tv.gold, big: true);
       } else if (m >= 5) {
         audio.play(Sfx.ton);
-        audio.sayLater('$m marques !', 400);
+        audio.sayLater('$m marques !', 400 + _wait);
       } else {
         audio.sayLater(
             m == 0
@@ -355,7 +359,7 @@ class GameFx {
                 : m == 1
                     ? 'Une marque'
                     : '$m marques',
-            400);
+            400 + _wait);
       }
     }
   }
