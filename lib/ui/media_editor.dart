@@ -12,6 +12,7 @@ import '../media.dart';
 import '../players.dart';
 import '../server.dart';
 import 'theme.dart';
+import 'widgets.dart';
 
 void _toast(BuildContext context, String text) => ScaffoldMessenger.of(context)
   ..hideCurrentSnackBar()
@@ -19,36 +20,76 @@ void _toast(BuildContext context, String text) => ScaffoldMessenger.of(context)
 
 String _error(Object e) => e is ApiError ? e.message : 'Erreur : $e';
 
-/// Photo de profil : appareil photo, galerie ou retirer.
+/// Image de profil : un des avatars fournis, appareil photo, galerie ou
+/// retirer.
 Future<void> showPhotoSheet(BuildContext context, PlayerProfile p) async {
   final hasPhoto = MediaStore.instance.imageOf(p.key) != null;
   final choice = await showModalBottomSheet<String>(
     context: context,
+    isScrollControlled: true,
     backgroundColor: Tv.panel,
     builder: (context) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-        child: Row(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-                child: _BigChoice(
-                    icon: Icons.photo_camera,
-                    label: 'PRENDRE UNE PHOTO',
-                    onTap: () => Navigator.pop(context, 'camera'))),
-            const SizedBox(width: 10),
-            Expanded(
-                child: _BigChoice(
-                    icon: Icons.photo_library,
-                    label: 'GALERIE',
-                    onTap: () => Navigator.pop(context, 'gallery'))),
-            if (hasPhoto) ...[
-              const SizedBox(width: 10),
-              Expanded(
-                  child: _BigChoice(
-                      icon: Icons.delete_outline,
-                      label: 'RETIRER',
-                      onTap: () => Navigator.pop(context, 'remove'))),
-            ],
+            const TvSection('Avatar', padding: EdgeInsets.only(bottom: 8)),
+            LayoutBuilder(builder: (context, box) {
+              const gap = 8.0;
+              final size = ((box.maxWidth - gap * 7) / 8).clamp(40.0, 78.0);
+              return Wrap(
+                alignment: WrapAlignment.center,
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  for (final id in kAvatars)
+                    InkWell(
+                      key: ValueKey('avatar-$id'),
+                      customBorder: const CircleBorder(),
+                      onTap: () => Navigator.pop(context, 'avatar:$id'),
+                      child: Container(
+                        width: size,
+                        height: size,
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                            color: p.color,
+                            gradient: playerFill(p.color),
+                            shape: BoxShape.circle),
+                        child: ClipOval(
+                            child: Image.asset(avatarAsset(id),
+                                fit: BoxFit.cover)),
+                      ),
+                    ),
+                ],
+              );
+            }),
+            const TvSection('Ou ta photo',
+                padding: EdgeInsets.only(top: 12, bottom: 8)),
+            Row(
+              children: [
+                Expanded(
+                    child: _BigChoice(
+                        icon: Icons.photo_camera,
+                        label: 'PRENDRE UNE PHOTO',
+                        onTap: () => Navigator.pop(context, 'camera'))),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: _BigChoice(
+                        icon: Icons.photo_library,
+                        label: 'GALERIE',
+                        onTap: () => Navigator.pop(context, 'gallery'))),
+                if (hasPhoto) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: _BigChoice(
+                          icon: Icons.delete_outline,
+                          label: 'RETIRER',
+                          onTap: () => Navigator.pop(context, 'remove'))),
+                ],
+              ],
+            ),
           ],
         ),
       ),
@@ -58,7 +99,14 @@ Future<void> showPhotoSheet(BuildContext context, PlayerProfile p) async {
   try {
     if (choice == 'remove') {
       await MediaStore.instance.setPhoto(p, null);
-      if (context.mounted) _toast(context, 'Photo retirée');
+      if (context.mounted) _toast(context, 'Image retirée');
+      return;
+    }
+    if (choice.startsWith('avatar:')) {
+      final data = await DefaultAssetBundle.of(context)
+          .load(avatarAsset(choice.substring(7)));
+      await MediaStore.instance.setPhoto(p, data.buffer.asUint8List());
+      if (context.mounted) _toast(context, 'Avatar enregistré');
       return;
     }
     final file = await ImagePicker().pickImage(
@@ -88,16 +136,62 @@ class _BigChoice extends StatelessWidget {
   Widget build(BuildContext context) => OutlinedButton(
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 18)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+            padding: const EdgeInsets.symmetric(vertical: 10)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 34),
-            const SizedBox(height: 6),
-            Text(label, style: Tv.title(16)),
+            Icon(icon, size: 26),
+            const SizedBox(width: 8),
+            Flexible(
+                child: Text(label,
+                    style: Tv.title(16), overflow: TextOverflow.ellipsis)),
           ],
         ),
       );
+}
+
+/// Couleur du joueur : 15 couleurs + arc-en-ciel.
+Future<void> showColorSheet(BuildContext context, PlayerProfile p) async {
+  final i = await showModalBottomSheet<int>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Tv.panel,
+    builder: (context) => SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const TvSection('Couleur', padding: EdgeInsets.only(bottom: 10)),
+            // 8 par ligne : 2 lignes égales
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 8 * 54 + 7 * 12),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (var i = 0; i < kPlayerColors.length; i++)
+                      InkWell(
+                        key: ValueKey('color-$i'),
+                        customBorder: const CircleBorder(),
+                        onTap: () => Navigator.pop(context, i),
+                        child: ColorDot(kPlayerColors[i],
+                            size: 54,
+                            selected: i == p.colorIndex % kPlayerColors.length),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+  if (i != null) await PlayerStore.instance.setColor(p, i);
 }
 
 /// Son joué quand c'est le tour du joueur : sons fournis ou sa voix.

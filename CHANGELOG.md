@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.3
+
+- Son sur plusieurs appareils à la fois : téléphone, TV, tablette… on coche ceux qu'on veut (écran TV ou réglage des sons)
+- 16 avatars au choix pour l'image de profil (la photo perso reste possible)
+- 7 nouvelles couleurs de joueur + arc-en-ciel, choisies dans une grille
+
 ## v0.6.2
 
 - Nouveau son de victoire (« winner ») et 7 nouveaux sons du tour : Let's go, Yeah boy, Come on man, Come here, Victoire, Démon, Non !

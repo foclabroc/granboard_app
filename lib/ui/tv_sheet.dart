@@ -14,7 +14,8 @@ Future<void> showTvSheet(BuildContext context) => showModalBottomSheet(
       builder: (_) => const _TvSheet(),
     );
 
-/// Choix de l'appareil qui joue le son (téléphone ou un écran relié).
+/// Choix des appareils qui jouent le son (téléphone et/ou écrans reliés),
+/// plusieurs à la fois possibles.
 class SoundTargetPicker extends StatelessWidget {
   const SoundTargetPicker({super.key});
 
@@ -27,20 +28,30 @@ class SoundTargetPicker extends StatelessWidget {
         spacing: 8,
         runSpacing: 6,
         children: [
-          ChoiceChip(
+          FilterChip(
             showCheckmark: false,
-            avatar: const Icon(Icons.smartphone, size: 18),
+            avatar: Icon(
+                link.soundsOn(TvLink.phone)
+                    ? Icons.volume_up
+                    : Icons.smartphone,
+                size: 18),
             label: const Text('Téléphone'),
-            selected: link.soundOn == TvLink.phone,
-            onSelected: (_) => link.setSoundOn(TvLink.phone),
+            selected: link.soundsOn(TvLink.phone),
+            onSelected: (_) => link.toggleSound(TvLink.phone),
           ),
           for (final s in link.screens)
-            ChoiceChip(
+            FilterChip(
               showCheckmark: false,
-              avatar: Icon(s.name == 'TV' ? Icons.tv : Icons.tablet, size: 18),
+              avatar: Icon(
+                  link.soundsOn(s.code)
+                      ? Icons.volume_up
+                      : s.name == 'TV'
+                          ? Icons.tv
+                          : Icons.tablet,
+                  size: 18),
               label: Text(s.label),
-              selected: link.soundOn == s.code,
-              onSelected: (_) => link.setSoundOn(s.code),
+              selected: link.soundsOn(s.code),
+              onSelected: (_) => link.toggleSound(s.code),
             ),
         ],
       ),
@@ -126,7 +137,7 @@ class _TvSheetState extends State<_TvSheet> {
                     Expanded(
                         child:
                             Text(s.label.toUpperCase(), style: Tv.title(20))),
-                    if (link.soundOn == s.code)
+                    if (link.soundsOn(s.code))
                       Padding(
                         padding: const EdgeInsets.only(right: 4),
                         child: Icon(Icons.volume_up, color: Tv.gold),
@@ -180,7 +191,7 @@ class _TvSheetState extends State<_TvSheet> {
                 child: Text(_error!, style: Tv.title(15, color: Tv.red)),
               ),
             if (link.linked) ...[
-              const TvSection('Le son sort sur',
+              const TvSection('Le son sort sur (un ou plusieurs)',
                   padding: EdgeInsets.only(top: 16, bottom: 8)),
               const SoundTargetPicker(),
             ] else ...[

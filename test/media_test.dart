@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -29,6 +30,35 @@ void main() {
     expect(back.height, 256);
     expect(base64Encode(jpeg).startsWith('/9j/'), isTrue);
     expect(jpeg.length, lessThan(55000));
+  });
+
+  test('Avatars fournis : 16 JPEG 256 px acceptés par le serveur', () {
+    expect(kAvatars.length, 16);
+    expect(kAvatars.toSet().length, 16);
+    for (final id in kAvatars) {
+      final bytes = File(avatarAsset(id)).readAsBytesSync();
+      final im = img.decodeJpg(bytes)!;
+      expect(im.width, 256, reason: id);
+      expect(im.height, 256, reason: id);
+      final b64 = base64Encode(bytes);
+      expect(b64.startsWith('/9j/'), isTrue, reason: id);
+      expect(b64.length, lessThan(80000), reason: id);
+    }
+  });
+
+  test('Couleurs : 15 + arc-en-ciel, jamais donné tout seul', () async {
+    expect(kPlayerColors.length, 16);
+    expect(kPlayerColors.map((c) => c.toARGB32()).toSet().length, 16);
+    expect(isRainbow(kPlayerColors.last), isTrue);
+    expect(playerFill(kPlayerColors.last), isNotNull);
+    expect(playerFill(kPlayerColors.first), isNull);
+    final store = PlayerStore.instance;
+    for (var i = 0; i < 17; i++) {
+      final p = await store.register('J$i', '1234');
+      expect(isRainbow(p.color), isFalse);
+    }
+    await store.setColor(store.players.first, kPlayerColors.length - 1);
+    expect(isRainbow(store.players.first.color), isTrue);
   });
 
   test('Photo et son envoyés, puis relus par un autre appareil', () async {

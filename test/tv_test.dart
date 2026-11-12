@@ -76,12 +76,12 @@ void main() {
     await tab.start();
     final link = TvLink.instance;
     await link.link(tab.code!);
-    expect(link.soundOn, TvLink.phone,
+    expect(link.soundOn, {TvLink.phone},
         reason: 'une tablette ne prend pas le son');
     expect(AudioService.instance.muted, isFalse);
     await link.link(tv.code!);
     expect(link.screens.length, 2);
-    expect(link.soundOn, tv.code, reason: 'la TV prend le son');
+    expect(link.soundOn, {tv.code}, reason: 'la TV prend le son');
     expect(AudioService.instance.muted, isTrue);
 
     final g =
@@ -107,10 +107,32 @@ void main() {
     await link.setSoundOn(TvLink.phone);
     expect(AudioService.instance.muted, isFalse);
 
+    // Plusieurs appareils à la fois : téléphone + TV + tablette
+    await link.toggleSound(tv.code!);
+    await link.toggleSound(tab.code!);
+    await settle();
+    await tv.fetch();
+    await tab.fetch();
+    expect(link.soundOn, {TvLink.phone, tv.code, tab.code});
+    expect(tv.state?['sound'], isTrue);
+    expect(tab.state?['sound'], isTrue);
+    expect(AudioService.instance.muted, isFalse);
+    expect(link.soundLabel, 'Téléphone + Tablette + TV');
+    // On retire le téléphone : TV + tablette seulement
+    await link.toggleSound(TvLink.phone);
+    expect(AudioService.instance.muted, isTrue);
+    // Gardé après redémarrage
+    await link.load();
+    expect(link.soundOn, {tv.code, tab.code});
+    // Le dernier appareil coché ne se retire pas
+    await link.toggleSound(tab.code!);
+    await link.toggleSound(tv.code!);
+    expect(link.soundOn, {tv.code});
+
     // Retirer l'écran qui a le son : le son revient au téléphone
     await link.setSoundOn(tv.code!);
     await link.unlink(tv.code!);
-    expect(link.soundOn, TvLink.phone);
+    expect(link.soundOn, {TvLink.phone});
     expect(link.screens.single.code, tab.code);
     await link.unlinkAll();
     tv.dispose();
@@ -203,7 +225,8 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('Écran TV : la vidéo du bull se lance (pas pendant la construction)',
+  testWidgets(
+      'Écran TV : la vidéo du bull se lance (pas pendant la construction)',
       (tester) async {
     tester.view.physicalSize = const Size(1920, 1080);
     tester.view.devicePixelRatio = 2.0;

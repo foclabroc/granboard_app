@@ -29,7 +29,7 @@ class _SoundSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (TvLink.instance.linked) ...[
-                const TvSection('Le son sort sur',
+                const TvSection('Le son sort sur (un ou plusieurs)',
                     padding: EdgeInsets.fromLTRB(16, 0, 16, 8)),
                 const Align(
                   alignment: Alignment.centerLeft,

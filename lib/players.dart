@@ -19,7 +19,36 @@ const kPlayerColors = [
   Color(0xFFFB8C00),
   Color(0xFF00ACC1),
   Color(0xFFD81B60),
+  // Depuis la 0.6.3 (les versions d'avant affichent une des 8 premières)
+  Color(0xFFECEFF1), // blanc
+  Color(0xFFC6FF00), // citron vert
+  Color(0xFF1DE9B6), // menthe
+  Color(0xFF5C6BC0), // indigo
+  Color(0xFF8D6E63), // marron
+  Color(0xFFB388FF), // lavande
+  Color(0xFFFF8A80), // corail
+  kRainbow,
 ];
+
+/// Couleur « arc-en-ciel » : valeur repère, dessinée en dégradé par
+/// [playerFill] (avatars, pastilles) ; ailleurs elle reste ce rose.
+const kRainbow = Color(0xFFFF5FD2);
+
+const kRainbowColors = [
+  Color(0xFFFF1744),
+  Color(0xFFFF9100),
+  Color(0xFFFFEA00),
+  Color(0xFF00E676),
+  Color(0xFF00B0FF),
+  Color(0xFFD500F9),
+  Color(0xFFFF1744),
+];
+
+bool isRainbow(Color c) => c.toARGB32() == kRainbow.toARGB32();
+
+/// Dégradé de la couleur arc-en-ciel, sinon rien (couleur unie).
+Gradient? playerFill(Color c) =>
+    isRainbow(c) ? const SweepGradient(colors: kRainbowColors) : null;
 
 const kGuestColor = Color(0xFF8D8D9C);
 
@@ -200,10 +229,11 @@ class PlayerStore extends ChangeNotifier {
 
   int _freeColor() {
     final used = players.map((p) => p.colorIndex).toSet();
-    for (var i = 0; i < kPlayerColors.length; i++) {
+    // L'arc-en-ciel (dernier) ne se donne pas tout seul
+    for (var i = 0; i < kPlayerColors.length - 1; i++) {
       if (!used.contains(i)) return i;
     }
-    return players.length % kPlayerColors.length;
+    return players.length % (kPlayerColors.length - 1);
   }
 
   Future<PlayerProfile> _remember(Map<String, dynamic> acc) async {

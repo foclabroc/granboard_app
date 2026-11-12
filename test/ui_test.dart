@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:granboard_proto/board_service.dart';
 import 'package:granboard_proto/game/x01.dart';
+import 'package:granboard_proto/media.dart';
 import 'package:granboard_proto/players.dart';
 import 'package:granboard_proto/ui/calibration_page.dart';
 import 'package:granboard_proto/ui/game_page.dart';
@@ -12,6 +13,7 @@ import 'package:granboard_proto/ui/account_page.dart';
 import 'package:granboard_proto/ui/ranking_page.dart';
 import 'package:granboard_proto/ui/theme.dart';
 import 'package:granboard_proto/ui/turn_banner.dart';
+import 'package:granboard_proto/ui/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:granboard_proto/server.dart';
@@ -219,6 +221,37 @@ void main() {
     }
     await tester.pumpAndSettle();
     expect(PlayerStore.instance.byId('4')?.name, 'Marc');
+  });
+
+  testWidgets('Joueur : choix de la couleur et d\'un avatar', (tester) async {
+    await phone(tester);
+    final p = PlayerStore.instance.players.first;
+    await tester.pumpWidget(app(PlayerDetailPage(player: p)));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('COULEUR'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(ColorDot), findsNWidgets(kPlayerColors.length + 1));
+    await tester.tap(find.byKey(const ValueKey('color-15')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(isRainbow(p.color), isTrue);
+
+    await tester.tap(find.byType(PlayerAvatar).first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('PRENDRE UNE PHOTO'), findsOneWidget);
+    expect(find.byKey(const ValueKey('avatar-fox')), findsOneWidget);
+    expect(find.byKey(const ValueKey('avatar-target')), findsOneWidget);
+    await tester.runAsync(() async {
+      await tester.tap(find.byKey(const ValueKey('avatar-robot')));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(MediaStore.instance.imageOf(p.key), isNotNull);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Classements s\'affichent', (tester) async {

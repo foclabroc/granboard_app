@@ -26,7 +26,8 @@ class TvScreen {
 }
 
 /// Côté téléphone : liaison avec un ou plusieurs écrans. Le téléphone pilote
-/// tout et envoie l'état à chaque écran ; un seul appareil joue le son.
+/// tout et envoie l'état à chaque écran ; le son sort sur un ou plusieurs
+/// appareils (téléphone et/ou écrans).
 class TvLink extends ChangeNotifier {
   TvLink._();
   static final instance = TvLink._();
@@ -37,8 +38,18 @@ class TvLink extends ChangeNotifier {
 
   final List<TvScreen> screens = [];
 
-  /// Appareil qui joue le son : [phone] ou le code d'un écran.
-  String soundOn = phone;
+  /// Appareils qui jouent le son : [phone] et/ou des codes d'écran
+  /// (jamais vide).
+  final Set<String> soundOn = {phone};
+
+  bool soundsOn(String target) => soundOn.contains(target);
+
+  void _setSound(Iterable<String> targets) {
+    final t = targets.toList();
+    soundOn
+      ..clear()
+      ..addAll(t);
+  }
 
   String? error;
 
@@ -50,7 +61,7 @@ class TvLink extends ChangeNotifier {
 
   Future<void> load() async {
     screens.clear();
-    soundOn = phone;
+    _setSound([phone]);
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_prefKey);
@@ -59,14 +70,17 @@ class TvLink extends ChangeNotifier {
         for (final s in (j['screens'] as List? ?? const [])) {
           screens.add(TvScreen.fromJson(Map<String, dynamic>.from(s as Map)));
         }
-        soundOn = j['sound'] as String? ?? phone;
+        // Avant la 0.6.3 : un seul appareil (texte)
+        final snd = j['sound'];
+        _setSound(
+            snd is List ? snd.map((e) => '$e') : [snd is String ? snd : phone]);
       } else {
         // Ancienne liaison (un seul écran)
         final old = prefs.getString(_prefOld);
         if (old != null) {
           final j = jsonDecode(old) as Map<String, dynamic>;
           screens.add(TvScreen('${j['code']}', '${j['key']}', 'TV'));
-          soundOn = '${j['code']}';
+          _setSound(['${j['code']}']);
           await prefs.remove(_prefOld);
         }
       }
@@ -85,32 +99,30 @@ class TvLink extends ChangeNotifier {
         _prefKey,
         jsonEncode({
           'screens': [for (final s in screens) s.toJson()],
-          'sound': soundOn,
+          'sound': soundOn.toList(),
         }));
   }
 
-  /// Le son revient au téléphone si l'écran choisi a été retiré.
+  /// Les écrans retirés ne jouent plus le son ; s'il ne reste personne, le
+  /// son revient au téléphone.
   void _fixSound() {
-    if (soundOn != phone && !screens.any((s) => s.code == soundOn)) {
-      soundOn = phone;
-    }
+    soundOn.removeWhere((t) => t != phone && !screens.any((s) => s.code == t));
+    if (soundOn.isEmpty) soundOn.add(phone);
   }
 
-  void _applyMute() => AudioService.instance.muted = soundOn != phone;
+  void _applyMute() => AudioService.instance.muted = !soundOn.contains(phone);
 
   String get _hostName {
     final ps = PlayerStore.instance.players;
     return ps.isEmpty ? 'Téléphone' : ps.first.name;
   }
 
-  /// Nom de l'appareil qui joue le son.
-  String get soundLabel {
-    if (soundOn == phone) return 'Téléphone';
-    for (final s in screens) {
-      if (s.code == soundOn) return s.name;
-    }
-    return 'Téléphone';
-  }
+  /// Noms des appareils qui jouent le son.
+  String get soundLabel => [
+        if (soundOn.contains(phone)) 'Téléphone',
+        for (final s in screens)
+          if (soundOn.contains(s.code)) s.name,
+      ].join(' + ');
 
   /// Relie l'écran qui affiche [tvCode] (lève ApiError). Une TV reliée
   /// prend le son si le son était sur le téléphone.
@@ -122,7 +134,9 @@ class TvLink extends ChangeNotifier {
         TvScreen('${m['code']}', '${m['host_key']}', '${m['name'] ?? 'Écran'}');
     screens.removeWhere((x) => x.code == s.code);
     screens.add(s);
-    if (soundOn == phone && s.name == 'TV') soundOn = s.code;
+    if (soundOn.length == 1 && soundOn.contains(phone) && s.name == 'TV') {
+      _setSound([s.code]);
+    }
     error = null;
     await _save();
     _resend();
@@ -142,9 +156,21 @@ class TvLink extends ChangeNotifier {
     await _save();
   }
 
-  /// Choisit l'appareil qui joue le son ([phone] ou code d'écran).
+  /// Un seul appareil joue le son ([phone] ou code d'écran).
   Future<void> setSoundOn(String target) async {
-    soundOn = target;
+    _setSound([target]);
+    await _save();
+    _resend();
+  }
+
+  /// Ajoute ou retire un appareil ; le dernier coché ne se retire pas.
+  Future<void> toggleSound(String target) async {
+    if (soundOn.contains(target)) {
+      if (soundOn.length == 1) return;
+      soundOn.remove(target);
+    } else {
+      soundOn.add(target);
+    }
     await _save();
     _resend();
   }
@@ -176,7 +202,7 @@ class TvLink extends ChangeNotifier {
       // Chaque écran sait s'il doit jouer le son
       _pending[s.code] = {
         ...state,
-        'sound': soundOn == s.code,
+        'sound': soundOn.contains(s.code),
         'skin': BoardSkin.current.value.id,
         'theme': Tv.skin.value.id,
       };

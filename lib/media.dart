@@ -33,6 +33,15 @@ const kTurnSounds = {
   'non': 'Non !',
 };
 
+/// Avatars fournis (assets/avatars/<id>.jpg, 256 × 256). Choisir un avatar
+/// l'enregistre comme photo du joueur : rien de plus côté serveur.
+const kAvatars = [
+  'fox', 'lion', 'tiger', 'wolf', 'panda', 'monkey', 'unicorn', 'robot', //
+  'alien', 'ghost', 'skull', 'devil', 'cool', 'clown', 'poo', 'target',
+];
+
+String avatarAsset(String id) => 'assets/avatars/$id.jpg';
+
 /// Son « voix enregistrée ».
 const kVoiceSound = 'voice';
 

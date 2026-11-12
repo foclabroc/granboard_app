@@ -270,9 +270,8 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                         label: const Text('RECONNECTER'),
                       ),
                     OutlinedButton.icon(
-                      onPressed: () => store.setColor(
-                          p, (p.colorIndex + 1) % kPlayerColors.length),
-                      icon: Icon(Icons.palette, color: p.color),
+                      onPressed: () => showColorSheet(context, p),
+                      icon: ColorDot(p.color),
                       label: const Text('COULEUR'),
                     ),
                     const SizedBox(height: 6),

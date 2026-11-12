@@ -34,7 +34,10 @@ class PlayerAvatar extends StatelessWidget {
           width: size,
           height: size,
           padding: EdgeInsets.all(size > 40 ? 3 : 2),
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          decoration: BoxDecoration(
+              color: color,
+              gradient: playerFill(color),
+              shape: BoxShape.circle),
           child: ClipOval(
             child: Image(
                 image: image,
@@ -49,17 +52,48 @@ class PlayerAvatar extends StatelessWidget {
 
   Widget _initial() {
     final initial = name.isEmpty ? '?' : name.characters.first.toUpperCase();
-    return CircleAvatar(
-      radius: size / 2,
-      backgroundColor: color,
+    final rainbow = isRainbow(color);
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+          color: color, gradient: playerFill(color), shape: BoxShape.circle),
       child: Text(initial,
           style: TextStyle(
-              color:
-                  color.computeLuminance() > 0.5 ? Colors.black : Colors.white,
+              color: rainbow || color.computeLuminance() <= 0.5
+                  ? Colors.white
+                  : Colors.black,
+              shadows: rainbow
+                  ? const [Shadow(color: Colors.black87, blurRadius: 4)]
+                  : null,
               fontWeight: FontWeight.bold,
               fontSize: size * 0.45)),
     );
   }
+}
+
+/// Pastille de couleur de joueur (unie ou arc-en-ciel).
+class ColorDot extends StatelessWidget {
+  final Color color;
+  final double size;
+  final bool selected;
+  const ColorDot(this.color,
+      {super.key, this.size = 20, this.selected = false});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: color,
+          gradient: playerFill(color),
+          shape: BoxShape.circle,
+          border: Border.all(
+              color: selected ? Colors.white : Colors.black26,
+              width: selected ? 3 : 1),
+        ),
+      );
 }
 
 /// Bandeau affiché quand la cible n'est pas connectée.
