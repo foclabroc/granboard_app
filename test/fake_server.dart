@@ -8,6 +8,7 @@ class FakeServer {
   final sessions = <String, int>{}; // jeton → id
   final games = <String, Map<String, dynamic>>{}; // cid → partie
   final statsOf = <int, Map<String, dynamic>>{}; // réponses de gb_stats
+  final recentOf = <int, List<Map<String, dynamic>>>{}; // gb_profile.recent
   final tournaments = <int, Map<String, dynamic>>{}; // id → tournoi (comme gb__tn_json)
 
   Map<String, dynamic> _tnJson(int id) {
@@ -141,7 +142,7 @@ class FakeServer {
           'color': accounts[id]!['color'],
           'stats': {'games': 0, 'wins': 0, 'avg': 0, 'rating': null},
           'rank': null,
-          'recent': [],
+          'recent': recentOf[id] ?? [],
         };
       case 'gb_stats':
         final id = b['p_id'] as int;

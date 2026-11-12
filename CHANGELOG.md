@@ -2,6 +2,7 @@
 
 ## v0.6.6
 
+- **Écran TV en attente** : la cible ne tourne plus, elle flotte doucement ; à gauche les classements du serveur qui défilent (rang, moyenne 01, MPR, 180, meilleures fins), à droite les dernières parties des joueurs du téléphone
 - **Nouvel écran de réglages** façon retransmission TV (toutes les tuiles et le tournoi à la maison) : bandeau doré, 3 colonnes Jeu / Règles / Joueurs avec une petite icône par variante, bandeau du bas avec le résumé de la partie et LANCER ; s'adapte au thème choisi
 - **Favoris** : bouton FAVORI pour garder le jeu et ses règles (sans les joueurs), à part pour chaque tuile ; un toucher sur un favori le remet, appui long pour le retirer (8 par tuile)
 - **Prononciation des pseudos** : un pseudo court ou en majuscules (« ced », « CED ») est lu « Ced » au lieu d'être épelé ; bouton **PRONONCIATION** dans la fiche du joueur pour écrire comment le dire (« Sède »), avec ÉCOUTER ; suivi par la TV

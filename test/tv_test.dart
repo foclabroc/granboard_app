@@ -151,9 +151,29 @@ void main() {
     expect(find.text('K'), findsOneWidget);
     expect(find.text('NOUVEAU CODE'), findsOneWidget);
 
-    tv.debugSetState('KX7P', {'screen': 'lobby', 'host': 'Foc'});
+    server.accounts[7] = {'pseudo': 'Ced', 'pin': '1234', 'color': 2};
+    server.recentOf[7] = [
+      {
+        'date': DateTime.now().toUtc().toIso8601String(),
+        'kind': 'x01',
+        'mode': '501 Double Out',
+        'won': true,
+        'avg': 55.5
+      }
+    ];
+    tv.debugSetState('KX7P', {
+      'screen': 'lobby',
+      'host': 'Foc',
+      'ids': [7]
+    });
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('RELIÉ À FOC'), findsOneWidget);
+    // classements à gauche, dernières parties à droite
+    expect(find.text('TOP RANG'), findsOneWidget);
+    expect(find.text('DERNIÈRES PARTIES'), findsOneWidget);
+    expect(find.text('501 DOUBLE OUT'), findsOneWidget);
+    expect(find.text('55,5 MOY'), findsOneWidget);
 
     final g = X01Game(const X01Settings(startScore: 301, roundLimit: 1), const [
       X01Player(id: '1', name: 'Foc'),

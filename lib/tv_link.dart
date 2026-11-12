@@ -178,7 +178,12 @@ class TvLink extends ChangeNotifier {
   }
 
   /// Écran d'attente (accueil, réglages).
-  void pushLobby() => _push({'screen': 'lobby', 'host': _hostName});
+  void pushLobby() => _push({
+        'screen': 'lobby',
+        'host': _hostName,
+        // comptes du téléphone : la TV affiche leurs dernières parties
+        'ids': [for (final p in PlayerStore.instance.players) p.id],
+      });
 
   /// Partie en cours ([screen] = game) ou terminée ([screen] = results).
   void pushGame(DartsGame game, {String screen = 'game', String? next}) {

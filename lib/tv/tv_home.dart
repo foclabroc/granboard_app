@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -16,6 +17,7 @@ import '../ui/theme.dart';
 import '../ui/wallpaper.dart';
 import '../ui/tournament_page.dart' show TvTournamentView;
 import 'tv_client.dart';
+import 'tv_idle.dart';
 
 /// Écran TV : affiche le code du salon, puis ce que le téléphone envoie
 /// (attente, partie, résultats). Tout se pilote depuis le téléphone.
@@ -30,12 +32,9 @@ class TvHome extends StatefulWidget {
   State<TvHome> createState() => _TvHomeState();
 }
 
-class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
+class _TvHomeState extends State<TvHome> {
   late final TvClient client =
       widget.client ?? TvClient(deviceName: widget.deviceName);
-  late final AnimationController _spin =
-      AnimationController(vsync: this, duration: const Duration(seconds: 90))
-        ..repeat();
   String? _screen;
 
   @override
@@ -51,7 +50,6 @@ class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
   void dispose() {
     client.removeListener(_onState);
     if (widget.client == null) client.dispose();
-    _spin.dispose();
     super.dispose();
   }
 
@@ -126,10 +124,15 @@ class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
           tournament: Tournament.fromJson(
               Map<String, dynamic>.from(s!['tournament'] as Map)));
     } else if (screen == 'lobby') {
-      body = _Lobby(spin: _spin, host: '${s?['host'] ?? ''}', client: client);
+      body = _Lobby(
+          host: '${s?['host'] ?? ''}',
+          ids: [
+            for (final i in (s?['ids'] as List?) ?? const [])
+              if (i is num) i.toInt()
+          ],
+          client: client);
     } else {
       body = _CodeScreen(
-          spin: _spin,
           client: client,
           deviceName: widget.deviceName,
           onPhoneMode: widget.onPhoneMode);
@@ -143,15 +146,11 @@ class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
 // ─── Code à entrer sur le téléphone ───
 
 class _CodeScreen extends StatelessWidget {
-  final Animation<double> spin;
   final TvClient client;
   final VoidCallback? onPhoneMode;
   final String deviceName;
   const _CodeScreen(
-      {required this.spin,
-      required this.client,
-      required this.deviceName,
-      this.onPhoneMode});
+      {required this.client, required this.deviceName, this.onPhoneMode});
 
   @override
   Widget build(BuildContext context) {
@@ -162,11 +161,8 @@ class _CodeScreen extends StatelessWidget {
           flex: 5,
           child: Center(
             child: LayoutBuilder(
-              builder: (context, c) => RotationTransition(
-                turns: spin,
-                child: Dartboard(
-                    size: (c.maxHeight * 0.8).clamp(100.0, c.maxWidth * 0.9)),
-              ),
+              builder: (context, c) => FloatingBoard(
+                  size: (c.maxHeight * 0.7).clamp(100.0, c.maxWidth * 0.9)),
             ),
           ),
         ),
@@ -254,56 +250,62 @@ class _CodeScreen extends StatelessWidget {
 // ─── Attente d'une partie ───
 
 class _Lobby extends StatelessWidget {
-  final Animation<double> spin;
   final String host;
+  final List<int> ids;
   final TvClient client;
-  const _Lobby({required this.spin, required this.host, required this.client});
+  const _Lobby({required this.host, required this.ids, required this.client});
 
   @override
   Widget build(BuildContext context) {
+    final h = MediaQuery.sizeOf(context).height;
     return Stack(
       children: [
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              LayoutBuilder(
-                builder: (context, c) => RotationTransition(
-                  turns: spin,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                            color: Tv.gold.withValues(alpha: 0.25),
-                            blurRadius: 80,
-                            spreadRadius: 6)
-                      ],
+              const Expanded(flex: 3, child: TvTopPanel()),
+              Expanded(
+                flex: 4,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: LayoutBuilder(
+                        builder: (context, c) => FloatingBoard(
+                            size: min(c.maxHeight * 0.85, c.maxWidth * 0.8)
+                                .clamp(80.0, h * 0.55)),
+                      ),
                     ),
-                    child: Dartboard(
-                        size: (MediaQuery.sizeOf(context).height * 0.5)
-                            .clamp(100.0, 600.0)),
-                  ),
+                    const SizedBox(height: 8),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: ShaderMask(
+                        shaderCallback: (r) => Tv.goldGradient.createShader(r),
+                        child: Text('FOCLABOARD',
+                            style: Tv.title(48, color: Colors.white)
+                                .copyWith(letterSpacing: 5)),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        host.isEmpty
+                            ? 'EN ATTENTE D\'UNE PARTIE…'
+                            : 'RELIÉ À ${host.toUpperCase()} · EN ATTENTE D\'UNE PARTIE…',
+                        style: Tv.label(16, color: Tv.text),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 20),
-              ShaderMask(
-                shaderCallback: (r) => Tv.goldGradient.createShader(r),
-                child: Text('FOCLABOARD',
-                    style: Tv.title(52, color: Colors.white)
-                        .copyWith(letterSpacing: 5)),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                host.isEmpty
-                    ? 'EN ATTENTE D\'UNE PARTIE…'
-                    : 'RELIÉ À ${host.toUpperCase()} · EN ATTENTE D\'UNE PARTIE…',
-                style: Tv.label(18, color: Tv.text),
-              ),
+              Expanded(flex: 3, child: TvRecentPanel(ids: ids)),
             ],
           ),
         ),
-        Positioned(right: 16, bottom: 12, child: _Corner(client: client)),
+        Positioned(right: 16, bottom: 10, child: _Corner(client: client)),
       ],
     );
   }
