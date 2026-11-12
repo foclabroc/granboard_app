@@ -23,6 +23,7 @@ import 'match_view.dart';
 import 'practice_view.dart';
 import 'game_fx.dart';
 import 'results_page.dart';
+import 'rules.dart';
 import 'setup_page.dart' show kTeamColors, kTeamNames;
 import 'sound_settings.dart';
 import 'theme.dart';
@@ -330,6 +331,14 @@ class _GamePageState extends State<GamePage> {
                   ),
                 ],
               ),
+            ),
+            IconButton(
+              tooltip: 'Règles',
+              icon: const Icon(Icons.help_outline),
+              onPressed: () {
+                final (title, text) = rulesOf(game);
+                showRules(context, title, text);
+              },
             ),
             IconButton(
               tooltip: 'Sons',

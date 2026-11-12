@@ -12,6 +12,7 @@ import '../game/x01.dart';
 import '../players.dart';
 import 'account_page.dart';
 import 'game_page.dart';
+import 'rules.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -227,6 +228,17 @@ class _SetupPageState extends State<SetupPage> {
               ? _cricket.name
               : _settings.name;
 
+  /// Règles du jeu choisi, avec les réglages en cours.
+  String get _rulesText => _practiceOn
+      ? _pInfo.help
+      : _matchOn
+          ? '${matchRules(_match)}\n\n'
+              '${_match.x01.name.toUpperCase()}\n${x01Rules(_match.x01)}\n\n'
+              'CRICKET\n${cricketRules(_match.cricket)}'
+          : _cricketOn
+              ? cricketRules(_cricket)
+              : x01Rules(_settings);
+
   int _teamOf(String id) => _team[id] ?? 0;
 
   String _nameOf(String id) =>
@@ -358,8 +370,16 @@ class _SetupPageState extends State<SetupPage> {
             child: ListView(
               padding: const EdgeInsets.only(bottom: 16),
               children: [
-                const TvSection('Jeu',
-                    padding: EdgeInsets.fromLTRB(16, 4, 16, 8)),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: TvSection('Jeu',
+                          padding: EdgeInsets.fromLTRB(16, 4, 16, 8)),
+                    ),
+                    RulesButton(title: _gameName, text: _rulesText),
+                    const SizedBox(width: 8),
+                  ],
+                ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: SegmentedButton<String>(

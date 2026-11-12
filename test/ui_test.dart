@@ -74,6 +74,33 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
   });
 
+  testWidgets('Bouton Règles : réglages et partie', (tester) async {
+    await phone(tester);
+    for (final kind in ['x01', 'cricket', 'match', 'practice', 'party']) {
+      await tester.pumpWidget(app(SetupPage(key: ValueKey(kind), kind: kind)));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('RÈGLES'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.textContaining('RÈGLES · '), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('OK'));
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+    await tester.pumpWidget(app(GamePage(
+      settings: const X01Settings(startScore: 301, roundLimit: 10),
+      players: four.take(2).toList(),
+    )));
+    await tester.pump(const Duration(seconds: 2));
+    await tester.tap(find.byTooltip('Règles'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('RÈGLES · 301'), findsOneWidget);
+    expect(find.textContaining('Double Out'), findsOneWidget);
+    expect(find.textContaining('Limite de 10 manches'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('OK'));
+    await tester.pump(const Duration(seconds: 2));
+  });
+
   testWidgets('Réglages et joueurs s\'affichent', (tester) async {
     await phone(tester);
     await tester.pumpWidget(app(const SetupPage()));
