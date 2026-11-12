@@ -11,6 +11,7 @@ import 'package:granboard_proto/server.dart';
 import 'package:granboard_proto/tv/tv_client.dart';
 import 'package:granboard_proto/tv/tv_home.dart';
 import 'package:granboard_proto/tv_link.dart';
+import 'package:granboard_proto/ui/award.dart';
 import 'package:granboard_proto/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -200,5 +201,34 @@ void main() {
     expect(find.textContaining('RÉSULTATS'), findsOneWidget);
     expect(find.text('REJOUER'), findsNothing);
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Écran TV : la vidéo du bull se lance (pas pendant la construction)',
+      (tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.reset);
+    AwardPlayer.enabled = true;
+    addTearDown(() => AwardPlayer.enabled = false);
+    final tv = TvClient(realtime: false);
+    await tester.pumpWidget(MaterialApp(
+        theme: Tv.theme(), home: TvHome(client: tv, onPhoneMode: () {})));
+    final g = X01Game(const X01Settings(startScore: 301), const [
+      X01Player(id: '1', name: 'Foc'),
+      X01Player(id: '2', name: 'Sophie'),
+    ]);
+    Map<String, dynamic> st() =>
+        {'screen': 'game', 'game': jsonDecode(jsonEncode(g.toJson()))};
+    tv.debugSetState('KX7P', st());
+    await tester.pump(const Duration(milliseconds: 300));
+    g.throwDart(const DartHit(25, 2, Ring.innerBull));
+    tv.debugSetState('KX7P', st());
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(AwardPlayer.active, isTrue);
+    AwardPlayer.stop();
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 11));
   });
 }

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../audio.dart';
 import '../board_service.dart';
@@ -63,7 +62,6 @@ class _GamePageState extends State<GamePage> {
   void initState() {
     super.initState();
     _sub = BoardService.instance.events.listen(_onEvent);
-    WakelockPlus.enable().catchError((_) {});
     audio.stopMusic();
     MediaStore.instance.ensure(game.players.map((p) => p.id));
     _fx.start(game);
@@ -82,7 +80,9 @@ class _GamePageState extends State<GamePage> {
     AwardPlayer.stop();
     TurnBanner.hide();
     _sub.cancel();
-    WakelockPlus.disable().catchError((_) {});
+    // Partie abandonnée : la musique des menus revient (les résultats la
+    // relancent aussi)
+    audio.startMusic();
     final online = OnlineService.instance;
     if (online.inGame > 0) online.inGame--;
     final room = _room;

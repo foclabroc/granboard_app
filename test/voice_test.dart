@@ -46,6 +46,11 @@ void main() {
     expect(plan('501. Foc, à toi.'), '#|Foc|#');
     expect(plan('Freeze 301. Invité 1, à toi.'), '#|Invité 1|#');
     expect(plan('Sophie, ton équipe est gelée'), 'Sophie|#');
+    expect(plan('Foc, à toi. Il te reste 32'), 'Foc|#|#');
+    expect(plan('Foc, à toi. Ton équipe est gelée'), 'Foc|#|#');
+    expect(plan('Foc, à toi. Spoiler'), 'Foc|#|#');
+    expect(plan('Foc, à toi. cible double 16'), 'Foc|#|#');
+    expect(plan('Foc, à toi. prends des numéros'), 'Foc|#|#');
     expect(plan('Sophie'), 'Sophie');
     expect(plan('7 marques !'), '#');
     expect(plan('Bull découvert !'), '#');

@@ -355,7 +355,12 @@ class _TvGameState extends State<_TvGame> {
     for (var i = old.length; i < actions.length; i++) {
       final a = actions[i];
       if (!g.applyLogEntry(a) || i != actions.length - 1 || first) continue;
-      _fx.afterAction(g, a);
+      // Après l'image en cours : _update tourne pendant la construction de
+      // l'écran, où ni la vidéo (Overlay) ni les annonces ne peuvent
+      // s'afficher
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && identical(_game, g)) _fx.afterAction(g, a);
+      });
     }
   }
 

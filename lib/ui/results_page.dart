@@ -136,9 +136,10 @@ class _ResultsPageState extends State<ResultsPage> {
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
                               minimumSize: const Size.fromHeight(46)),
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.tune),
-                          label: const Text('RÉGLAGES'),
+                          onPressed: () => Navigator.popUntil(
+                              context, (r) => r.isFirst),
+                          icon: const Icon(Icons.home),
+                          label: const Text('MENU PRINCIPAL'),
                         ),
                       ),
                       const SizedBox(width: 10),

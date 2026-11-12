@@ -2,6 +2,11 @@
 
 ## v0.6.2
 
+- Écran TV : les vidéos (triple 20, bull, d-bull, ton 80, hat trick…) s'affichent enfin aussi sur la TV
+- L'annonceur dit « <pseudo>, à toi » à chaque tour (suivi du reste, de « spoiler » ou de la cible)
+- Après une partie : boutons **MENU PRINCIPAL** et **REJOUER**
+- Partie abandonnée : la musique des menus revient tout de suite
+- Le téléphone ne se met plus en veille tant que l'appli est ouverte
 - Nouvelle musique des menus : 3 morceaux qui s'enchaînent dans un ordre au hasard (morceau suivant à chaque retour au menu)
 - Classements : bouton **TOUS / MES JOUEURS** (seulement les comptes enregistrés sur ce téléphone), choix mémorisé
 

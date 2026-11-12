@@ -180,7 +180,7 @@ class GameFx {
         if (note != null) _lastNote = key;
         final cible = g.settings.info.party ? '' : 'cible ';
         _turn(g,
-            '$before${g.currentPlayer.name}, $cible${_speakable(g.targetLabel)}');
+            '$before${g.currentPlayer.name}, à toi. $cible${_speakable(g.targetLabel)}');
       case MatchGame m:
         if (m.finished) {
           win(m);
@@ -309,11 +309,11 @@ class GameFx {
     }
     final p = game.currentPlayer;
     final s = game.currentState;
-    var text = p.name;
+    var text = '${p.name}, à toi';
     if (game.isFrozen(game.current)) {
-      text += ', ton équipe est gelée';
+      text += '. Ton équipe est gelée';
     } else if (s.opened && s.remaining <= 170) {
-      text += ', il te reste ${s.remaining}';
+      text += '. Il te reste ${s.remaining}';
     }
     _turn(game, text);
   }
@@ -369,8 +369,8 @@ class GameFx {
       win(game);
       return;
     }
-    var text = game.currentPlayer.name;
-    if (game.isSpoiler(game.sideOf(game.current))) text += ', spoiler';
+    var text = '${game.currentPlayer.name}, à toi';
+    if (game.isSpoiler(game.sideOf(game.current))) text += '. Spoiler';
     _turn(game, text);
   }
 

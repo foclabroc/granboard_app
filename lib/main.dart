@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'audio.dart';
 import 'board_service.dart';
@@ -54,6 +55,8 @@ Future<void> main() async {
     if (!tv) PlayerStore.instance.load(),
   ]);
   if (!tv) await TvLink.instance.load();
+  // Jamais de mise en veille de l'écran tant que l'appli est ouverte
+  WakelockPlus.enable().catchError((_) {});
   runApp(GranBoardApp(tv: tv, androidTv: androidTv));
   // Comptes : vérifie les sessions, envoie les parties en attente
   if (!tv) {
