@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../board_service.dart';
@@ -72,6 +74,112 @@ class PlayerAvatar extends StatelessWidget {
     );
   }
 }
+
+/// Ligne du tableau des scores (01, entraînement, fête) : bande de couleur,
+/// flèche du joueur en cours, nom + infos (réduits plutôt que coupés),
+/// score. S'adapte à la largeur et à la hauteur données.
+class ScoreRow extends StatelessWidget {
+  final Color color;
+  final bool current;
+  final String name;
+  final String info;
+  final String score;
+  final double height;
+
+  /// Largeur max de la case du score.
+  final double scoreWidth;
+  const ScoreRow({
+    super.key,
+    required this.color,
+    required this.current,
+    required this.name,
+    required this.info,
+    required this.score,
+    this.height = 52,
+    this.scoreWidth = 78,
+  });
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, c) {
+        final w = c.maxWidth;
+        final narrow = w < 190;
+        final sw = (w * 0.36).clamp(40.0, scoreWidth);
+        final small = height < 44;
+        return Container(
+          height: height,
+          margin: EdgeInsets.symmetric(
+              horizontal: narrow ? 4 : 10, vertical: small ? 2 : 3),
+          decoration: BoxDecoration(
+            color: current ? const Color(0xFF2A2210) : Tv.panel,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: current ? Tv.gold : Tv.line),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Row(
+            children: [
+              Container(
+                  width: narrow ? 4 : 6,
+                  decoration:
+                      BoxDecoration(color: color, gradient: playerFill(color))),
+              SizedBox(
+                width: narrow ? 12 : 22,
+                child: current
+                    ? Icon(Icons.play_arrow,
+                        color: Tv.gold, size: narrow ? 14 : 20)
+                    : null,
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(name,
+                              maxLines: 1,
+                              style: Tv.title(small ? 16 : 19,
+                                  color: current ? Tv.goldLight : Tv.text)),
+                        ),
+                      ),
+                      if (info.isNotEmpty && height >= 36)
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(info,
+                              maxLines: 1, style: Tv.label(small ? 9 : 11)),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              Container(
+                width: sw,
+                color: current ? Tv.gold : Colors.black,
+                alignment: Alignment.center,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(score,
+                        style: Tv.title(math.min(28, height * 0.56),
+                            color: current ? Colors.black : Tv.text)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      });
+}
+
+/// Hauteur des lignes du tableau des scores pour que tout tienne dans
+/// [available] ([extra] = hauteur prise par les titres d'équipe).
+double scoreRowHeight(double available, int rows, {double extra = 0}) =>
+    ((available - 6 - extra) / rows - 6).clamp(30.0, 52.0);
 
 /// Pastille de couleur de joueur (unie ou arc-en-ciel).
 class ColorDot extends StatelessWidget {

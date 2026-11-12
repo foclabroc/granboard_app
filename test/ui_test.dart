@@ -79,7 +79,7 @@ void main() {
     for (var i = 0; i < 5; i++) {
       await tester.pump(const Duration(milliseconds: 400));
     }
-    expect(find.textContaining('LIMITE DE 1 MANCHES'), findsOneWidget);
+    expect(find.textContaining('LIMITE DE 1 MANCHE'), findsOneWidget);
     await tester.pump(const Duration(seconds: 2));
   });
 
@@ -291,6 +291,33 @@ void main() {
     expect(CricketStyle.current.value, CricketStyle.classic);
     expect(find.byKey(const ValueKey('cricket-row-0')), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Partie finie quittée par retour : stats envoyées quand même',
+      (tester) async {
+    await phone(tester);
+    final server = FakeServer()..install();
+    final p = await PlayerStore.instance.register('Retour', '1234');
+    final g = X01Game(const X01Settings(startScore: 301, roundLimit: 1),
+        [X01Player(id: p.key, name: p.name)]);
+    g.throwDart(const DartHit(20, 3, Ring.triple));
+    g.next();
+    expect(g.finished, isTrue);
+    await tester.pumpWidget(app(Builder(
+        builder: (c) => Scaffold(
+            body: TextButton(
+                onPressed: () => Navigator.push(
+                    c, MaterialPageRoute(builder: (_) => GamePage(game: g))),
+                child: const Text('go'))))));
+    await tester.tap(find.text('go'));
+    await tester.pump(const Duration(seconds: 2));
+    final nav = tester.state<NavigatorState>(find.byType(Navigator));
+    await nav.maybePop();
+    await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('go'), findsOneWidget, reason: 'page quittée sans question');
+    expect(server.games.length, 1, reason: 'partie envoyée');
   });
 
   testWidgets('Classements s\'affichent', (tester) async {

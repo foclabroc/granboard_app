@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.6.4
+
+- Corrigé : une partie terminée puis quittée avec le bouton retour (sans ouvrir les résultats) n'était pas enregistrée dans les stats
+- Petits téléphones : barre de l'accueil qui ne déborde plus (pastille de la cible visible), noms des joueurs lisibles dans les tableaux des scores (réduits au lieu d'être coupés), tous les joueurs visibles en Freeze, historique du Cricket qui tient, réglages plus serrés
+- Les fenêtres qui montent du bas (sons, TV, couleur, avatar, thème, style de la cible, son du tour) ont une petite croix pour fermer et s'ouvrent en grand
+- Le profil principal est coché d'office quand aucun joueur n'est choisi
+- Nombres à virgule (6,00 · 47,0) et « 1 manche » au singulier
+
 ## v0.6.3
 
 - Son sur plusieurs appareils à la fois : téléphone, TV, tablette… on coche ceux qu'on veut (écran TV ou réglage des sons)

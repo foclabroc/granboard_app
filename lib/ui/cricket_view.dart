@@ -11,6 +11,7 @@ import 'game_page.dart' show GamePage;
 import 'setup_page.dart' show kTeamColors, kTeamNames;
 import 'theme.dart';
 import 'widgets.dart';
+import '../format.dart';
 
 /// Mise en page du Cricket : `classic` (numéros au centre, façon GranBoard)
 /// ou `columns` (numéros en haut, une ligne par joueur, celle du joueur en
@@ -348,9 +349,8 @@ class _ColumnsArena extends StatelessWidget {
         final score =
             g.variant.scoring ? '${g.scoreOf(s)}' : '${g.closedMarks(s)}';
         final av = math.min(rh * 0.74, (nameW * 0.45) / members.length);
-        final mpr = g.settings.teams
-            ? null
-            : g.statsOf(members.first).mpr.toStringAsFixed(1);
+        final mpr =
+            g.settings.teams ? null : g.statsOf(members.first).mpr.fr(1);
         final name = (g.settings.teams && members.contains(g.current)
                 ? g.currentPlayer.name
                 : sideName(g, s))
@@ -600,27 +600,35 @@ class _History extends StatelessWidget {
                       height: rowH,
                       decoration: BoxDecoration(
                           border: Border(bottom: BorderSide(color: Tv.line))),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                              width: 30,
-                              child: Text('R${t.round}',
-                                  style: Tv.title(14,
-                                      color: identical(t, g.currentTurn)
-                                          ? Tv.gold
-                                          : Colors.white))),
-                          for (final d in t.darts)
-                            SizedBox.square(
-                              dimension: 22,
-                              child: _dartMarks(d) == 0
-                                  ? Center(
-                                      child: Text('–',
-                                          style: Tv.title(14, color: Tv.muted)))
-                                  : CustomPaint(
-                                      painter: MarkPainter(
-                                          _dartMarks(d), Colors.white)),
-                            ),
-                        ],
+                      alignment: Alignment.centerLeft,
+                      // Colonne étroite (petit téléphone) : la ligne rétrécit
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                                width: 30,
+                                child: Text('R${t.round}',
+                                    style: Tv.title(14,
+                                        color: identical(t, g.currentTurn)
+                                            ? Tv.gold
+                                            : Colors.white))),
+                            for (final d in t.darts)
+                              SizedBox.square(
+                                dimension: 22,
+                                child: _dartMarks(d) == 0
+                                    ? Center(
+                                        child: Text('–',
+                                            style:
+                                                Tv.title(14, color: Tv.muted)))
+                                    : CustomPaint(
+                                        painter: MarkPainter(
+                                            _dartMarks(d), Colors.white)),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                 ],
@@ -796,7 +804,7 @@ class _RightPanel extends StatelessWidget {
                 textBaseline: TextBaseline.alphabetic,
                 children: [
                   Text('MPR ', style: Tv.title(14, color: Tv.text)),
-                  Text(mpr.toStringAsFixed(2), style: Tv.title(28)),
+                  Text(mpr.fr(2), style: Tv.title(28)),
                 ],
               ),
             ),
@@ -1048,7 +1056,7 @@ class _CricketResultsPageState extends State<CricketResultsPage> {
     final reason = g.endReason == CricketEnd.closed
         ? 'VICTOIRE EN ${g.round} MANCHE${g.round > 1 ? 'S' : ''}'
         : g.endReason == CricketEnd.roundLimit
-            ? 'LIMITE DE ${g.settings.roundLimit} MANCHES'
+            ? 'LIMITE DE ${plural(g.settings.roundLimit!, 'MANCHE')}'
             : 'PARTIE ARRÊTÉE';
     return Scaffold(
       appBar: AppBar(
@@ -1245,7 +1253,7 @@ class _PlayerStats extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
             child: Row(
               children: [
-                stat('MPR', s.mpr.toStringAsFixed(2)),
+                stat('MPR', s.mpr.fr(2)),
                 stat('Marques', '${s.marks}'),
                 stat('Fléchettes', '${s.darts}'),
                 stat('Meilleure', '${s.bestTurn}'),

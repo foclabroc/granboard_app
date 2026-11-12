@@ -9,6 +9,7 @@
 
 import '../granboard.dart';
 import 'darts_game.dart';
+import '../format.dart';
 
 enum InRule { open, double, master }
 
@@ -88,7 +89,7 @@ class X01Settings {
         inRule.label,
         outRule.label,
         bullMode.label,
-        if (roundLimit != null) '$roundLimit manches',
+        if (roundLimit != null) plural(roundLimit!, 'manche'),
       ].join(' · ');
 }
 

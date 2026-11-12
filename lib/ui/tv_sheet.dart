@@ -6,13 +6,8 @@ import '../tv_link.dart';
 import 'theme.dart';
 
 /// Écrans reliés (TV, tablette…) : ajout, retrait, choix du son.
-Future<void> showTvSheet(BuildContext context) => showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Tv.panel,
-      showDragHandle: true,
-      builder: (_) => const _TvSheet(),
-    );
+Future<void> showTvSheet(BuildContext context) =>
+    showAppSheet(context, builder: (_) => const _TvSheet());
 
 /// Choix des appareils qui jouent le son (téléphone et/ou écrans reliés),
 /// plusieurs à la fois possibles.

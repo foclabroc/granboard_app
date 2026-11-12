@@ -29,6 +29,7 @@ import 'sound_settings.dart';
 import 'theme.dart';
 import 'turn_banner.dart';
 import 'widgets.dart';
+import '../format.dart';
 
 /// Partie en cours (01 / Freeze avec [settings] + [players], ou [game] déjà
 /// prêt : Cricket…).
@@ -243,16 +244,22 @@ class _GamePageState extends State<GamePage> {
 
   Future<bool>? _saving;
 
-  void _results() {
-    // Envoi au serveur en arrière-plan : les résultats s'affichent tout de suite
+  /// Envoi des stats au serveur (une seule fois), en arrière-plan.
+  Future<bool> _saveStats() {
     final g = game;
-    _saving ??= switch (g) {
+    return _saving ??= switch (g) {
       X01Game g => PlayerStore.instance.recordX01(g),
       CricketGame g => PlayerStore.instance.recordCricket(g),
       MatchGame m => PlayerStore.instance.recordMatch(m),
       PracticeGame p => PlayerStore.instance.recordPractice(p),
       _ => Future.value(true),
     };
+  }
+
+  void _results() {
+    // Envoi au serveur en arrière-plan : les résultats s'affichent tout de suite
+    final g = game;
+    _saveStats();
     TvLink.instance.pushGame(game, screen: 'results');
     Navigator.pushReplacement(
         context,
@@ -263,7 +270,11 @@ class _GamePageState extends State<GamePage> {
   }
 
   Future<bool> _confirmQuit() async {
-    if (game.finished) return true;
+    // Partie finie quittée sans ouvrir les résultats : stats envoyées quand même
+    if (game.finished) {
+      _saveStats();
+      return true;
+    }
     final r = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -826,48 +837,59 @@ class _Scoreboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = <Widget>[];
-    if (game.settings.freeze) {
-      for (final t in game.teams) {
-        final frozen = game.membersOf(t).any(game.isFrozen);
-        rows.add(Container(
-          margin: const EdgeInsets.fromLTRB(10, 8, 10, 2),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: kTeamColors[t].withValues(alpha: 0.18),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Flexible(
-                child: Text(kTeamNames[t].toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Tv.title(16, color: kTeamColors[t])),
-              ),
-              if (frozen) const Text(' ❄', style: TextStyle(color: Tv.ice)),
-              const Spacer(),
-              Text('${game.teamRemaining(t)}', style: Tv.title(20)),
-            ],
-          ),
-        ));
-        for (final i in game.membersOf(t)) {
-          rows.add(_PlayerBar(game: game, index: i));
+    return LayoutBuilder(builder: (context, c) {
+      final freeze = game.settings.freeze;
+      const headH = 30.0;
+      final rowH = scoreRowHeight(c.maxHeight, game.players.length,
+          extra: freeze ? game.teams.length * headH : 0);
+      final rows = <Widget>[];
+      if (freeze) {
+        for (final t in game.teams) {
+          final frozen = game.membersOf(t).any(game.isFrozen);
+          rows.add(Container(
+            height: headH - 6,
+            margin: const EdgeInsets.fromLTRB(10, 4, 10, 2),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: kTeamColors[t].withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(kTeamNames[t].toUpperCase(),
+                        maxLines: 1,
+                        style: Tv.title(16, color: kTeamColors[t])),
+                  ),
+                ),
+                if (frozen) const Text(' ❄', style: TextStyle(color: Tv.ice)),
+                const Spacer(),
+                Text('${game.teamRemaining(t)}', style: Tv.title(20)),
+              ],
+            ),
+          ));
+          for (final i in game.membersOf(t)) {
+            rows.add(_PlayerBar(game: game, index: i, height: rowH));
+          }
+        }
+      } else {
+        for (var i = 0; i < game.players.length; i++) {
+          rows.add(_PlayerBar(game: game, index: i, height: rowH));
         }
       }
-    } else {
-      for (var i = 0; i < game.players.length; i++) {
-        rows.add(_PlayerBar(game: game, index: i));
-      }
-    }
-    return ListView(padding: const EdgeInsets.only(top: 4), children: rows);
+      return ListView(padding: const EdgeInsets.only(top: 4), children: rows);
+    });
   }
 }
 
 class _PlayerBar extends StatelessWidget {
   final X01Game game;
   final int index;
-  const _PlayerBar({required this.game, required this.index});
+  final double height;
+  const _PlayerBar({required this.game, required this.index, this.height = 52});
 
   @override
   Widget build(BuildContext context) {
@@ -878,52 +900,18 @@ class _PlayerBar extends StatelessWidget {
     final last = game.lastTurnOf(index);
 
     final info = [
-      'MOY ${st.average.toStringAsFixed(1)}',
+      'MOY ${st.average.fr(1)}',
       if (last != null) last.isBust ? 'BUST' : 'DERN. ${last.total}',
       if (!st.opened) 'PAS OUVERT',
     ].join('  ·  ');
 
-    return Container(
-      height: 52,
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(
-        color: current ? const Color(0xFF2A2210) : Tv.panel,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: current ? Tv.gold : Tv.line),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Row(
-        children: [
-          Container(width: 6, color: _colorOf(p)),
-          SizedBox(
-            width: 22,
-            child: current
-                ? Icon(Icons.play_arrow, color: Tv.gold, size: 20)
-                : null,
-          ),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${winner ? '🏆 ' : ''}${p.name.toUpperCase()}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style:
-                        Tv.title(19, color: current ? Tv.goldLight : Tv.text)),
-                Text(info, maxLines: 1, style: Tv.label(11)),
-              ],
-            ),
-          ),
-          Container(
-            width: 78,
-            color: current ? Tv.gold : Colors.black,
-            alignment: Alignment.center,
-            child: Text('${st.remaining}',
-                style: Tv.title(28, color: current ? Colors.black : Tv.text)),
-          ),
-        ],
-      ),
+    return ScoreRow(
+      color: _colorOf(p),
+      current: current,
+      name: '${winner ? '🏆 ' : ''}${p.name.toUpperCase()}',
+      info: info,
+      score: '${st.remaining}',
+      height: height,
     );
   }
 }

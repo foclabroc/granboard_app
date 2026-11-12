@@ -7,6 +7,7 @@ import 'account_page.dart';
 import 'media_editor.dart';
 import 'theme.dart';
 import 'widgets.dart';
+import '../format.dart';
 
 /// Joueurs mémorisés sur ce téléphone.
 class PlayersPage extends StatelessWidget {
@@ -136,7 +137,7 @@ class RatingBadge extends StatelessWidget {
         children: [
           Text(ratingClass(rating),
               style: Tv.title(big ? 26 : 16, color: Colors.black)),
-          Text(rating.toStringAsFixed(1),
+          Text(rating.fr(1),
               style: Tv.label(big ? 13 : 10, color: Colors.black87)),
         ],
       ),
@@ -322,7 +323,7 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                       children: [
                         stat('Parties', '${n('games')}'),
                         stat('Victoires', '${n('wins')}'),
-                        stat('Moyenne', p.average.toStringAsFixed(1)),
+                        stat('Moyenne', p.average.fr(1)),
                         stat('Fléchettes', '${n('darts')}'),
                         stat('Meilleure fin',
                             n('best_co') == 0 ? '–' : '${n('best_co')}'),
@@ -343,8 +344,7 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                       children: [
                         stat('Parties', '${n('cr_games')}'),
                         stat('Victoires', '${n('cr_wins')}'),
-                        stat('MPR',
-                            (s['mpr'] as num?)?.toStringAsFixed(2) ?? '–'),
+                        stat('MPR', (s['mpr'] as num?)?.fr(2) ?? '–'),
                         stat('Meilleure manche',
                             n('cr_best') == 0 ? '–' : '${n('cr_best')} M'),
                       ],
@@ -389,8 +389,8 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                             g['kind'] == 'practice'
                                 ? 'SCORE ${g['points'] ?? '–'}'
                                 : g['kind'] == 'cricket'
-                                    ? 'MPR ${(g['mpr'] as num?)?.toStringAsFixed(2) ?? '–'}'
-                                    : 'MOY ${(g['avg'] as num?)?.toStringAsFixed(1) ?? '–'}'
+                                    ? 'MPR ${(g['mpr'] as num?)?.fr(2) ?? '–'}'
+                                    : 'MOY ${(g['avg'] as num?)?.fr(1) ?? '–'}'
                                         '${g['checkout'] == null ? '' : '  ·  FIN ${g['checkout']}'}',
                             style: Tv.label(13, color: Tv.text)),
                       ),

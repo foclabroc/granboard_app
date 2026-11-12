@@ -7,12 +7,7 @@ import 'tv_sheet.dart' show SoundTargetPicker;
 
 /// Réglages des sons (feuille du bas).
 Future<void> showSoundSettings(BuildContext context) {
-  return showModalBottomSheet(
-    context: context,
-    backgroundColor: Tv.panel,
-    showDragHandle: true,
-    builder: (_) => const _SoundSheet(),
-  );
+  return showAppSheet(context, builder: (_) => const _SoundSheet());
 }
 
 class _SoundSheet extends StatelessWidget {

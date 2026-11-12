@@ -6,6 +6,7 @@ import '../game/match.dart';
 import '../game/practice.dart';
 import '../game/x01.dart';
 import 'theme.dart';
+import '../format.dart';
 
 /// Règles du 01 selon les réglages de la partie.
 String x01Rules(X01Settings s) {
@@ -37,7 +38,7 @@ String x01Rules(X01Settings s) {
       'Freeze : 2 équipes. Une équipe dont le total restant dépasse celui '
           'de l\'adversaire est gelée et ne peut pas finir.',
     if (s.roundLimit != null)
-      'Limite de ${s.roundLimit} manches : ensuite, le plus petit reste gagne.',
+      'Limite de ${plural(s.roundLimit!, 'manche')} : ensuite, le plus petit reste gagne.',
   ];
   return lines.join('\n');
 }
@@ -48,7 +49,7 @@ String cricketRules(CricketSettings s) => [
       'Simple = 1 marque, double = 2, triple = 3.',
       if (s.teams) 'Équipes : marques et points sont communs à l\'équipe.',
       if (s.roundLimit != null)
-        'Limite de ${s.roundLimit} manches : ensuite, '
+        'Limite de ${plural(s.roundLimit!, 'manche')} : ensuite, '
             '${!s.variant.scoring ? 'le plus de marques gagne' : s.variant.cutThroat ? 'le plus petit score gagne (égalité : le plus de marques)' : 'le plus gros score gagne (égalité : le plus de marques)'}.',
     ].join('\n');
 

@@ -293,6 +293,53 @@ class Tv {
   }
 }
 
+/// Fenêtre qui monte du bas : poignée pour la faire glisser + petite croix
+/// pour la fermer, jusqu'à presque toute la hauteur (paysage).
+Future<T?> showAppSheet<T>(BuildContext context,
+        {required WidgetBuilder builder}) =>
+    showModalBottomSheet<T>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Tv.panel,
+      constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.94, maxWidth: 900),
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: 36,
+            child: Stack(
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                        color: Tv.muted,
+                        borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                Positioned(
+                  right: 4,
+                  top: 0,
+                  bottom: 0,
+                  child: IconButton(
+                    key: const ValueKey('sheet-close'),
+                    tooltip: 'Fermer',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(ctx).maybePop(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Flexible(child: builder(ctx)),
+        ],
+      ),
+    );
+
 /// Titre de section façon bandeau TV (barre or à gauche).
 class TvSection extends StatelessWidget {
   final String text;

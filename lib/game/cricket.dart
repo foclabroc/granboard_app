@@ -11,6 +11,7 @@ import 'dart:math';
 import '../granboard.dart';
 import 'darts_game.dart';
 import 'x01.dart' show X01Player;
+import '../format.dart';
 
 enum CricketVariant {
   standard,
@@ -97,7 +98,7 @@ class CricketSettings {
   String get rulesLabel => [
         if (variant.cutThroat) 'Plus petit score gagne',
         if (variant == CricketVariant.noScore) 'Sans points',
-        roundLimit == null ? 'Sans limite' : '$roundLimit manches',
+        roundLimit == null ? 'Sans limite' : plural(roundLimit!, 'manche'),
       ].join(' · ');
 
   CricketSettings withSeed(int s) => CricketSettings(

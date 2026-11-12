@@ -8,6 +8,7 @@ import '../players.dart';
 import 'game_page.dart' show GamePage;
 import 'theme.dart';
 import 'widgets.dart';
+import '../format.dart';
 
 /// Résultats d'un match : classement aux legs | détail des legs et stats.
 class MatchResultsPage extends StatefulWidget {
@@ -130,10 +131,8 @@ class _MatchResultsPageState extends State<MatchResultsPage> {
                                       style: Tv.title(20)),
                                   Text(
                                       [
-                                        if (avg != null)
-                                          'MOY ${avg.toStringAsFixed(1)}',
-                                        if (mpr != null)
-                                          'MPR ${mpr.toStringAsFixed(2)}',
+                                        if (avg != null) 'MOY ${avg.fr(1)}',
+                                        if (mpr != null) 'MPR ${mpr.fr(2)}',
                                       ].join(' · '),
                                       style: Tv.label(11, color: Tv.text)),
                                 ],
@@ -206,8 +205,8 @@ class _MatchResultsPageState extends State<MatchResultsPage> {
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
                               minimumSize: const Size.fromHeight(46)),
-                          onPressed: () => Navigator.popUntil(
-                              context, (r) => r.isFirst),
+                          onPressed: () =>
+                              Navigator.popUntil(context, (r) => r.isFirst),
                           icon: const Icon(Icons.home),
                           label: const Text('MENU PRINCIPAL'),
                         ),

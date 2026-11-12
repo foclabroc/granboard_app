@@ -13,6 +13,7 @@ import 'dart:math';
 import '../granboard.dart';
 import 'darts_game.dart';
 import 'x01.dart' show BullMode, X01Player;
+import '../format.dart';
 
 enum PracticeKind {
   countUp,
@@ -656,7 +657,7 @@ abstract class PracticeRules {
   String scoreText(PracticeGame g, int p) => '${g.stateOf(p).score}';
   String rulesLabel(PracticeGame g) {
     final l = roundLimit(g);
-    return l == null ? '' : '$l manches';
+    return l == null ? '' : plural(l, 'manche');
   }
 
   /// Le premier qui finit gagne tout de suite.
@@ -691,9 +692,7 @@ class _CountUp extends PracticeRules {
   @override
   String info(PracticeGame g, int p) {
     final st = g.stateOf(p);
-    return st.darts == 0
-        ? ''
-        : 'MOYENNE ${(st.score * 3 / st.darts).toStringAsFixed(1)}';
+    return st.darts == 0 ? '' : 'MOYENNE ${(st.score * 3 / st.darts).fr(1)}';
   }
 }
 

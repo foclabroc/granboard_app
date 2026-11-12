@@ -8,6 +8,7 @@ import '../server.dart';
 import 'players_page.dart' show RatingBadge;
 import 'theme.dart';
 import 'widgets.dart';
+import '../format.dart';
 
 const _kinds = [
   ('rating', 'NOTE'),
@@ -171,9 +172,9 @@ class _TopListState extends State<_TopList> {
   void _retry() => setState(() => _future = _load());
 
   String _value(num v) => widget.kind == 'mpr'
-      ? v.toStringAsFixed(2)
+      ? v.fr(2)
       : widget.kind == 'rating' || widget.kind == 'avg'
-          ? v.toStringAsFixed(1)
+          ? v.fr(1)
           : '${v.toInt()}';
 
   @override
@@ -220,8 +221,8 @@ class _TopListState extends State<_TopList> {
                 mineOnly && all.isNotEmpty
                     ? 'Aucun de tes joueurs dans ce classement'
                     : const ['rating', 'avg', 'mpr'].contains(widget.kind)
-                    ? 'Personne n\'a encore 3 parties'
-                    : 'Pas encore de résultat',
+                        ? 'Personne n\'a encore 3 parties'
+                        : 'Pas encore de résultat',
                 style: Tv.label(15, color: Tv.text)),
           );
         }
@@ -232,8 +233,7 @@ class _TopListState extends State<_TopList> {
             itemCount: rows.length,
             itemBuilder: (_, i) {
               final r = rows[i];
-              final me =
-                  !mineOnly && mine.contains((r['id'] as num).toInt());
+              final me = !mineOnly && mine.contains((r['id'] as num).toInt());
               final value = r['value'] as num;
               final medal = switch (i) {
                 0 => Tv.gold,

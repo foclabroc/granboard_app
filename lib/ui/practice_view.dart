@@ -366,81 +366,37 @@ class _Scores extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final g = game;
-    return ListView(
-      padding: const EdgeInsets.only(top: 4),
-      children: [
-        for (var i = 0; i < g.players.length; i++)
-          Builder(builder: (context) {
-            final current = i == g.current && !g.finished;
-            final st = g.stateOf(i);
-            final won = g.winners.contains(i);
-            final info = g.infoOf(i);
-            return Opacity(
-              opacity: st.out ? 0.5 : 1,
-              child: Container(
-                height: 52,
-                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: current ? const Color(0xFF2A2210) : Tv.panel,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: current ? Tv.gold : Tv.line),
+    return LayoutBuilder(builder: (context, c) {
+      final rowH = scoreRowHeight(c.maxHeight, g.players.length);
+      return ListView(
+        padding: const EdgeInsets.only(top: 4),
+        children: [
+          for (var i = 0; i < g.players.length; i++)
+            Builder(builder: (context) {
+              final current = i == g.current && !g.finished;
+              final st = g.stateOf(i);
+              final won = g.winners.contains(i);
+              final info = g.infoOf(i);
+              return Opacity(
+                opacity: st.out ? 0.5 : 1,
+                child: ScoreRow(
+                  color: _colorOf(g, i),
+                  current: current,
+                  name: '${won ? '🏆 ' : ''}${g.players[i].name.toUpperCase()}',
+                  info: st.out
+                      ? 'ÉLIMINÉ'
+                      : st.done
+                          ? 'TERMINÉ'
+                          : info,
+                  score: g.scoreText(i),
+                  height: rowH,
+                  scoreWidth: 92,
                 ),
-                clipBehavior: Clip.antiAlias,
-                child: Row(
-                  children: [
-                    Container(width: 6, color: _colorOf(g, i)),
-                    SizedBox(
-                      width: 22,
-                      child: current
-                          ? Icon(Icons.play_arrow, color: Tv.gold, size: 20)
-                          : null,
-                    ),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                              '${won ? '🏆 ' : ''}${g.players[i].name.toUpperCase()}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Tv.title(19,
-                                  color: current ? Tv.goldLight : Tv.text)),
-                          if (info.isNotEmpty || st.out || st.done)
-                            Text(
-                                st.out
-                                    ? 'ÉLIMINÉ'
-                                    : st.done
-                                        ? 'TERMINÉ'
-                                        : info,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Tv.label(10)),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      width: 92,
-                      alignment: Alignment.center,
-                      color: current ? Tv.gold : Colors.black,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text(g.scoreText(i),
-                              style: Tv.title(28,
-                                  color:
-                                      current ? Colors.black : Colors.white)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-      ],
-    );
+              );
+            }),
+        ],
+      );
+    });
   }
 }
 
@@ -564,8 +520,8 @@ class _PracticeResultsPageState extends State<PracticeResultsPage> {
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
                               minimumSize: const Size.fromHeight(46)),
-                          onPressed: () => Navigator.popUntil(
-                              context, (r) => r.isFirst),
+                          onPressed: () =>
+                              Navigator.popUntil(context, (r) => r.isFirst),
                           icon: const Icon(Icons.home),
                           label: const Text('MENU PRINCIPAL'),
                         ),

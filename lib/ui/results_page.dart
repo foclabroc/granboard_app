@@ -7,6 +7,7 @@ import 'game_page.dart';
 import 'setup_page.dart' show kTeamColors, kTeamNames;
 import 'theme.dart';
 import 'widgets.dart';
+import '../format.dart';
 
 /// Fin de partie : podium et statistiques.
 class ResultsPage extends StatefulWidget {
@@ -88,7 +89,7 @@ class _ResultsPageState extends State<ResultsPage> {
                     game.endReason == EndReason.checkout
                         ? 'VICTOIRE EN ${game.round} MANCHE${game.round > 1 ? 'S' : ''}'
                         : game.endReason == EndReason.roundLimit
-                            ? 'LIMITE DE ${game.settings.roundLimit} MANCHES'
+                            ? 'LIMITE DE ${plural(game.settings.roundLimit!, 'MANCHE')}'
                             : 'PARTIE ARRÊTÉE',
                     style: Tv.label(13),
                   ),
@@ -136,8 +137,8 @@ class _ResultsPageState extends State<ResultsPage> {
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
                               minimumSize: const Size.fromHeight(46)),
-                          onPressed: () => Navigator.popUntil(
-                              context, (r) => r.isFirst),
+                          onPressed: () =>
+                              Navigator.popUntil(context, (r) => r.isFirst),
                           icon: const Icon(Icons.home),
                           label: const Text('MENU PRINCIPAL'),
                         ),
@@ -211,7 +212,7 @@ class _Podium extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Tv.title(place == 1 ? 22 : 17)),
-                  Text('MOY ${game.stateOf(i).average.toStringAsFixed(1)}',
+                  Text('MOY ${game.stateOf(i).average.fr(1)}',
                       style: Tv.label(11)),
                   const SizedBox(height: 4),
                   Container(
@@ -303,7 +304,7 @@ class _StatCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
             child: Row(
               children: [
-                stat('Moyenne', s.average.toStringAsFixed(1)),
+                stat('Moyenne', s.average.fr(1)),
                 stat('Fléchettes', '${s.darts}'),
                 stat('Meilleure', '${s.highestTurn}'),
                 stat('100+', '${s.count100}'),

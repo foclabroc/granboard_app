@@ -93,7 +93,7 @@ class _SetupPageState extends State<SetupPage> {
     if (widget.kind != null) setState(() => _kind = widget.kind!);
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_prefKey);
-    if (raw == null) return;
+    if (raw == null) return _selectOwner();
     try {
       final j = jsonDecode(raw) as Map<String, dynamic>;
       setState(() {
@@ -143,6 +143,21 @@ class _SetupPageState extends State<SetupPage> {
           });
       });
     } catch (_) {}
+    _selectOwner();
+  }
+
+  /// Aucun joueur choisi (premier lancement…) : le profil principal est
+  /// coché d'office.
+  void _selectOwner() {
+    final me = store.owner;
+    if (_online ||
+        !mounted ||
+        _selected.isNotEmpty ||
+        me == null ||
+        me.expired) {
+      return;
+    }
+    setState(() => _selected.add(me.key));
   }
 
   Future<void> _save() async {
@@ -372,6 +387,8 @@ class _SetupPageState extends State<SetupPage> {
     final available =
         store.players.where((p) => !_selected.contains(p.key)).toList();
     final full = _selected.length >= _maxPlayers;
+    final short = MediaQuery.sizeOf(context).height < 380;
+    final chipDensity = short ? VisualDensity.compact : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -479,6 +496,7 @@ class _SetupPageState extends State<SetupPage> {
                               if (!full)
                                 for (final p in available)
                                   ActionChip(
+                                    visualDensity: chipDensity,
                                     avatar: PlayerAvatar.of(p, size: 24),
                                     label: Text(
                                         p.expired ? '${p.name} ⚠' : p.name),
@@ -486,12 +504,14 @@ class _SetupPageState extends State<SetupPage> {
                                   ),
                               if (!full)
                                 ActionChip(
+                                  visualDensity: chipDensity,
                                   avatar: const Icon(Icons.person_outline,
                                       size: 18),
                                   label: const Text('Invité'),
                                   onPressed: _addGuest,
                                 ),
                               ActionChip(
+                                visualDensity: chipDensity,
                                 avatar: const Icon(Icons.person_add, size: 18),
                                 label: const Text('Ajouter un joueur'),
                                 onPressed: _newPlayer,
@@ -512,19 +532,22 @@ class _SetupPageState extends State<SetupPage> {
                     top: false,
                     left: false,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                      padding: EdgeInsets.fromLTRB(16, 4, 16, short ? 6 : 10),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (problem != null)
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.only(bottom: 4),
                               child: Text(problem,
-                                  style: Tv.title(15, color: Tv.red)),
+                                  maxLines: 2,
+                                  textAlign: TextAlign.center,
+                                  style:
+                                      Tv.title(short ? 13 : 15, color: Tv.red)),
                             ),
                           SizedBox(
                             width: double.infinity,
-                            height: 54,
+                            height: short ? 44 : 54,
                             child: FilledButton.icon(
                               onPressed: problem == null ? _startGame : null,
                               icon: const Icon(Icons.play_arrow),

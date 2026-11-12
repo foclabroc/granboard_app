@@ -24,10 +24,8 @@ String _error(Object e) => e is ApiError ? e.message : 'Erreur : $e';
 /// retirer.
 Future<void> showPhotoSheet(BuildContext context, PlayerProfile p) async {
   final hasPhoto = MediaStore.instance.imageOf(p.key) != null;
-  final choice = await showModalBottomSheet<String>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Tv.panel,
+  final choice = await showAppSheet<String>(
+    context,
     builder: (context) => SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -152,10 +150,8 @@ class _BigChoice extends StatelessWidget {
 
 /// Couleur du joueur : 15 couleurs + arc-en-ciel.
 Future<void> showColorSheet(BuildContext context, PlayerProfile p) async {
-  final i = await showModalBottomSheet<int>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Tv.panel,
+  final i = await showAppSheet<int>(
+    context,
     builder: (context) => SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
@@ -196,12 +192,7 @@ Future<void> showColorSheet(BuildContext context, PlayerProfile p) async {
 
 /// Son joué quand c'est le tour du joueur : sons fournis ou sa voix.
 Future<void> showTurnSoundSheet(BuildContext context, PlayerProfile p) =>
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Tv.panel,
-      builder: (context) => _TurnSoundSheet(p: p),
-    );
+    showAppSheet(context, builder: (context) => _TurnSoundSheet(p: p));
 
 class _TurnSoundSheet extends StatefulWidget {
   final PlayerProfile p;

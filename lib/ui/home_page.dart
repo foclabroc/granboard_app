@@ -116,10 +116,8 @@ class _HomePageState extends State<HomePage>
     _loadStart();
   }
 
-  Future<void> _chooseTheme() => showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        showDragHandle: true,
+  Future<void> _chooseTheme() => showAppSheet(
+        context,
         builder: (ctx) => ValueListenableBuilder<AppSkin>(
           valueListenable: Tv.skin,
           builder: (ctx, cur, _) => SingleChildScrollView(
@@ -198,11 +196,8 @@ class _HomePageState extends State<HomePage>
         ),
       );
 
-  Future<void> _chooseSkin() => showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Tv.panel,
-        showDragHandle: true,
+  Future<void> _chooseSkin() => showAppSheet(
+        context,
         builder: (ctx) => ValueListenableBuilder<BoardSkin>(
           valueListenable: BoardSkin.current,
           builder: (ctx, cur, _) => SingleChildScrollView(
@@ -257,6 +252,9 @@ class _HomePageState extends State<HomePage>
 
   @override
   Widget build(BuildContext context) {
+    // Petit téléphone : barre du haut resserrée (icônes, profil en avatar)
+    final compact = MediaQuery.sizeOf(context).width < 720;
+    final dense = compact ? VisualDensity.compact : null;
     return Scaffold(
       body: TvBackground(
         child: SafeArea(
@@ -272,7 +270,8 @@ class _HomePageState extends State<HomePage>
                       // Largeur bornée : le titre rétrécit au lieu de pousser
                       // la pastille de la cible hors de la barre
                       ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 190),
+                        constraints:
+                            BoxConstraints(maxWidth: compact ? 130 : 190),
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: ShaderMask(
@@ -284,7 +283,7 @@ class _HomePageState extends State<HomePage>
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      SizedBox(width: compact ? 6 : 12),
                       Flexible(
                         flex: 3,
                         child: ListenableBuilder(
@@ -322,6 +321,7 @@ class _HomePageState extends State<HomePage>
                       ListenableBuilder(
                         listenable: TvLink.instance,
                         builder: (context, _) => IconButton(
+                          visualDensity: dense,
                           tooltip: 'Écran TV',
                           icon: Icon(
                               TvLink.instance.linked
@@ -332,11 +332,13 @@ class _HomePageState extends State<HomePage>
                         ),
                       ),
                       IconButton(
+                        visualDensity: dense,
                         tooltip: 'Classements',
                         icon: const Icon(Icons.leaderboard),
                         onPressed: () => _open(const RankingPage()),
                       ),
                       IconButton(
+                        visualDensity: dense,
                         tooltip: 'Sons',
                         icon: const Icon(Icons.volume_up),
                         onPressed: () => showSoundSettings(context),
@@ -361,8 +363,9 @@ class _HomePageState extends State<HomePage>
                       const SizedBox(width: 4),
                       ListenableBuilder(
                         listenable: PlayerStore.instance,
-                        builder: (context, _) =>
-                            _MeChip(onTap: () => _open(const PlayersPage())),
+                        builder: (context, _) => _MeChip(
+                            compact: compact,
+                            onTap: () => _open(const PlayersPage())),
                       ),
                     ],
                   ),
@@ -598,7 +601,10 @@ class _Tile extends StatelessWidget {
 /// Pastille du profil principal avec sa classe ; ouvre « Joueurs ».
 class _MeChip extends StatelessWidget {
   final VoidCallback onTap;
-  const _MeChip({required this.onTap});
+
+  /// Avatar seul (petit téléphone).
+  final bool compact;
+  const _MeChip({required this.onTap, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
@@ -608,7 +614,7 @@ class _MeChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(4, 3, 10, 3),
+        padding: EdgeInsets.fromLTRB(4, 3, compact ? 4 : 10, 3),
         decoration: BoxDecoration(
           color: Tv.panel2,
           borderRadius: BorderRadius.circular(20),
@@ -623,10 +629,12 @@ class _MeChip extends StatelessWidget {
                     backgroundColor: Tv.panel,
                     child: const Icon(Icons.groups, size: 18, color: Tv.text))
                 : PlayerAvatar.of(me, size: 30),
-            const SizedBox(width: 6),
-            Text(me == null ? 'JOUEURS' : me.name.toUpperCase(),
-                style: Tv.title(15)),
-            if (rating != null) ...[
+            if (!compact) ...[
+              const SizedBox(width: 6),
+              Text(me == null ? 'JOUEURS' : me.name.toUpperCase(),
+                  style: Tv.title(15)),
+            ],
+            if (rating != null && !compact) ...[
               const SizedBox(width: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
@@ -664,7 +672,7 @@ class _BoardPill extends StatelessWidget {
     };
     return Container(
       height: 36,
-      constraints: const BoxConstraints(minWidth: 96),
+      constraints: const BoxConstraints(minWidth: 60),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(18),
