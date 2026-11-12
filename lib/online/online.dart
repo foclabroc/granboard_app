@@ -227,6 +227,22 @@ class OnlineService extends ChangeNotifier with WidgetsBindingObserver {
     return id;
   }
 
+  /// Lance mon match de tournoi [round]/[slot] : défi à [p] créé par le
+  /// serveur avec la partie du tournoi (lève ApiError) ; renvoie l'id.
+  Future<int> challengeTournament(
+      int tournament, int round, int slot, OnlinePlayer p) async {
+    final r = await GbServer.rpc('gb_tn_challenge', {
+      'p_token': me!.token,
+      'p_id': tournament,
+      'p_round': round,
+      'p_slot': slot,
+    });
+    final id = ((r as Map)['id'] as num).toInt();
+    sent = SentInvite(id, p.id, 'pending', null);
+    notifyListeners();
+    return id;
+  }
+
   Future<void> cancel(int inviteId) async {
     final m = me;
     if (m == null) return;

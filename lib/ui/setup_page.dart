@@ -34,7 +34,12 @@ class SetupPage extends StatefulWidget {
   /// Défi en ligne : moi puis l'adversaire. La page ne lance pas la partie,
   /// elle renvoie son JSON (`Navigator.pop`) pour l'envoyer avec le défi.
   final List<X01Player>? online;
-  const SetupPage({super.key, this.kind, this.online});
+
+  /// Création d'un tournoi (avec [online] = moi + un adversaire fictif) :
+  /// 01 / Cricket / Match seulement, nom et taille du tableau ; renvoie
+  /// {game, label, name, size}.
+  final bool tournament;
+  const SetupPage({super.key, this.kind, this.online, this.tournament = false});
 
   @override
   State<SetupPage> createState() => _SetupPageState();
@@ -149,6 +154,10 @@ class _SetupPageState extends State<SetupPage> {
   /// Aucun joueur choisi (premier lancement…) : le profil principal est
   /// coché d'office.
   void _selectOwner() {
+    // Tournoi : pas d'entraînement ni de fête (il faut un vainqueur)
+    if (widget.tournament && _practiceOn && mounted) {
+      setState(() => _kind = 'x01');
+    }
     final me = store.owner;
     if (_online ||
         !mounted ||
@@ -392,11 +401,13 @@ class _SetupPageState extends State<SetupPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_online
-            ? 'DÉFIER ${widget.online!.last.name.toUpperCase()}'
-            : _fixed
-                ? _familyName
-                : 'NOUVELLE PARTIE'),
+        title: Text(widget.tournament
+            ? 'NOUVEAU TOURNOI'
+            : _online
+                ? 'DÉFIER ${widget.online!.last.name.toUpperCase()}'
+                : _fixed
+                    ? _familyName
+                    : 'NOUVELLE PARTIE'),
         actions: [
           if (_fixed) ...[
             RulesButton(title: _gameName, text: _rulesText),
@@ -433,12 +444,14 @@ class _SetupPageState extends State<SetupPage> {
                       style: SegmentedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 4)),
                       segments: [
-                        for (final (v, l) in const [
+                        for (final (v, l) in [
                           ('x01', '01'),
                           ('cricket', 'CRICKET'),
                           ('match', 'MATCH'),
-                          ('practice', 'ENTRAÎN.'),
-                          ('party', 'FÊTE'),
+                          if (!widget.tournament) ...[
+                            ('practice', 'ENTRAÎN.'),
+                            ('party', 'FÊTE'),
+                          ],
                         ])
                           ButtonSegment(
                               value: v,
@@ -463,7 +476,9 @@ class _SetupPageState extends State<SetupPage> {
           ),
           const VerticalDivider(width: 1),
           // ─── Joueurs ───
-          if (_online)
+          if (widget.tournament)
+            Expanded(child: _tournamentPanel())
+          else if (_online)
             Expanded(child: _onlinePanel(problem))
           else
             Expanded(
@@ -568,6 +583,102 @@ class _SetupPageState extends State<SetupPage> {
         ],
       ),
     );
+  }
+
+  final _tnName = TextEditingController();
+  int _tnSize = 8;
+
+  @override
+  void dispose() {
+    _tnName.dispose();
+    super.dispose();
+  }
+
+  /// Création d'un tournoi : nom, nombre de places, bouton « Créer ».
+  Widget _tournamentPanel() {
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            children: [
+              const TvSection('Tournoi', padding: EdgeInsets.zero),
+              const SizedBox(height: 8),
+              TextField(
+                key: const ValueKey('tn-name'),
+                controller: _tnName,
+                maxLength: 40,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                    labelText: 'Nom du tournoi',
+                    hintText: 'Coupe du vendredi',
+                    counterText: '',
+                    border: OutlineInputBorder()),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+              const TvSection('Places', padding: EdgeInsets.zero),
+              const SizedBox(height: 6),
+              SegmentedButton<int>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(value: 4, label: Text('4')),
+                  ButtonSegment(value: 8, label: Text('8')),
+                  ButtonSegment(value: 16, label: Text('16')),
+                ],
+                selected: {_tnSize},
+                onSelectionChanged: (v) => setState(() => _tnSize = v.first),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                  'Élimination directe, en ligne : chacun joue ses matchs '
+                  'chez lui. Tu lances le tournoi quand tout le monde est '
+                  'inscrit ; s\'il manque des joueurs, certains passent le '
+                  '1er tour sans jouer. Qui commence est tiré au sort.',
+                  style: Tv.label(12)),
+            ],
+          ),
+        ),
+        SafeArea(
+          top: false,
+          left: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+            child: SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: FilledButton.icon(
+                key: const ValueKey('tn-create'),
+                onPressed:
+                    _tnName.text.trim().isEmpty ? null : _createTournament,
+                icon: const Icon(Icons.account_tree),
+                label: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text('CRÉER : ${_gameName.toUpperCase()}',
+                      style: Tv.title(22, color: Colors.black)),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _createTournament() async {
+    await _save();
+    if (!mounted) return;
+    final DartsGame g = _matchOn
+        ? MatchGame(_match, _order)
+        : _cricketOn
+            ? CricketGame(_cricket, _order)
+            : X01Game(_settings, _order);
+    Navigator.pop(context, {
+      'game': g.toJson(),
+      'label': _gameName,
+      'name': _tnName.text.trim(),
+      'size': _tnSize,
+    });
   }
 
   /// Défi en ligne : l'adversaire, qui commence, bouton « Défier ».

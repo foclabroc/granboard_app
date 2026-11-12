@@ -8,6 +8,27 @@ class FakeServer {
   final sessions = <String, int>{}; // jeton → id
   final games = <String, Map<String, dynamic>>{}; // cid → partie
   final statsOf = <int, Map<String, dynamic>>{}; // réponses de gb_stats
+  final tournaments = <int, Map<String, dynamic>>{}; // id → tournoi (comme gb__tn_json)
+
+  Map<String, dynamic> _tnJson(int id) {
+    final t = tournaments[id]!;
+    return {
+      ...t,
+      'players': [for (final p in t['ids'] as List<int>) _onPlayer(p)],
+    }..remove('ids');
+  }
+
+  void _tnAdvance(Map<String, dynamic> t, int r, int sl, int w) {
+    final ms = (t['matches'] as List).cast<Map<String, dynamic>>();
+    ms.firstWhere((m) => m['r'] == r && m['s'] == sl)['winner'] = w;
+    if (r >= (t['rounds'] as int)) {
+      t['status'] = 'done';
+      t['winner'] = w;
+      return;
+    }
+    final next = ms.firstWhere((m) => m['r'] == r + 1 && m['s'] == sl ~/ 2);
+    next[sl.isEven ? 'a' : 'b'] = w;
+  }
   bool offline = false;
   final tvRooms =
       <String, Map<String, dynamic>>{}; // code → {key, host, state, seq}
@@ -226,6 +247,151 @@ class FakeServer {
       case 'gb_on_bye':
         online.remove(_auth(b['p_token']));
         return null;
+      case 'gb_tn_create':
+        final me = _auth(b['p_token']);
+        if ('${b['p_name']}'.trim().isEmpty) throw const ApiError('tn_name');
+        final id = tournaments.length + 1;
+        tournaments[id] = {
+          'id': id,
+          'name': b['p_name'],
+          'size': b['p_size'],
+          'label': b['p_label'],
+          'game': Map<String, dynamic>.from(_json(b['p_game']))
+            ..remove('players')
+            ..remove('actions'),
+          'status': 'open',
+          'rounds': null,
+          'owner': me,
+          'winner': null,
+          'ids': <int>[me],
+          'matches': <Map<String, dynamic>>[],
+        };
+        return {'id': id};
+      case 'gb_tn_list':
+        final me = _auth(b['p_token']);
+        return [
+          for (final t in tournaments.values)
+            {
+              'id': t['id'],
+              'name': t['name'],
+              'size': t['size'],
+              'label': t['label'],
+              'status': t['status'],
+              'owner': _onPlayer(t['owner'] as int),
+              'winner': t['winner'] == null ? null : _onPlayer(t['winner'] as int),
+              'count': (t['ids'] as List).length,
+              'joined': (t['ids'] as List).contains(me),
+            }
+        ];
+      case 'gb_tn_get':
+        final id = b['p_id'] as int;
+        if (!tournaments.containsKey(id)) return {'error': 'tn_gone'};
+        return _tnJson(id);
+      case 'gb_tn_join':
+        final me = _auth(b['p_token']);
+        final t = tournaments[b['p_id']];
+        if (t == null) return {'error': 'tn_gone'};
+        if (t['status'] != 'open') return {'error': 'tn_started'};
+        final ids = t['ids'] as List<int>;
+        if (!ids.contains(me)) {
+          if (ids.length >= (t['size'] as int)) return {'error': 'tn_full'};
+          ids.add(me);
+        }
+        return {'ok': true};
+      case 'gb_tn_leave':
+        final me = _auth(b['p_token']);
+        final t = tournaments[b['p_id']];
+        if (t != null && t['status'] == 'open' && t['owner'] != me) {
+          (t['ids'] as List<int>).remove(me);
+        }
+        return null;
+      case 'gb_tn_delete':
+        final me = _auth(b['p_token']);
+        if (tournaments[b['p_id']]?['owner'] == me) tournaments.remove(b['p_id']);
+        return null;
+      case 'gb_tn_start':
+        final me = _auth(b['p_token']);
+        final t = tournaments[b['p_id']];
+        if (t == null || t['owner'] != me) return {'error': 'tn_gone'};
+        final ids = List<int>.from(t['ids'] as List<int>); // sans tirage : ordre d'inscription
+        if (ids.length < 2) return {'error': 'tn_few'};
+        var size = 2, rounds = 1;
+        while (size < ids.length) {
+          size *= 2;
+          rounds++;
+        }
+        final byes = size - ids.length;
+        final ms = <Map<String, dynamic>>[];
+        for (var r = 1; r <= rounds; r++) {
+          for (var sl = 0; sl < size >> r; sl++) {
+            ms.add({'r': r, 's': sl, 'a': null, 'b': null, 'bye': false, 'winner': null, 'forfeit': false});
+          }
+        }
+        var i = 0;
+        for (var sl = 0; sl < size ~/ 2; sl++) {
+          final m = ms[sl];
+          final isBye = (sl.isEven && sl ~/ 2 < byes) ||
+              (sl.isOdd && (sl - 1) ~/ 2 < byes - size ~/ 4);
+          m['a'] = ids[i++];
+          if (isBye) {
+            m['bye'] = true;
+          } else {
+            m['b'] = ids[i++];
+          }
+        }
+        t['matches'] = ms;
+        t['rounds'] = rounds;
+        t['status'] = 'running';
+        for (final m in ms.where((m) => m['bye'] == true).toList()) {
+          _tnAdvance(t, 1, m['s'] as int, m['a'] as int);
+        }
+        return _tnJson(t['id'] as int);
+      case 'gb_tn_challenge':
+        final me = _auth(b['p_token']);
+        final t = tournaments[b['p_id']];
+        final m = (t?['matches'] as List?)?.cast<Map<String, dynamic>>().where(
+            (m) => m['r'] == b['p_round'] && m['s'] == b['p_slot']).firstOrNull;
+        if (t == null || m == null || m['winner'] != null || (m['a'] != me && m['b'] != me)) {
+          return {'error': 'tn_match'};
+        }
+        final opp = (m['a'] == me ? m['b'] : m['a']) as int;
+        if (!online.containsKey(opp)) return {'error': 'on_offline'};
+        final id = invites.length + 1;
+        invites[id] = {
+          'id': id,
+          'from': me,
+          'to': opp,
+          'game': {
+            ...(t['game'] as Map<String, dynamic>),
+            'players': [
+              {'id': '$me', 'name': accounts[me]!['pseudo'], 'team': 0},
+              {'id': '$opp', 'name': accounts[opp]!['pseudo'], 'team': 1},
+            ],
+            'actions': [],
+            'tn': {'t': t['id'], 'r': m['r'], 's': m['s'], 'name': t['name'], 'rounds': t['rounds']},
+          },
+          'status': 'pending',
+          'room': null
+        };
+        return {'id': id};
+      case 'gb_tn_report':
+      case 'gb_tn_set_winner':
+        final me = _auth(b['p_token']);
+        final t = tournaments[b['p_id']];
+        final m = (t?['matches'] as List?)?.cast<Map<String, dynamic>>().where(
+            (m) => m['r'] == b['p_round'] && m['s'] == b['p_slot']).firstOrNull;
+        final w = b['p_winner'] as int;
+        final allowed = fn == 'gb_tn_report'
+            ? (m?['a'] == me || m?['b'] == me)
+            : t?['owner'] == me;
+        if (t == null || m == null || !allowed || (m['a'] != w && m['b'] != w)) {
+          return {'error': fn == 'gb_tn_report' ? 'tn_match' : 'tn_owner'};
+        }
+        if (m['winner'] == null) {
+          if (fn == 'gb_tn_set_winner') m['forfeit'] = true;
+          _tnAdvance(t, m['r'] as int, m['s'] as int, w);
+        }
+        return _tnJson(t['id'] as int);
       case 'gb_on_invite':
         final me = _auth(b['p_token']);
         final to = b['p_to'] as int;

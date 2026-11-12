@@ -30,6 +30,7 @@ import 'theme.dart';
 import 'turn_banner.dart';
 import 'widgets.dart';
 import '../format.dart';
+import '../tournament.dart';
 
 /// Partie en cours (01 / Freeze avec [settings] + [players], ou [game] déjà
 /// prêt : Cricket…).
@@ -125,6 +126,26 @@ class _GamePageState extends State<GamePage> {
   void _sync() {
     _room?.push(game.actionLog);
     _pushTv();
+    _reportTournament();
+  }
+
+  bool _tnSent = false;
+
+  /// Match de tournoi terminé : le vainqueur est envoyé au tableau (par
+  /// chacun des 2 téléphones, le serveur garde le premier).
+  void _reportTournament() {
+    final room = _room;
+    if (room == null || _tnSent || !game.finished) return;
+    final tn = room.game['tn'];
+    if (tn is! Map || game.winners.length != 1) return;
+    final winner = int.tryParse(game.players[game.winners.first].id);
+    final t = (tn['t'] as num?)?.toInt();
+    final r = (tn['r'] as num?)?.toInt();
+    final sl = (tn['s'] as num?)?.toInt();
+    if (winner == null || t == null || r == null || sl == null) return;
+    _tnSent = true;
+    TournamentApi.report(room.account.token, t, r, sl, winner)
+        .catchError((Object _) => _tnSent = false);
   }
 
   /// La salle a changé : rejoue les actions de l'adversaire (effets pour la
@@ -155,6 +176,7 @@ class _GamePageState extends State<GamePage> {
       }
     });
     _pushTv();
+    _reportTournament();
   }
 
   void _onEvent(BoardEvent e) {

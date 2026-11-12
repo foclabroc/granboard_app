@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.5
+
+- Nouvelle tuile **TOURNOIS** : tournois en ligne à élimination directe (4, 8 ou 16 places). On crée le tournoi (nom, places, règles des matchs : 01, Cricket ou Match), les autres s'inscrivent, le créateur le lance (tirage au sort, exempts au 1er tour s'il manque des joueurs)
+- Tableau du tournoi (quarts, demi-finales, finale) ; bouton **JOUER** pour ton match : ton adversaire reçoit le défi en ligne, le vainqueur passe tout seul au tour suivant ; le créateur peut déclarer un vainqueur (forfait)
+- Accueil : 4 tuiles en haut, 3 en bas
+
 ## v0.6.4
 
 - **Rangs et stats façon GranBoard** : note sur 20 et rang (C, CC, B, BB, A, AA, S, SS, M, GM) en 01 (PPR), en Cricket (MPR) et général, calculés sur les 30 dernières parties (80 % meilleures ou 100 %), points requis pour le rang suivant, courbe des 30 dernières parties, analyse de l'entraînement (moyenne et meilleur score par jeu), tableau des rangs

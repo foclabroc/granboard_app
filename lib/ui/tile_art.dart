@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 /// Illustration animée d'une tuile de l'accueil.
-enum TileArt { cricket, match, practice, party, online }
+enum TileArt { cricket, match, practice, party, online, tournament }
 
 /// Dessine l'illustration dans le coin droit de la tuile ; [t] tourne de 0 à
 /// 1 en boucle (animation lente partagée par toutes les tuiles).
@@ -132,6 +132,57 @@ class TileArtPainter extends CustomPainter {
                   height: s * 0.09),
               Paint()..color = Colors.white.withValues(alpha: 0.35));
         }
+      case TileArt.tournament:
+        // Tableau à élimination : 4 joueurs → 2 → vainqueur, chemin lumineux
+        final st = _stroke(s * 0.022, 0.4);
+        final lit = _stroke(s * 0.03, 0.95);
+        final x0 = c.dx - s * 0.55, x1 = c.dx - s * 0.2, x2 = c.dx + s * 0.15;
+        final ys = [for (var i = 0; i < 4; i++) c.dy - s * 0.36 + i * s * 0.24];
+        final y1 = [(ys[0] + ys[1]) / 2, (ys[2] + ys[3]) / 2];
+        final yw = (y1[0] + y1[1]) / 2;
+        // Le chemin qui s'allume change avec le temps
+        final pick = (t.value * 4).floor() % 4;
+        Path branch(double xa, double ya, double xb, double yb) => Path()
+          ..moveTo(xa, ya)
+          ..lineTo((xa + xb) / 2, ya)
+          ..lineTo((xa + xb) / 2, yb)
+          ..lineTo(xb, yb);
+        for (var i = 0; i < 4; i++) {
+          canvas.drawPath(
+              branch(x0, ys[i], x1, y1[i ~/ 2]), i == pick ? lit : st);
+          canvas.drawCircle(
+              Offset(x0, ys[i]),
+              s * 0.035,
+              Paint()
+                ..color = color.withValues(alpha: i == pick ? 0.95 : 0.45));
+        }
+        for (var i = 0; i < 2; i++) {
+          canvas.drawPath(branch(x1, y1[i], x2, yw), i == pick ~/ 2 ? lit : st);
+        }
+        // Trophée au bout
+        final tc = Offset(x2 + s * 0.17, yw);
+        final cup = Path()
+          ..moveTo(tc.dx - s * 0.11, tc.dy - s * 0.12)
+          ..lineTo(tc.dx + s * 0.11, tc.dy - s * 0.12)
+          ..quadraticBezierTo(
+              tc.dx + s * 0.1, tc.dy + s * 0.04, tc.dx, tc.dy + s * 0.05)
+          ..quadraticBezierTo(tc.dx - s * 0.1, tc.dy + s * 0.04,
+              tc.dx - s * 0.11, tc.dy - s * 0.12)
+          ..close();
+        final glow = 0.6 + 0.4 * (0.5 + 0.5 * math.sin(a * 4));
+        canvas.drawPath(cup, Paint()..color = color.withValues(alpha: glow));
+        canvas.drawRect(
+            Rect.fromCenter(
+                center: tc + Offset(0, s * 0.1),
+                width: s * 0.04,
+                height: s * 0.08),
+            Paint()..color = color.withValues(alpha: glow));
+        canvas.drawRect(
+            Rect.fromCenter(
+                center: tc + Offset(0, s * 0.15),
+                width: s * 0.14,
+                height: s * 0.035),
+            Paint()..color = color.withValues(alpha: glow));
       case TileArt.online:
         // Globe + joueurs en orbite + ondes
         final r = s * 0.3;

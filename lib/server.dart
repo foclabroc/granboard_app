@@ -48,6 +48,22 @@ class ApiError implements Exception {
       case 'voice':
       case 'sound':
         return 'Son refusé (enregistrement trop long ?)';
+      case 'tn_gone':
+        return 'Ce tournoi n\'existe plus';
+      case 'tn_started':
+        return 'Ce tournoi a déjà commencé';
+      case 'tn_full':
+        return 'Ce tournoi est complet';
+      case 'tn_few':
+        return 'Il faut au moins 2 inscrits pour lancer';
+      case 'tn_name':
+        return 'Donne un nom au tournoi';
+      case 'tn_too_many':
+        return 'Tu as déjà 5 tournois en cours';
+      case 'tn_match':
+        return 'Ce match n\'est plus à jouer';
+      case 'tn_owner':
+        return 'Seul le créateur du tournoi peut faire ça';
     }
     return offline ? 'Pas de connexion au serveur' : 'Erreur serveur ($code)';
   }

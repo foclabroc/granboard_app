@@ -38,6 +38,40 @@ Future<void> openOnlineGame(BuildContext context, int roomId) async {
   }
 }
 
+/// Défi envoyé (id [inviteId]) : attend la réponse de [p] puis ouvre la
+/// partie (message en bas si refusé ou sans réponse).
+Future<void> waitForAnswer(BuildContext context, int inviteId, OnlinePlayer p,
+    Map<String, dynamic> game) async {
+  final r = await showDialog<Object>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => _WaitDialog(inviteId: inviteId, player: p, game: game),
+  );
+  if (!context.mounted) return;
+  if (r is int) {
+    await openOnlineGame(context, r);
+  } else if (r is String) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(r)));
+  }
+}
+
+/// Match de tournoi : « TOURNOI <nom> · FINALE » (null hors tournoi).
+String? tournamentLine(Map<String, dynamic> game) {
+  final tn = game['tn'];
+  if (tn is! Map) return null;
+  final rounds = (tn['rounds'] as num?)?.toInt() ?? 0;
+  final r = (tn['r'] as num?)?.toInt() ?? 0;
+  final left = rounds - r;
+  final what = switch (left) {
+    0 => 'FINALE',
+    1 => 'DEMI-FINALE',
+    2 => 'QUART DE FINALE',
+    3 => 'HUITIÈME DE FINALE',
+    _ => 'TOUR $r',
+  };
+  return 'TOURNOI ${'${tn['name'] ?? ''}'.toUpperCase()} · $what';
+}
+
 /// Nom et règles de la partie d'un défi.
 (String, String, String) describeGame(Map<String, dynamic> json) {
   try {
@@ -133,6 +167,12 @@ class _InviteDialogState extends State<_InviteDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (tournamentLine(widget.invite.game) != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(tournamentLine(widget.invite.game)!,
+                  style: Tv.title(16, color: Tv.gold)),
+            ),
           Text(title.toUpperCase(), style: Tv.title(22)),
           if (rules.isNotEmpty)
             Text(rules.toUpperCase(), style: Tv.label(12, color: Tv.text)),
@@ -206,17 +246,7 @@ class _OnlinePageState extends State<OnlinePage> {
       return;
     }
     if (!mounted) return;
-    final r = await showDialog<Object>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => _WaitDialog(inviteId: id, player: p, game: game),
-    );
-    if (!mounted) return;
-    if (r is int) {
-      await openOnlineGame(context, r);
-    } else if (r is String) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(r)));
-    }
+    await waitForAnswer(context, id, p, game);
   }
 
   @override
@@ -493,6 +523,12 @@ class _WaitDialogState extends State<_WaitDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (tournamentLine(widget.game) != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(tournamentLine(widget.game)!,
+                  style: Tv.title(15, color: Tv.gold)),
+            ),
           Text(title.toUpperCase(), style: Tv.title(20)),
           if (rules.isNotEmpty)
             Text(rules.toUpperCase(), style: Tv.label(12, color: Tv.text)),

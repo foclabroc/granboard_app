@@ -24,6 +24,7 @@ import 'tile_art.dart';
 import 'tv_sheet.dart';
 import 'welcome_page.dart';
 import 'widgets.dart';
+import 'tournament_page.dart';
 
 /// Accueil en grille : une tuile par famille de jeux (la grande tuile 01
 /// rappelle le dernier score de départ), la cible, l'écran TV, les
@@ -371,7 +372,7 @@ class _HomePageState extends State<HomePage>
                   ),
                 ),
                 const SizedBox(height: 8),
-                // ─── Tuiles des jeux (3 × 2) ───
+                // ─── Tuiles des jeux (4 + 3) ───
                 Expanded(
                   child: Column(
                     children: [
@@ -405,11 +406,6 @@ class _HomePageState extends State<HomePage>
                             icon: Icons.emoji_events,
                             onTap: () => _open(const SetupPage(kind: 'match')),
                           ),
-                        ]),
-                      ),
-                      const SizedBox(height: 10),
-                      Expanded(
-                        child: _row([
                           _Tile(
                             tint: const Color(0xFF3BA7FF),
                             anim: _spin,
@@ -420,6 +416,11 @@ class _HomePageState extends State<HomePage>
                             onTap: () =>
                                 _open(const SetupPage(kind: 'practice')),
                           ),
+                        ]),
+                      ),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: _row([
                           _Tile(
                             tint: const Color(0xFFB45CFF),
                             anim: _spin,
@@ -447,6 +448,15 @@ class _HomePageState extends State<HomePage>
                                 onTap: () => _open(const OnlinePage()),
                               );
                             },
+                          ),
+                          _Tile(
+                            tint: const Color(0xFFFF9F1C),
+                            anim: _spin,
+                            art: TileArt.tournament,
+                            kicker: 'ÉLIMINATION · EN LIGNE',
+                            title: 'TOURNOIS',
+                            icon: Icons.account_tree,
+                            onTap: () => _open(const TournamentsPage()),
                           ),
                         ]),
                       ),
