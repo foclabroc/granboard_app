@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../game/practice.dart';
 import '../media.dart';
@@ -19,9 +20,38 @@ const _kinds = [
   ('cr_wins', 'VICTOIRES CRICKET'),
 ];
 
-/// Classements de tous les joueurs du serveur.
-class RankingPage extends StatelessWidget {
+/// Classements : tous les joueurs du serveur, ou seulement les comptes
+/// enregistrés sur ce téléphone (« MES JOUEURS », choix mémorisé).
+class RankingPage extends StatefulWidget {
   const RankingPage({super.key});
+
+  /// Vrai = seulement les comptes de ce téléphone.
+  static final mineOnly = ValueNotifier(false);
+  static const _pref = 'ranking_mine_v1';
+
+  @override
+  State<RankingPage> createState() => _RankingPageState();
+}
+
+class _RankingPageState extends State<RankingPage> {
+  @override
+  void initState() {
+    super.initState();
+    () async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        RankingPage.mineOnly.value =
+            prefs.getBool(RankingPage._pref) ?? RankingPage.mineOnly.value;
+      } catch (_) {}
+    }();
+  }
+
+  void _set(bool v) {
+    RankingPage.mineOnly.value = v;
+    SharedPreferences.getInstance()
+        .then((p) => p.setBool(RankingPage._pref, v))
+        .catchError((_) => false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +60,31 @@ class RankingPage extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('CLASSEMENTS'),
+          actions: [
+            ValueListenableBuilder(
+              valueListenable: RankingPage.mineOnly,
+              builder: (_, mine, __) => Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: SegmentedButton<bool>(
+                  showSelectedIcon: false,
+                  style: SegmentedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    selectedBackgroundColor: Tv.gold,
+                    selectedForegroundColor: Colors.black,
+                    foregroundColor: Tv.muted,
+                    side: BorderSide(color: Tv.line),
+                    textStyle: Tv.title(14),
+                  ),
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('TOUS')),
+                    ButtonSegment(value: true, label: Text('MES JOUEURS')),
+                  ],
+                  selected: {mine},
+                  onSelectionChanged: (v) => _set(v.first),
+                ),
+              ),
+            ),
+          ],
           bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
@@ -108,7 +163,7 @@ class _TopListState extends State<_TopList> {
   late Future<List<Map<String, dynamic>>> _future = _load();
 
   Future<List<Map<String, dynamic>>> _load() async {
-    final l = await GbServer.top(widget.kind);
+    final l = await GbServer.top(widget.kind, limit: 100);
     MediaStore.instance.ensure(l.map((r) => '${r['id']}'));
     return l;
   }
@@ -124,6 +179,13 @@ class _TopListState extends State<_TopList> {
   @override
   Widget build(BuildContext context) {
     final mine = {for (final p in PlayerStore.instance.players) p.id};
+    return ValueListenableBuilder(
+      valueListenable: RankingPage.mineOnly,
+      builder: (context, mineOnly, _) => _list(context, mine, mineOnly),
+    );
+  }
+
+  Widget _list(BuildContext context, Set<int> mine, bool mineOnly) {
     return FutureBuilder(
       future: _future,
       builder: (context, snap) {
@@ -145,11 +207,19 @@ class _TopListState extends State<_TopList> {
             ),
           );
         }
-        final rows = snap.data ?? const [];
+        final all = snap.data ?? const [];
+        final rows = mineOnly
+            ? [
+                for (final r in all)
+                  if (mine.contains((r['id'] as num).toInt())) r
+              ]
+            : all;
         if (rows.isEmpty) {
           return Center(
             child: Text(
-                const ['rating', 'avg', 'mpr'].contains(widget.kind)
+                mineOnly && all.isNotEmpty
+                    ? 'Aucun de tes joueurs dans ce classement'
+                    : const ['rating', 'avg', 'mpr'].contains(widget.kind)
                     ? 'Personne n\'a encore 3 parties'
                     : 'Pas encore de résultat',
                 style: Tv.label(15, color: Tv.text)),
@@ -162,7 +232,8 @@ class _TopListState extends State<_TopList> {
             itemCount: rows.length,
             itemBuilder: (_, i) {
               final r = rows[i];
-              final me = mine.contains((r['id'] as num).toInt());
+              final me =
+                  !mineOnly && mine.contains((r['id'] as num).toInt());
               final value = r['value'] as num;
               final medal = switch (i) {
                 0 => Tv.gold,

@@ -2,6 +2,7 @@
 
 ## v0.6.1
 
+- Classements : bouton **TOUS / MES JOUEURS** (seulement les comptes enregistrés sur ce téléphone), choix mémorisé
 - **Nouvelle voix de l'annonceur** : une voix française naturelle, enregistrée dans l'appli (scores, bust, restes, marques, victoires, noms des jeux, cibles…), identique sur le téléphone et la TV ; seuls les pseudos restent lus par la voix du téléphone
 - Bandeau animé « AU TOUR DE … » avec la photo et la couleur du joueur suivant, après chaque « Suivant » (téléphone et TV, pas en solo) ; il ne bloque pas l'écran et s'efface dès la première fléchette
 - Animations courtes (1,5 s, avec son) à chaque **TRIPLE 20**, **BULL** et **D-BULL**, sur le téléphone et la TV : deux fonds au hasard (flammes, onde de feu) ; la fléchette suivante ou un toucher l'arrête

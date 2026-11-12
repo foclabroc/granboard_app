@@ -14,6 +14,8 @@ import 'package:granboard_proto/ui/theme.dart';
 import 'package:granboard_proto/ui/turn_banner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:granboard_proto/server.dart';
+
 import 'fake_server.dart';
 
 Widget app(Widget home) => MaterialApp(theme: Tv.theme(), home: home);
@@ -221,8 +223,22 @@ void main() {
 
   testWidgets('Classements s\'affichent', (tester) async {
     await phone(tester);
+    // Un joueur du serveur qui n'est pas sur ce téléphone
+    await GbServer.register('Max', '1234', 0);
+    RankingPage.mineOnly.value = false;
     await tester.pumpWidget(app(const RankingPage()));
     await tester.pumpAndSettle();
     expect(find.text('LÉO'), findsOneWidget);
+    expect(find.text('MAX'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('MES JOUEURS'));
+    await tester.pumpAndSettle();
+    expect(find.text('LÉO'), findsOneWidget);
+    expect(find.text('MAX'), findsNothing);
+    expect(find.text('1'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('TOUS'));
+    await tester.pumpAndSettle();
+    expect(find.text('MAX'), findsOneWidget);
   });
 }
