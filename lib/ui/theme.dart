@@ -3,8 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'wallpaper.dart';
+
 /// Animation du fond d'un thème.
-enum SkinFx { spotlight, grid, petals, embers }
+enum SkinFx { spotlight, grid, petals, embers, wallpaper }
 
 /// Thème de l'appli : couleurs + fond animé. Choisi dans l'accueil (⋮ ›
 /// Thème), mémorisé, envoyé aux écrans TV reliés.
@@ -106,7 +108,25 @@ class AppSkin {
     fx: SkinFx.embers,
   );
 
-  static const all = [gold, neon, sakura, ember];
+  /// Fond d'écran : une image (de l'appli, au hasard ou du téléphone,
+  /// voir [Wallpaper]) assombrie, panneaux légèrement transparents.
+  static const wallpaper = AppSkin(
+    id: 'wallpaper',
+    name: 'Fond d\'écran',
+    bg: Color(0xFF07070A),
+    panel: Color(0xD9121218),
+    panel2: Color(0xE01B1B23),
+    line: Color(0xFF34343F),
+    accent: Color(0xFFE8B63C),
+    accentLight: Color(0xFFFFD877),
+    accentDark: Color(0xFF8C6716),
+    glow: Color(0xFF2D7DFF),
+    muted: Color(0xFFA3A3B2),
+    panelColors: [Color(0xD91D1D26), Color(0xD90E0E13)],
+    fx: SkinFx.wallpaper,
+  );
+
+  static const all = [gold, neon, sakura, ember, wallpaper];
 
   static AppSkin byId(Object? id) =>
       all.firstWhere((s) => s.id == id, orElse: () => gold);
@@ -438,15 +458,71 @@ class _SkinBackgroundState extends State<SkinBackground>
 
   @override
   Widget build(BuildContext context) {
+    final skin = Tv.skin.value;
     return Stack(
       fit: StackFit.expand,
       children: [
         RepaintBoundary(
-          child: CustomPaint(
-              painter: _SkinPainter(Tv.skin.value, _c), isComplex: true),
+          child: skin.fx == SkinFx.wallpaper
+              ? _WallpaperBackground(controller: _c)
+              : CustomPaint(painter: _SkinPainter(skin, _c), isComplex: true),
         ),
         widget.child,
       ],
+    );
+  }
+}
+
+/// Fond d'écran : l'image choisie, qui zoome très lentement, assombrie
+/// (plus en bas, où sont les boutons) pour garder le texte lisible.
+class _WallpaperBackground extends StatelessWidget {
+  final AnimationController controller;
+  const _WallpaperBackground({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: Colors.black,
+      child: ListenableBuilder(
+        listenable: Wallpaper.instance,
+        builder: (context, _) => Stack(
+          fit: StackFit.expand,
+          children: [
+            AnimatedBuilder(
+              animation: controller,
+              builder: (context, child) => Transform.scale(
+                scale: 1.04 + 0.04 * math.sin(controller.value * 2 * math.pi),
+                child: child,
+              ),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 600),
+                child: Image(
+                  key: ValueKey(Wallpaper.instance.shown),
+                  image: Wallpaper.instance.current,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                  gaplessPlayback: true,
+                  errorBuilder: (_, __, ___) => const SizedBox.expand(),
+                ),
+              ),
+            ),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0x99000000),
+                    Color(0xB3000000),
+                    Color(0xD9000000)
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -490,6 +566,8 @@ class _SkinPainter extends CustomPainter {
         skin.glow,
         0.16);
     switch (skin.fx) {
+      case SkinFx.wallpaper:
+        break;
       case SkinFx.spotlight:
         // Faisceaux de projecteurs qui balaient depuis le haut
         for (var i = 0; i < 3; i++) {

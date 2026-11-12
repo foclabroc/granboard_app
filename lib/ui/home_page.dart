@@ -21,6 +21,8 @@ import 'setup_page.dart';
 import 'sound_settings.dart';
 import 'lights_sheet.dart';
 import 'theme.dart';
+import 'wallpaper.dart';
+import 'wallpaper_picker.dart';
 import 'tile_art.dart';
 import 'tv_sheet.dart';
 import 'welcome_page.dart';
@@ -147,6 +149,16 @@ class _HomePageState extends State<HomePage>
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(14),
+                            image: sk.fx == SkinFx.wallpaper
+                                ? DecorationImage(
+                                    image: Wallpaper.instance.imageOf(
+                                            Wallpaper.instance.shown,
+                                            thumb: true) ??
+                                        AssetImage(Wallpaper.thumbPath(1)),
+                                    fit: BoxFit.cover,
+                                    colorFilter: const ColorFilter.mode(
+                                        Color(0x66000000), BlendMode.darken))
+                                : null,
                             gradient: RadialGradient(
                               center: const Alignment(-0.6, -1),
                               radius: 1.6,
@@ -192,6 +204,7 @@ class _HomePageState extends State<HomePage>
                       ),
                   ],
                 ),
+                if (cur.fx == SkinFx.wallpaper) const WallpaperPicker(),
               ],
             ),
           ),

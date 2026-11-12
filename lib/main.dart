@@ -15,6 +15,7 @@ import 'ui/cricket_view.dart' show CricketStyle;
 import 'ui/dartboard.dart' show BoardSkin;
 import 'ui/home_page.dart';
 import 'ui/theme.dart';
+import 'ui/wallpaper.dart';
 import 'update_check.dart';
 
 const kPrefTvMode = 'tv_mode';
@@ -53,6 +54,7 @@ Future<void> main() async {
     BoardSkin.load(),
     CricketStyle.load(),
     Tv.load(),
+    Wallpaper.instance.load(),
     MediaStore.instance.load(),
     if (!tv) BoardService.instance.init(),
     if (!tv) BoardLights.instance.load(),

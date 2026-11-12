@@ -13,6 +13,7 @@ import '../ui/game_fx.dart';
 import '../ui/game_page.dart' show NextMatchChip, gameView, resultsPageFor;
 import '../tournament.dart';
 import '../ui/theme.dart';
+import '../ui/wallpaper.dart';
 import '../ui/tournament_page.dart' show TvTournamentView;
 import 'tv_client.dart';
 
@@ -82,6 +83,7 @@ class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
     if (s?['theme'] is String && s!['theme'] != Tv.skin.value.id) {
       Tv.choose(AppSkin.byId(s['theme']));
     }
+    if (s?['wall'] is String) Wallpaper.instance.applyFromPhone(s!['wall']);
     final screen = s?['screen'] as String?;
     if (screen != _screen) {
       _screen = screen;

@@ -9,6 +9,7 @@ import 'game/darts_game.dart';
 import 'players.dart';
 import 'server.dart';
 import 'ui/theme.dart';
+import 'ui/wallpaper.dart';
 import 'ui/cricket_view.dart' show CricketStyle;
 import 'ui/dartboard.dart' show BoardSkin;
 
@@ -215,6 +216,7 @@ class TvLink extends ChangeNotifier {
         'skin': BoardSkin.current.value.id,
         'cricket': CricketStyle.current.value,
         'theme': Tv.skin.value.id,
+        'wall': Wallpaper.instance.forTv,
       };
       if (!_sending.contains(s.code)) _flush(s);
     }
