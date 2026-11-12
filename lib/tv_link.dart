@@ -9,6 +9,7 @@ import 'game/darts_game.dart';
 import 'players.dart';
 import 'server.dart';
 import 'ui/theme.dart';
+import 'ui/cricket_view.dart' show CricketStyle;
 import 'ui/dartboard.dart' show BoardSkin;
 
 /// Un écran relié (TV, tablette…), un salon par écran sur le serveur.
@@ -204,6 +205,7 @@ class TvLink extends ChangeNotifier {
         ...state,
         'sound': soundOn.contains(s.code),
         'skin': BoardSkin.current.value.id,
+        'cricket': CricketStyle.current.value,
         'theme': Tv.skin.value.id,
       };
       if (!_sending.contains(s.code)) _flush(s);

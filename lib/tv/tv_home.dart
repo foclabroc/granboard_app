@@ -7,6 +7,7 @@ import '../audio.dart';
 import '../game/darts_game.dart';
 import '../media.dart';
 import '../players.dart';
+import '../ui/cricket_view.dart' show CricketStyle;
 import '../ui/dartboard.dart';
 import '../ui/game_fx.dart';
 import '../ui/game_page.dart' show gameView, resultsPageFor;
@@ -67,6 +68,10 @@ class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
     // … et le style de la cible
     if (s?['skin'] is String) {
       BoardSkin.current.value = BoardSkin.byId(s!['skin']);
+    }
+    // … et la mise en page du Cricket
+    if (s?['cricket'] is String) {
+      CricketStyle.current.value = CricketStyle.fix(s!['cricket']);
     }
     // … et le thème de l'appli
     if (s?['theme'] is String && s!['theme'] != Tv.skin.value.id) {

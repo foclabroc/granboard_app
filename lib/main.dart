@@ -10,6 +10,7 @@ import 'online/online.dart';
 import 'players.dart';
 import 'tv/tv_home.dart';
 import 'tv_link.dart';
+import 'ui/cricket_view.dart' show CricketStyle;
 import 'ui/dartboard.dart' show BoardSkin;
 import 'ui/home_page.dart';
 import 'ui/theme.dart';
@@ -49,6 +50,7 @@ Future<void> main() async {
   await Future.wait([
     AudioService.instance.init(),
     BoardSkin.load(),
+    CricketStyle.load(),
     Tv.load(),
     MediaStore.instance.load(),
     if (!tv) BoardService.instance.init(),

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../audio.dart';
 import '../game/cricket.dart';
@@ -10,6 +11,37 @@ import 'game_page.dart' show GamePage;
 import 'setup_page.dart' show kTeamColors, kTeamNames;
 import 'theme.dart';
 import 'widgets.dart';
+
+/// Mise en page du Cricket : `classic` (numéros au centre, façon GranBoard)
+/// ou `columns` (une colonne par joueur, celle du joueur en cours en
+/// surbrillance et plus grande ; jusqu'à 10 joueurs). Choisie sur le
+/// téléphone, envoyée à la TV (`cricket` dans l'état).
+class CricketStyle {
+  static const classic = 'classic';
+  static const columns = 'columns';
+  static const _pref = 'cricket_layout';
+  static final current = ValueNotifier<String>(classic);
+
+  static String fix(Object? v) => v == columns ? columns : classic;
+
+  static Future<void> load() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      current.value = fix(p.getString(_pref));
+    } catch (_) {}
+  }
+
+  static Future<void> choose(String v) async {
+    current.value = fix(v);
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString(_pref, current.value);
+    } catch (_) {}
+  }
+
+  static Future<void> toggle() =>
+      choose(current.value == columns ? classic : columns);
+}
 
 /// Couleur de chaque joueur dans la partie : sa couleur de compte, sauf
 /// invité ou couleur déjà prise (on prend alors une couleur libre), pour que
@@ -89,28 +121,48 @@ class _CricketLayoutState extends State<CricketLayout>
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        LayoutBuilder(builder: (context, c) {
-          final barH = (c.maxHeight * 0.2).clamp(52.0, 96.0);
-          final sideW = (c.maxWidth * 0.17).clamp(110.0, 220.0);
-          return Column(
-            children: [
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(width: sideW, child: _History(game: game)),
-                    Expanded(child: _MarksArena(game: game)),
-                    SizedBox(
-                        width: sideW,
-                        child: _RightPanel(
-                            game: game, actionBar: widget.actionBar)),
-                  ],
+        ValueListenableBuilder<String>(
+          valueListenable: CricketStyle.current,
+          builder: (context, style, _) => LayoutBuilder(builder: (context, c) {
+            final barH = (c.maxHeight * 0.2).clamp(52.0, 96.0);
+            final sideW = (c.maxWidth * 0.17).clamp(110.0, 220.0);
+            final phone = widget.actionBar != null;
+            if (style == CricketStyle.columns) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: _ColumnsArena(game: game, canSwitch: phone)),
+                  SizedBox(
+                      width: sideW,
+                      child: _RightPanel(
+                          game: game,
+                          actionBar: widget.actionBar,
+                          status: true)),
+                ],
+              );
+            }
+            return Column(
+              children: [
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                          width: sideW,
+                          child: _History(game: game, canSwitch: phone)),
+                      Expanded(child: _MarksArena(game: game)),
+                      SizedBox(
+                          width: sideW,
+                          child: _RightPanel(
+                              game: game, actionBar: widget.actionBar)),
+                    ],
+                  ),
                 ),
-              ),
-              SizedBox(height: barH, child: _PlayersBar(game: game)),
-            ],
-          );
-        }),
+                SizedBox(height: barH, child: _PlayersBar(game: game)),
+              ],
+            );
+          }),
+        ),
         Positioned.fill(
           child: IgnorePointer(
             child: AnimatedBuilder(
@@ -165,40 +217,321 @@ class _CricketLayoutState extends State<CricketLayout>
 /// Marques « brutes » d'une fléchette pour l'historique (0 = rien d'utile).
 int _dartMarks(CricketDart d) => d.marks.clamp(0, 3);
 
-/// Gauche : statut + manches du joueur en cours (R1 / / /, R2 Ⓧ Ⓧ…).
-class _History extends StatelessWidget {
+/// Message d'état de la partie (fin, spoiler, cibles cachées…) et sa
+/// couleur ; texte vide = rien à dire.
+(String, Color) _statusOf(CricketGame g) {
+  final side = g.sideOf(g.current);
+  final v = g.variant;
+  if (g.finished) {
+    final names = g.winners.map((i) => g.players[i].name).join(', ');
+    return (
+      '🏆 $names ${g.winners.length > 1 ? 'gagnent' : 'gagne'} !',
+      Tv.goldLight
+    );
+  }
+  if (g.turnOver) return ('Retire tes fléchettes\npuis « Suivant »', Tv.muted);
+  if (g.isSpoiler(side)) return ('SPOILER :\nne peut plus gagner', Tv.red);
+  if (g.allClosed(side) && v.scoring) {
+    return (
+      v.cutThroat
+          ? 'Tout fermé : il faut\nle moins de points'
+          : 'Tout fermé : marque\npour passer devant',
+      Tv.goldLight
+    );
+  }
+  if (v.hidden) {
+    final left = g.targets.where((x) => !x.revealed).length;
+    if (left > 0) {
+      return (
+        '$left cible${left > 1 ? 's' : ''} cachée${left > 1 ? 's' : ''}',
+        Tv.ice
+      );
+    }
+  }
+  return ('', Tv.muted);
+}
+
+/// Texte d'un numéro du tableau.
+String _targetLabel(CricketGame g, int t) => !g.targets[t].revealed
+    ? '?'
+    : g.variant == CricketVariant.tripleOnly
+        ? 'T${g.targets[t].number}'
+        : g.targets[t].number == 25
+            ? 'B'
+            : g.targets[t].label;
+
+/// Petit bouton qui change la mise en page (téléphone seulement).
+class _StyleButton extends StatelessWidget {
+  const _StyleButton();
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        key: const ValueKey('cricket-style'),
+        borderRadius: BorderRadius.circular(8),
+        onTap: CricketStyle.toggle,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          decoration: BoxDecoration(
+            color: Tv.panel2,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Tv.line),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.view_week_rounded, size: 16, color: Tv.gold),
+              const SizedBox(width: 4),
+              Text('VUE', style: Tv.title(12, color: Tv.gold)),
+            ],
+          ),
+        ),
+      );
+}
+
+/// Mise en page « colonnes » : numéros à gauche, puis une colonne par joueur
+/// (ou équipe) : avatar + nom, marques, score. La colonne du joueur en cours
+/// est en surbrillance, plus large et plus haute que les autres.
+class _ColumnsArena extends StatelessWidget {
   final CricketGame game;
-  const _History({required this.game});
+  final bool canSwitch;
+  const _ColumnsArena({required this.game, required this.canSwitch});
 
   @override
   Widget build(BuildContext context) {
     final g = game;
-    final side = g.sideOf(g.current);
-    final v = g.variant;
-    String status = '';
-    Color statusColor = Tv.muted;
-    if (g.finished) {
-      final names = g.winners.map((i) => g.players[i].name).join(', ');
-      status = '🏆 $names ${g.winners.length > 1 ? 'gagnent' : 'gagne'} !';
-      statusColor = Tv.goldLight;
-    } else if (g.turnOver) {
-      status = 'Retire tes fléchettes\npuis « Suivant »';
-    } else if (g.isSpoiler(side)) {
-      status = 'SPOILER :\nne peut plus gagner';
-      statusColor = Tv.red;
-    } else if (g.allClosed(side) && v.scoring) {
-      status = v.cutThroat
-          ? 'Tout fermé : il faut\nle moins de points'
-          : 'Tout fermé : marque\npour passer devant';
-      statusColor = Tv.goldLight;
-    } else if (v.hidden) {
-      final left = g.targets.where((x) => !x.revealed).length;
-      if (left > 0) {
-        status =
-            '$left cible${left > 1 ? 's' : ''} cachée${left > 1 ? 's' : ''}';
-        statusColor = Tv.ice;
+    final sides = g.sides;
+    final cur = g.sideOf(g.current);
+    return LayoutBuilder(builder: (context, c) {
+      final rows = g.targets.length;
+      const pad = 6.0;
+      const grow = 1.3; // largeur de la colonne en cours
+      const inset = 6.0; // les autres colonnes sont un peu moins hautes
+      final n = sides.length;
+      final h = c.maxHeight - pad * 2;
+      final numW = (c.maxWidth * 0.08).clamp(40.0, 64.0);
+      final unit = (c.maxWidth - pad * 2 - numW) / (n - 1 + grow);
+      // Colonnes pas trop larges à 2 ou 3 joueurs
+      final colW = math.min(unit, h * 0.55);
+      final headH = (h * 0.2).clamp(40.0, 84.0);
+      final footH = (h * 0.15).clamp(30.0, 64.0);
+      final rowH = (h - headH - footH) / rows;
+
+      Widget column(int s) {
+        final color = sideColor(g, s);
+        final active = s == cur && !g.finished;
+        final won = g.winners.any((i) => g.sideOf(i) == s);
+        final w = (active ? colW * grow : colW) - 4;
+        final mark = math.min(rowH, w) * (active ? 0.84 : 0.7);
+        final members = g.membersOf(s);
+        final score =
+            g.variant.scoring ? '${g.scoreOf(s)}' : '${g.closedMarks(s)}';
+        final av = math.min(
+            headH * (active ? 0.6 : 0.5), (w - 6) / members.length - 2);
+        return Container(
+          key: ValueKey('cricket-col-$s'),
+          width: w,
+          margin:
+              EdgeInsets.symmetric(horizontal: 2, vertical: active ? 0 : inset),
+          decoration: BoxDecoration(
+            // Fond opaque : sinon l'ombre lumineuse se voit au travers
+            color: active
+                ? Color.alphaBlend(
+                    color.withValues(alpha: 0.24), const Color(0xFF0E0E14))
+                : Colors.black.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+                color: active ? color : color.withValues(alpha: 0.45),
+                width: active ? 2.5 : 1.2),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                        color: color.withValues(alpha: 0.55), blurRadius: 14)
+                  ]
+                : null,
+          ),
+          child: Opacity(
+            opacity: active || g.finished ? 1 : 0.8,
+            child: Column(
+              children: [
+                SizedBox(
+                  height: headH - (active ? 0 : inset),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(3, 3, 3, 0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            for (final i in members)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 1),
+                                child: PlayerAvatar(
+                                    id: g.players[i].id,
+                                    name: g.players[i].name,
+                                    color: _playerColor(g, i),
+                                    size: av.clamp(12.0, 60.0)),
+                              ),
+                          ],
+                        ),
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                                (g.settings.teams && members.contains(g.current)
+                                        ? g.currentPlayer.name
+                                        : sideName(g, s))
+                                    .toUpperCase(),
+                                maxLines: 1,
+                                style: Tv.title(active ? 15 : 12,
+                                    color: active ? Colors.white : Tv.text)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                for (var t = 0; t < rows; t++)
+                  SizedBox(
+                    height: rowH,
+                    child: Center(
+                      child: SizedBox.square(
+                        dimension: mark,
+                        child: CustomPaint(
+                          painter: MarkPainter(
+                              g.marksOf(s, t), g.dead(t) ? Tv.muted : color),
+                        ),
+                      ),
+                    ),
+                  ),
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: active
+                          ? color.withValues(alpha: 0.85)
+                          : Colors.black.withValues(alpha: 0.35),
+                      gradient: active ? playerFill(color) : null,
+                      borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(8)),
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: Text(won ? '🏆 $score' : score,
+                            style: Tv.title(footH * (active ? 0.72 : 0.58),
+                                    color: g.isSpoiler(s)
+                                        ? Tv.red
+                                        : active
+                                            ? (color.computeLuminance() > 0.6 &&
+                                                    !isRainbow(color)
+                                                ? Colors.black
+                                                : Colors.white)
+                                            : Tv.goldLight)
+                                .copyWith(
+                                    shadows: active
+                                        ? const [
+                                            Shadow(
+                                                color: Colors.black54,
+                                                blurRadius: 3)
+                                          ]
+                                        : null)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       }
-    }
+
+      Widget numbers() => SizedBox(
+            width: numW,
+            child: Column(
+              children: [
+                SizedBox(
+                  height: headH,
+                  child: canSwitch
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 2),
+                          child: Center(
+                              child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: _StyleButton())))
+                      : null,
+                ),
+                for (var t = 0; t < rows; t++)
+                  SizedBox(
+                    height: rowH,
+                    child: Center(
+                      child: Container(
+                        width: numW - 6,
+                        height: rowH - 4,
+                        decoration: BoxDecoration(
+                          color: Tv.panel2,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        alignment: Alignment.center,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(_targetLabel(g, t),
+                              style: Tv.title(rowH * 0.62,
+                                      color: g.dead(t)
+                                          ? Tv.muted
+                                          : !g.targets[t].revealed
+                                              ? Tv.ice
+                                              : Tv.gold)
+                                  .copyWith(
+                                      decoration: g.dead(t)
+                                          ? TextDecoration.lineThrough
+                                          : null,
+                                      decorationColor: Tv.muted)),
+                        ),
+                      ),
+                    ),
+                  ),
+                SizedBox(
+                  height: footH,
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(g.variant.scoring ? 'PTS' : 'MARQ.',
+                          style: Tv.label(11, color: Tv.muted)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+
+      return Padding(
+        padding: const EdgeInsets.all(pad),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            numbers(),
+            for (final s in sides) column(s),
+          ],
+        ),
+      );
+    });
+  }
+}
+
+/// Gauche : statut + manches du joueur en cours (R1 / / /, R2 Ⓧ Ⓧ…).
+class _History extends StatelessWidget {
+  final CricketGame game;
+  final bool canSwitch;
+  const _History({required this.game, this.canSwitch = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final g = game;
+    final (status, statusColor) = _statusOf(g);
     final turns = [
       for (final t in g.turns)
         if (t.player == g.current) t
@@ -263,6 +596,7 @@ class _History extends StatelessWidget {
               );
             }),
           ),
+          if (canSwitch) const _StyleButton(),
         ],
       ),
     );
@@ -345,13 +679,7 @@ class _MarksArena extends StatelessWidget {
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            !g.targets[t].revealed
-                                ? '?'
-                                : g.variant == CricketVariant.tripleOnly
-                                    ? 'T${g.targets[t].number}'
-                                    : g.targets[t].number == 25
-                                        ? 'B'
-                                        : g.targets[t].label,
+                            _targetLabel(g, t),
                             style: Tv.title(rowH * 0.62,
                                 color: g.dead(t)
                                     ? Tv.muted
@@ -413,7 +741,10 @@ class _MarksArena extends StatelessWidget {
 class _RightPanel extends StatelessWidget {
   final CricketGame game;
   final Widget? actionBar;
-  const _RightPanel({required this.game, this.actionBar});
+
+  /// Affiche aussi le message d'état (vue colonnes : pas d'historique).
+  final bool status;
+  const _RightPanel({required this.game, this.actionBar, this.status = false});
 
   @override
   Widget build(BuildContext context) {
@@ -439,6 +770,15 @@ class _RightPanel extends StatelessWidget {
               ),
             ),
           ),
+          if (status && _statusOf(g).$1.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: Text(_statusOf(g).$1,
+                  maxLines: 2,
+                  textAlign: TextAlign.right,
+                  overflow: TextOverflow.ellipsis,
+                  style: Tv.title(12, color: _statusOf(g).$2)),
+            ),
           const SizedBox(height: 4),
           Expanded(
             child: Column(
@@ -736,8 +1076,8 @@ class _CricketResultsPageState extends State<CricketResultsPage> {
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
                               minimumSize: const Size.fromHeight(46)),
-                          onPressed: () => Navigator.popUntil(
-                              context, (r) => r.isFirst),
+                          onPressed: () =>
+                              Navigator.popUntil(context, (r) => r.isFirst),
                           icon: const Icon(Icons.home),
                           label: const Text('MENU PRINCIPAL'),
                         ),

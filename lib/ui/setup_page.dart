@@ -18,7 +18,10 @@ import 'widgets.dart';
 
 const kSetupPrefKey = 'x01_setup_v1';
 const _prefKey = kSetupPrefKey;
-const _maxPlayers = 8;
+const _maxPlayersDefault = 8;
+
+/// Le Cricket (affichage en colonnes) accepte jusqu'à 10 joueurs.
+const _maxPlayersCricket = 10;
 const _limits = <int?>[null, 10, 15, 20, 25, 30];
 const kTeamNames = ['Équipe A', 'Équipe B'];
 const kTeamColors = [Color(0xFFE53935), Color(0xFF1E88E5)];
@@ -187,6 +190,7 @@ class _SetupPageState extends State<SetupPage> {
       );
 
   bool get _cricketOn => _kind == 'cricket';
+  int get _maxPlayers => _cricketOn ? _maxPlayersCricket : _maxPlayersDefault;
   bool get _matchOn => _kind == 'match';
   bool get _practiceOn => _kind == 'practice' || _kind == 'party';
   bool get _partyOn => _kind == 'party';
@@ -290,6 +294,7 @@ class _SetupPageState extends State<SetupPage> {
   String? get _problem {
     final n = _online ? 2 : _selected.length;
     if (n == 0) return 'Ajoute au moins un joueur';
+    if (n > _maxPlayers) return '$_maxPlayers joueurs maximum pour ce jeu';
     if (_practiceOn) {
       final i = _pInfo;
       if (n < i.minPlayers) {

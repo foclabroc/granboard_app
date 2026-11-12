@@ -5,6 +5,8 @@
 - Son sur plusieurs appareils à la fois : téléphone, TV, tablette… on coche ceux qu'on veut (écran TV ou réglage des sons)
 - 16 avatars au choix pour l'image de profil (la photo perso reste possible)
 - 7 nouvelles couleurs de joueur + arc-en-ciel, choisies dans une grille
+- Cricket : nouvelle vue **en colonnes** (une colonne par joueur, celle du joueur en cours en surbrillance et plus grande) ; bouton **VUE** en partie pour passer d'une vue à l'autre, choix gardé et envoyé à la TV
+- Cricket : jusqu'à **10 joueurs**
 
 ## v0.6.2
 

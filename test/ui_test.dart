@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:granboard_proto/board_service.dart';
+import 'package:granboard_proto/game/cricket.dart';
 import 'package:granboard_proto/game/x01.dart';
+import 'package:granboard_proto/granboard.dart';
 import 'package:granboard_proto/media.dart';
 import 'package:granboard_proto/players.dart';
 import 'package:granboard_proto/ui/calibration_page.dart';
+import 'package:granboard_proto/ui/cricket_view.dart';
 import 'package:granboard_proto/ui/game_page.dart';
 import 'package:granboard_proto/ui/players_page.dart';
 import 'package:granboard_proto/ui/rules.dart';
@@ -251,6 +254,43 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(MediaStore.instance.imageOf(p.key), isNotNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Cricket en colonnes : 10 joueurs, bascule de vue',
+      (tester) async {
+    await phone(tester);
+    await CricketStyle.choose(CricketStyle.columns);
+    addTearDown(() => CricketStyle.current.value = CricketStyle.classic);
+    final g = CricketGame(const CricketSettings(), [
+      for (var i = 0; i < 10; i++) X01Player(id: 'guest-$i', name: 'Joueur $i')
+    ]);
+    g.throwDart(const DartHit(20, 3, Ring.triple));
+    await tester.pumpWidget(app(GamePage(game: g)));
+    await tester.pump(const Duration(seconds: 2));
+    expect(tester.takeException(), isNull);
+    for (var i = 0; i < 10; i++) {
+      expect(find.byKey(ValueKey('cricket-col-$i')), findsOneWidget);
+    }
+    // Colonne du joueur en cours plus large
+    final cur = tester.getSize(find.byKey(const ValueKey('cricket-col-0')));
+    final other = tester.getSize(find.byKey(const ValueKey('cricket-col-1')));
+    expect(cur.width, greaterThan(other.width));
+    expect(cur.height, other.height); // marges incluses : vérifié sur captures
+
+    await tester.tap(find.text('SUIVANT'));
+    await tester.pump(const Duration(seconds: 2));
+    final now = tester.getSize(find.byKey(const ValueKey('cricket-col-1')));
+    expect(
+        now.width,
+        greaterThan(
+            tester.getSize(find.byKey(const ValueKey('cricket-col-0'))).width));
+
+    // Bouton VUE : retour à la vue classique
+    await tester.tap(find.byKey(const ValueKey('cricket-style')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(CricketStyle.current.value, CricketStyle.classic);
+    expect(find.byKey(const ValueKey('cricket-col-0')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
