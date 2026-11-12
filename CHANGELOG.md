@@ -6,6 +6,7 @@
 - Tableau du tournoi (quarts, demi-finales, finale) ; bouton **JOUER** pour ton match : ton adversaire reçoit le défi en ligne, le vainqueur passe tout seul au tour suivant ; le créateur peut déclarer un vainqueur (forfait)
 - **Tournoi à la maison** (bouton « À LA MAISON ») : jusqu'à 16 joueurs du téléphone + invités, tirage au sort, les matchs se jouent l'un après l'autre sur la cible (« PROCHAIN MATCH … JOUER »), le vainqueur avance tout seul, forfait possible ; les stats des comptes sont enregistrées comme une partie normale
 - **Tournoi sur la TV** (maison et en ligne) : la partie en cours pendant un match, le tableau avec le prochain match entre deux parties
+- Pendant un match de tournoi, « PROCHAIN MATCH : X contre Y » (ou « vainqueur de ce match contre … ») en haut de l'écran, sur le téléphone et la TV
 - Accueil : 4 tuiles en haut, 3 en bas
 
 ## v0.6.4

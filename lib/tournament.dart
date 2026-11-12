@@ -44,8 +44,8 @@ class TnPlayer {
   OnlinePlayer get online => OnlinePlayer(
       id: id,
       name: name,
-      colorIndex: math.max(
-          0, kPlayerColors.indexWhere((c) => c.toARGB32() == color.toARGB32())));
+      colorIndex: math.max(0,
+          kPlayerColors.indexWhere((c) => c.toARGB32() == color.toARGB32())));
 }
 
 /// Tournoi en ligne à élimination directe (`sql/2026-11-12_tournois.sql`).
@@ -126,6 +126,23 @@ class Tournament {
       if (m.playable) return m;
     }
     return null;
+  }
+
+  /// Le match qui suivra celui en cours ([r], [s]) : « A contre B », ou
+  /// « vainqueur de ce match contre … » quand il en dépend. Null en finale.
+  String? nextLine(int r, int s) {
+    for (final m in matches) {
+      if (m.playable && !(m.round == r && m.slot == s)) {
+        return '${player(m.a)!.name} contre ${player(m.b)!.name}';
+      }
+    }
+    if (r >= rounds) return null;
+    TnMatch? fed;
+    for (final m in matches) {
+      if (m.round == r + 1 && m.slot == s ~/ 2) fed = m;
+    }
+    final other = player(s.isEven ? fed?.b : fed?.a);
+    return 'Vainqueur de ce match contre ${other?.name ?? 'à venir'}';
   }
 
   TnPlayer? player(int? id) {
@@ -310,7 +327,6 @@ class TournamentApi {
       })));
 }
 
-
 /// Tournoi à la maison : tableau gardé sur ce téléphone, matchs joués sur la
 /// cible ; même tirage et mêmes exempts que le serveur (`gb_tn_start`).
 class LocalTournament {
@@ -319,7 +335,8 @@ class LocalTournament {
   final String label;
   final Map<String, dynamic> game; // partie modèle, sans joueurs
   final List<X01Player> players; // dans l'ordre du tirage
-  final List<Map<String, dynamic>> matches; // {r, s, a, b, bye, winner, forfeit}
+  final List<Map<String, dynamic>>
+      matches; // {r, s, a, b, bye, winner, forfeit}
   int rounds;
   int? winner;
   final DateTime created;

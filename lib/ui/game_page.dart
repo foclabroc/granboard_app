@@ -45,13 +45,18 @@ class GamePage extends StatefulWidget {
   /// Match d'un tournoi à la maison : appelé une fois la partie finie quand
   /// on revient au tableau (bouton « TABLEAU » ou retour).
   final void Function(DartsGame game)? onTournamentEnd;
+
+  /// Tournoi : le match suivant, affiché pendant la partie (et sur la TV).
+  /// En ligne, il est lu au tableau du serveur.
+  final String? nextMatch;
   const GamePage(
       {super.key,
       this.settings,
       this.players,
       this.game,
       this.online,
-      this.onTournamentEnd})
+      this.onTournamentEnd,
+      this.nextMatch})
       : assert(game != null || (settings != null && players != null));
 
   @override
@@ -78,6 +83,7 @@ class _GamePageState extends State<GamePage> {
     PlayerStore.instance.ensureRatings(game.players.map((p) => p.id));
     _fx.start(game);
     WidgetsBinding.instance.addPostFrameCallback((_) => _pushTv());
+    _loadNext();
     OnlineService.instance.inGame++;
     final room = _room;
     if (room != null) {
@@ -262,7 +268,25 @@ class _GamePageState extends State<GamePage> {
     _sync();
   }
 
-  void _pushTv() => TvLink.instance.pushGame(game);
+  void _pushTv() => TvLink.instance.pushGame(game, next: _nextMatch);
+
+  late String? _nextMatch = widget.nextMatch;
+
+  /// Match de tournoi en ligne : le prochain match vient du tableau.
+  Future<void> _loadNext() async {
+    final tn = _room?.game['tn'];
+    if (tn is! Map) return;
+    final t = (tn['t'] as num?)?.toInt();
+    final r = (tn['r'] as num?)?.toInt();
+    final s = (tn['s'] as num?)?.toInt();
+    if (t == null || r == null || s == null) return;
+    try {
+      final next = (await TournamentApi.get(t)).nextLine(r, s);
+      if (!mounted || next == null) return;
+      setState(() => _nextMatch = next);
+      if (!game.finished) _pushTv();
+    } catch (_) {}
+  }
 
   /// Choix de cible (entraînement).
   void _changeTarget(int n) {
@@ -378,6 +402,11 @@ class _GamePageState extends State<GamePage> {
             ],
           ),
           actions: [
+            if (_nextMatch != null && !game.finished)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: NextMatchChip(text: _nextMatch!),
+              ),
             if (_room != null && !game.finished)
               Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -441,6 +470,39 @@ class _GamePageState extends State<GamePage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Tournoi : « PROCHAIN MATCH » + les 2 joueurs (téléphone et TV).
+class NextMatchChip extends StatelessWidget {
+  final String text;
+  final double scale;
+  const NextMatchChip({super.key, required this.text, this.scale = 1});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('next-match'),
+      constraints: BoxConstraints(maxWidth: 230 * scale),
+      padding:
+          EdgeInsets.symmetric(horizontal: 10 * scale, vertical: 3 * scale),
+      decoration: BoxDecoration(
+        color: Tv.panel2,
+        borderRadius: BorderRadius.circular(8 * scale),
+        border: Border.all(color: Tv.gold.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('PROCHAIN MATCH', style: Tv.label(9 * scale, color: Tv.gold)),
+          Text(text.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Tv.title(14 * scale)),
+        ],
       ),
     );
   }

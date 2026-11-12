@@ -236,6 +236,28 @@ void main() {
         store.byUid(lt.uid)!.view().toJson()['matches'], t.toJson()['matches']);
   });
 
+  test('Prochain match affiché pendant la partie', () {
+    final lt = LocalTournament.create(
+        name: 'T',
+        label: '501',
+        game: game,
+        random: math.Random(1),
+        players: [
+          for (var i = 1; i <= 4; i++)
+            X01Player(id: 'guest-$i', name: 'J$i')
+        ]);
+    final t = lt.view();
+    final m0 = t.round(1)[0], m1 = t.round(1)[1];
+    expect(t.nextLine(1, 0),
+        '${t.player(m1.a)!.name} contre ${t.player(m1.b)!.name}');
+    lt.advance(1, 0, m0.a!);
+    final t2 = lt.view();
+    expect(t2.nextLine(1, 1),
+        'Vainqueur de ce match contre ${t2.player(m0.a)!.name}');
+    lt.advance(1, 1, m1.b!);
+    expect(lt.view().nextLine(2, 0), isNull);
+  });
+
   testWidgets('Tournoi à la maison : JOUER, partie sur la cible, TABLEAU',
       (tester) async {
     await phone(tester);
@@ -279,6 +301,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       await tester.runAsync(settle);
       expect(tvScreen(), 'game', reason: 'partie en cours sur la TV');
+      if (f == GranBoardDecoder.frameFor(20, Ring.triple)) {
+        expect(find.byKey(const ValueKey('next-match')), findsNothing,
+            reason: 'finale : pas de match suivant');
+      }
     }
     await tester.pump(const Duration(seconds: 3));
     expect(find.text('TABLEAU'), findsOneWidget);

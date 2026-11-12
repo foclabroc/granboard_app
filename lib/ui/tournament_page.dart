@@ -1028,6 +1028,7 @@ class _LocalTournamentPageState extends State<LocalTournamentPage> {
       MaterialPageRoute(
         builder: (_) => GamePage(
           game: game,
+          nextMatch: lt.view().nextLine(m.round, m.slot),
           onTournamentEnd: (g) {
             if (g.winners.length != 1) {
               tie = true;

@@ -180,12 +180,13 @@ class TvLink extends ChangeNotifier {
   void pushLobby() => _push({'screen': 'lobby', 'host': _hostName});
 
   /// Partie en cours ([screen] = game) ou terminée ([screen] = results).
-  void pushGame(DartsGame game, {String screen = 'game'}) {
+  void pushGame(DartsGame game, {String screen = 'game', String? next}) {
     final store = PlayerStore.instance;
     _push({
       'screen': screen,
       'host': _hostName,
       'game': game.toJson(),
+      if (next != null) 'next': next,
       'colors': {
         for (final p in game.players) p.id: store.colorOf(p.id).toARGB32(),
       },

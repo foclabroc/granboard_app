@@ -10,7 +10,7 @@ import '../players.dart';
 import '../ui/cricket_view.dart' show CricketStyle;
 import '../ui/dartboard.dart';
 import '../ui/game_fx.dart';
-import '../ui/game_page.dart' show gameView, resultsPageFor;
+import '../ui/game_page.dart' show NextMatchChip, gameView, resultsPageFor;
 import '../tournament.dart';
 import '../ui/theme.dart';
 import '../ui/tournament_page.dart' show TvTournamentView;
@@ -396,6 +396,10 @@ class _TvGameState extends State<_TvGame> {
                     overflow: TextOverflow.ellipsis,
                     style: Tv.label(14)),
               ),
+              if (widget.state['next'] is String && !g.finished) ...[
+                NextMatchChip(text: widget.state['next'] as String, scale: 1.3),
+                const SizedBox(width: 16),
+              ],
               Text(
                 limit == null
                     ? 'MANCHE ${g.round}'
