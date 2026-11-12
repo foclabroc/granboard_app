@@ -81,6 +81,7 @@ class _GamePageState extends State<GamePage> {
   void initState() {
     super.initState();
     _sub = BoardService.instance.events.listen(_onEvent);
+    PlayerStore.instance.setGameColors([for (final p in game.players) p.id]);
     audio.stopMusic();
     MediaStore.instance.ensure(game.players.map((p) => p.id));
     PlayerStore.instance.ensureRatings(game.players.map((p) => p.id));

@@ -10,6 +10,7 @@
 - **Lumières de la GranBoard 3s** (⋮ › Lumières de la cible) : contour à la couleur du joueur en cours, clignotement en face du numéro touché (1 à 3 fois selon simple / double / triple), vague sur un 180 ou une victoire, contour rouge sur un bust, numéros à viser allumés en orange (Cricket, fin en 01, entraînement) ; bouton ESSAYER ; protocole non officiel, à confirmer sur la cible
 - **Bot** (bouton « Bot » à côté de « Invité », dans tous les jeux à la maison et les tournois à la maison) : il lance tout seul, son niveau part du rang de ses adversaires puis se cale sur ce qu'ils lancent vraiment pendant la partie, avec un léger rattrapage si l'écart devient trop grand ; « Annuler » revient à ta dernière action
 - Nouveau thème **Fond d'écran** (⋮ › Thème de l'appli) : 9 images fournies, « Au hasard » (nouvelle image à chaque lancement) ou tes propres images du téléphone (MES IMAGES, appui long pour retirer) ; image assombrie qui zoome lentement, aussi sur la TV (sauf tes photos : image au hasard)
+- Couleurs toutes différentes dans **tous** les jeux (01, Match, résultats, bandeau, TV, lumières de la cible) : le premier garde la couleur de son compte, les suivants qui ont la même, les invités et les bots reçoivent chacun une couleur libre (15 couleurs) ; la couleur du compte ne change pas
 - Accueil : 4 tuiles en haut, 3 en bas
 
 ## v0.6.4

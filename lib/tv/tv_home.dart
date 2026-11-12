@@ -59,12 +59,17 @@ class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
     final s = client.state;
     final colors = s?['colors'];
     if (colors is Map) {
+      final sent = {
+        for (final e in colors.entries)
+          '${e.key}': Color((e.value as num).toInt())
+      };
+      // Les couleurs de la partie, telles que le téléphone les a choisies
       PlayerStore.instance.remoteColors
         ..clear()
-        ..addAll({
-          for (final e in colors.entries)
-            '${e.key}': Color((e.value as num).toInt())
-        });
+        ..addAll(sent);
+      PlayerStore.instance.gameColors
+        ..clear()
+        ..addAll(sent);
     }
     if (colors is Map) {
       PlayerStore.instance.ensureRatings(colors.keys.map((k) => '$k'));

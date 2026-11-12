@@ -92,6 +92,8 @@ class _SetupPageState extends State<SetupPage> {
   @override
   void initState() {
     super.initState();
+    // Hors partie : les couleurs des comptes
+    store.gameColors.clear();
     _load();
   }
 

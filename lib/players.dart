@@ -241,7 +241,7 @@ class PlayerStore extends ChangeNotifier {
     final used = <int>{};
     final out = <Color?>[];
     for (final id in ids) {
-      final c = isGuestId(id) ? null : colorOf(id);
+      final c = isGuestId(id) ? null : byId(id)?.color ?? remoteColors[id];
       out.add(c != null && used.add(c.toARGB32()) ? c : null);
     }
     return [
@@ -257,8 +257,23 @@ class PlayerStore extends ChangeNotifier {
     ];
   }
 
+  /// Couleurs de la partie en cours (toutes différentes, voir
+  /// [setGameColors]) : prioritaires sur celles des comptes.
+  final Map<String, Color> gameColors = {};
+
+  /// Début d'une partie : couleur du compte si elle est libre, sinon une
+  /// couleur libre (15 couleurs, l'arc-en-ciel seulement s'il est choisi) ;
+  /// invités et bots ont chacun la leur. La couleur du compte ne change pas.
+  void setGameColors(List<String> ids) {
+    gameColors.clear();
+    final cs = distinctColors(ids);
+    for (var i = 0; i < ids.length; i++) {
+      gameColors[ids[i]] = cs[i];
+    }
+  }
+
   Color colorOf(String id) =>
-      byId(id)?.color ?? remoteColors[id] ?? kGuestColor;
+      gameColors[id] ?? byId(id)?.color ?? remoteColors[id] ?? kGuestColor;
 
   int _freeColor() {
     final used = players.map((p) => p.colorIndex).toSet();
