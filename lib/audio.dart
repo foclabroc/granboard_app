@@ -71,6 +71,46 @@ class AudioService extends ChangeNotifier {
 
   /// Pseudos des joueurs : lus par la synthèse vocale (pas d'enregistrement).
   Iterable<String> names = const [];
+
+  /// Prononciation choisie pour un pseudo (clé : pseudo en minuscules),
+  /// pref `pron_v1` ; envoyée aux écrans TV.
+  final Map<String, String> pronunciations = {};
+  static const _prefPron = 'pron_v1';
+
+  /// Ce que la synthèse vocale lit pour un pseudo : la prononciation
+  /// choisie, sinon le pseudo avec une seule majuscule (« CED » ou « ced »
+  /// → « Ced », moins souvent épelé lettre par lettre).
+  String spokenName(String name) {
+    final p = pronunciations[name.trim().toLowerCase()];
+    if (p != null && p.trim().isNotEmpty) return p.trim();
+    return name.replaceAllMapped(RegExp(r'[A-Za-zÀ-ÿ]+'), (m) {
+      final w = m[0]!;
+      return w[0].toUpperCase() + w.substring(1).toLowerCase();
+    });
+  }
+
+  Future<void> setPronunciation(String name, String spoken) async {
+    final k = name.trim().toLowerCase();
+    if (spoken.trim().isEmpty) {
+      pronunciations.remove(k);
+    } else {
+      pronunciations[k] = spoken.trim();
+    }
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefPron, jsonEncode(pronunciations));
+    } catch (_) {}
+  }
+
+  /// Fait lire un texte par la synthèse vocale seule (essai d'une
+  /// prononciation).
+  void speakTts(String text) {
+    final tts = _tts;
+    if (tts == null || _muted) return;
+    tts.stop().then((_) => tts.speak(text)).catchError((_) => 0);
+  }
+
   bool _musicWanted = false;
 
   /// Musique des menus : les morceaux s'enchaînent, dans un ordre tiré au
@@ -92,6 +132,12 @@ class AudioService extends ChangeNotifier {
         music = v[2] == '1';
         musicVolume = double.tryParse(v[3]) ?? musicVolume;
         if (v.length >= 5) dartCalls = v[4] == '1';
+      }
+      final pr = prefs.getString(_prefPron);
+      if (pr != null) {
+        pronunciations
+          ..clear()
+          ..addAll((jsonDecode(pr) as Map).cast<String, String>());
       }
     } catch (_) {}
     unawaited(_initEngines());
@@ -280,12 +326,17 @@ class AudioService extends ChangeNotifier {
             await sp.play(AssetSource('voice/${p.clip}'), volume: 1.0);
             await done.timeout(const Duration(seconds: 6));
           } else if (tts != null) {
-            await tts.speak(p.text!).timeout(const Duration(seconds: 8));
+            await tts
+                .speak(_isName(p.text!) ? spokenName(p.text!) : p.text!)
+                .timeout(const Duration(seconds: 8));
           }
         } catch (_) {}
       }
     }();
   }
+
+  bool _isName(String t) =>
+      names.any((n) => n.trim().toLowerCase() == t.trim().toLowerCase());
 
   /// Annonce après un court délai (laisse le bruitage se jouer).
   void sayLater(String text, [int ms = 350]) =>

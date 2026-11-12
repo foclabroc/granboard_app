@@ -8,6 +8,7 @@ import 'package:granboard_proto/granboard.dart';
 import 'package:granboard_proto/players.dart';
 import 'package:granboard_proto/ui/game_fx.dart';
 import 'package:granboard_proto/ui/game_page.dart';
+import 'package:granboard_proto/ui/players_page.dart';
 import 'package:granboard_proto/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -121,5 +122,39 @@ void main() {
     await dart(tester, 20, Ring.triple);
     expect(audio.said, isEmpty);
     await close(tester);
+  });
+
+  test('Pseudos : une seule majuscule, prononciation choisie', () async {
+    audio.pronunciations.clear();
+    expect(audio.spokenName('CED'), 'Ced');
+    expect(audio.spokenName('ced'), 'Ced');
+    expect(audio.spokenName('Jean-LUC'), 'Jean-Luc');
+    await audio.setPronunciation('Ced', 'Sède');
+    expect(audio.spokenName('ced'), 'Sède');
+    await audio.setPronunciation('ced', '');
+    expect(audio.spokenName('ced'), 'Ced');
+  });
+
+  testWidgets('Fiche joueur : choisir la prononciation', (tester) async {
+    audio.pronunciations.clear();
+    final p = await PlayerStore.instance.register('ced', '1234');
+    tester.view.physicalSize = const Size(2160, 1080);
+    tester.view.devicePixelRatio = 2.75;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+        MaterialApp(theme: Tv.theme(), home: PlayerDetailPage(player: p)));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('pronunciation')), 100,
+        scrollable: find.byType(Scrollable).first);
+    expect(find.text('PRONONCIATION : CED'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('pronunciation')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('pron-field')), 'Sède');
+    await tester.tap(find.byKey(const ValueKey('pron-ok')));
+    await tester.pumpAndSettle();
+    expect(audio.spokenName('ced'), 'Sède');
+    expect(find.text('PRONONCIATION : SÈDE'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

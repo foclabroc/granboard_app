@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../audio.dart';
+
 import '../game/practice.dart';
 import '../media.dart';
 import '../players.dart';
@@ -159,6 +161,51 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
   final store = PlayerStore.instance;
   PlayerProfile get p => widget.player;
 
+  /// Comment l'annonceur dit le pseudo (« Sède » pour « ced »…).
+  Future<void> _editPronunciation() async {
+    final audio = AudioService.instance;
+    final c = TextEditingController(
+        text: audio.pronunciations[p.name.trim().toLowerCase()] ?? '');
+    final r = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Prononciation de ${p.name}', style: Tv.title(22)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Écris le pseudo comme il se prononce, par exemple '
+                '« Sède » pour « ced ». Vide = le pseudo tel quel.'),
+            const SizedBox(height: 10),
+            TextField(
+              key: const ValueKey('pron-field'),
+              controller: c,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(hintText: p.name),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () => audio.speakTts(
+                c.text.trim().isEmpty ? audio.spokenName(p.name) : c.text),
+            icon: const Icon(Icons.volume_up),
+            label: const Text('ÉCOUTER'),
+          ),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('ANNULER')),
+          FilledButton(
+              key: const ValueKey('pron-ok'),
+              onPressed: () => Navigator.pop(ctx, c.text),
+              child: const Text('OK')),
+        ],
+      ),
+    );
+    if (r != null) await audio.setPronunciation(p.name, r);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -302,6 +349,18 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                       ),
                       const SizedBox(height: 6),
                     ],
+                    ListenableBuilder(
+                      listenable: AudioService.instance,
+                      builder: (context, _) => OutlinedButton.icon(
+                        key: const ValueKey('pronunciation'),
+                        onPressed: _editPronunciation,
+                        icon: const Icon(Icons.record_voice_over),
+                        label: Text(
+                            'PRONONCIATION : ${AudioService.instance.spokenName(p.name).toUpperCase()}',
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
                     if (!store.isOwner(p)) ...[
                       OutlinedButton.icon(
                         onPressed: () => store.setOwner(p),

@@ -90,6 +90,11 @@ class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
     }
     if (s?['wall'] is String) Wallpaper.instance.applyFromPhone(s!['wall']);
     if (s?['calls'] is bool) AudioService.instance.dartCalls = s!['calls'];
+    if (s?['pron'] is Map) {
+      AudioService.instance.pronunciations
+        ..clear()
+        ..addAll((s!['pron'] as Map).map((k, v) => MapEntry('$k', '$v')));
+    }
     final screen = s?['screen'] as String?;
     if (screen != _screen) {
       _screen = screen;
