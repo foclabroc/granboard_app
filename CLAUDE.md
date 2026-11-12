@@ -20,7 +20,7 @@ Appli Flutter (Android, **paysage**) de fléchettes, connectée en Bluetooth LE 
 - v0.2.0 : X01 complet (301/501/701/901) + Freeze 01 en 2 équipes, In/Out Open/Double/Master, bull 25/50 ou 50/50, limite de manches.
 - Mise à jour dans l'appli (comme Pixel Trade) : dernière release GitHub vérifiée au lancement + bouton dans l'accueil.
 - À confirmer : la 3s de l'ami avec la table standard (sans calibration) depuis la v0.3.3.
-- Tous les jeux de la page GranDarts sont faits (règles non publiées complétées « au plus proche » : Spider, Pirates, Fun Mission (missions inventées, pas de chrono), Two Line (grille 5 × 5, 5 étoiles = cases libres), Treasure Hunt, Cache-cache ; Fun Mission 2 contre 2 pas fait). Prévu en ligne : vidéo sur la TV, plus de 2 joueurs, relais TURN si la vidéo ne passe pas (4G).
+- Tous les jeux de la page GranDarts sont faits (règles non publiées complétées « au plus proche » : Spider, Pirates, Fun Mission (missions inventées, pas de chrono), Two Line (grille 5 × 5, 5 étoiles = cases libres), Treasure Hunt, Cache-cache ; Fun Mission 2 contre 2 pas fait). Prévu en ligne : vidéo sur la TV, plus de 2 joueurs, relais TURN si la vidéo ne passe pas (4G). Idée gardée de côté (demandée le 12/11/2026, pas commencée) : **mode télécommande** = un 2e appareil (téléphone) pilote à distance la partie de l'appareil relié à la cible (tablette) via le serveur : Suivant, Annuler, Raté, corriger une fléchette, partie suivante.
 
 ## Structure
 
