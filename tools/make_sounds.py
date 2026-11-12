@@ -1,8 +1,9 @@
 """Génère les bruitages et la musique de l'appli (100 % synthèse, libres de droits).
 
 Usage : python3 tools/make_sounds.py   (nécessite numpy, scipy et ffmpeg)
-Sortie : assets/sounds/*.ogg, assets/sounds/turn/*.ogg (sons du tour)
-et assets/music/menu.ogg
+Sortie : assets/sounds/*.ogg, assets/sounds/turn/*.ogg (sons du tour).
+La musique des menus (assets/music/menu1..3.ogg) n'est plus générée : ce
+sont 3 morceaux libres fournis par foclabroc (Pixabay).
 """
 
 import os
@@ -340,6 +341,5 @@ if __name__ == '__main__':
     save(ton(), 'assets/sounds/ton.ogg')
     save(crowd(3.2, 1.2), 'assets/sounds/crowd.ogg')
     save(fanfare(), 'assets/sounds/win.ogg')
-    save(music(), 'assets/music/menu.ogg', quality=4)
     for name, x in turn_sounds().items():
         save(x, f'assets/sounds/turn/{name}.ogg')

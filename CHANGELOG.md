@@ -2,6 +2,7 @@
 
 ## v0.6.2
 
+- Nouvelle musique des menus : 3 morceaux qui s'enchaînent dans un ordre au hasard (morceau suivant à chaque retour au menu)
 - Classements : bouton **TOUS / MES JOUEURS** (seulement les comptes enregistrés sur ce téléphone), choix mémorisé
 
 ## v0.6.1

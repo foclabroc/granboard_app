@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
@@ -69,6 +70,12 @@ class AudioService extends ChangeNotifier {
   Iterable<String> names = const [];
   bool _musicWanted = false;
 
+  /// Musique des menus : les morceaux s'enchaînent, dans un ordre tiré au
+  /// hasard à chaque lancement.
+  static const kMenuTracks = ['menu1.ogg', 'menu2.ogg', 'menu3.ogg'];
+  final _order = [...kMenuTracks]..shuffle(Random());
+  int _track = 0;
+
   /// Lit les réglages (rapide), puis prépare les lecteurs et la voix en
   /// arrière-plan : sur une Android TV, la synthèse vocale met plusieurs
   /// secondes à démarrer et ne doit pas retarder le premier écran.
@@ -93,7 +100,12 @@ class AudioService extends ChangeNotifier {
           AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers)
               .build());
       final m = AudioPlayer();
-      await m.setReleaseMode(ReleaseMode.loop);
+      await m.setReleaseMode(ReleaseMode.stop);
+      // Morceau fini : le suivant de la liste
+      m.onPlayerComplete.listen((_) {
+        _track++;
+        if (_musicWanted && !_muted && music) _playTrack();
+      });
       _music = m;
       // La musique demandée pendant le démarrage commence maintenant
       if (_musicWanted) startMusic();
@@ -266,15 +278,29 @@ class AudioService extends ChangeNotifier {
     _musicWanted = true;
     final m = _music;
     if (_muted || !music || m == null) return;
+    if (m.state == PlayerState.playing) return;
+    if (m.state == PlayerState.paused) {
+      m.resume().catchError((_) {});
+      return;
+    }
+    _playTrack();
+  }
+
+  void _playTrack() {
+    final m = _music;
+    if (m == null) return;
+    final name = _order[_track % _order.length];
     () async {
       try {
-        if (m.state == PlayerState.playing) return;
-        await m.play(AssetSource('music/menu.ogg'), volume: musicVolume);
+        await m.play(AssetSource('music/$name'), volume: musicVolume);
       } catch (_) {}
     }();
   }
 
+  /// Coupe la musique (début de partie) : au retour au menu, on passe au
+  /// morceau suivant.
   void stopMusic() {
+    if (_musicWanted && _music?.state == PlayerState.playing) _track++;
     _musicWanted = false;
     _music?.stop().catchError((_) {});
   }
