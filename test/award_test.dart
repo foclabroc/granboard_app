@@ -41,6 +41,24 @@ void main() {
     expect(awardOf([t20, null, t20]), isNull);
   });
 
+  test('Animations d\'une fléchette : triple 20, bull, double bull', () {
+    expect(HitClip.of(t20), HitClip.triple20);
+    expect(HitClip.of(bull), HitClip.doubleBull);
+    expect(HitClip.of(outer), HitClip.bull);
+    expect(HitClip.of(t19), isNull);
+    expect(HitClip.of(s20), isNull);
+    expect(HitClip.of(null), isNull);
+    final used = <String>{};
+    for (final c in HitClip.values) {
+      for (var seed = 0; seed < 20; seed++) {
+        final f = c.randomAsset(Random(seed));
+        expect(File(f).existsSync(), isTrue, reason: f);
+        used.add(f);
+      }
+    }
+    expect(used.length, 6);
+  });
+
   test('Chaque coup a ses animations dans assets/awards', () {
     final used = <String>{};
     for (final a in Award.values) {

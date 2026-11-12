@@ -2,6 +2,7 @@
 
 ## v0.6.1
 
+- Animations courtes (1,5 s, avec son) à chaque **TRIPLE 20**, **BULL** et **D-BULL**, sur le téléphone et la TV : deux fonds au hasard (flammes, onde de feu) ; la fléchette suivante ou un toucher l'arrête
 - Cible : doubles, triples et bull plus larges (comme une cible électronique, plus les anneaux fins d'une cible anglaise) ; 6 styles de cible en plus (Électro, Néon, Or noir, Glace, Sakura, Braise), soit 8 au choix
 - **Thèmes de l'appli** (accueil › ⋮ › Thème de l'appli) : Retransmission (noir et or), Néon, Sakura, Braise. Chacun a ses couleurs et son fond animé (projecteurs, grille, pétales, braises), visible derrière toutes les pages ; le thème est mémorisé et envoyé aux écrans TV reliés
 - Accueil : tuiles en couleurs vives avec bordure lumineuse et illustration animée par jeu ; pages enchaînées en fondu

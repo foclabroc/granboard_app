@@ -69,6 +69,33 @@ Award? awardOf(List<DartHit?> darts, {int? total, bool whiteHorse = false}) {
   return null;
 }
 
+/// Fléchettes fêtées une par une par une animation courte (1,5 s).
+enum HitClip {
+  triple20('t20'),
+  bull('bull'),
+  doubleBull('dbull');
+
+  final String slug;
+  const HitClip(this.slug);
+
+  /// Fonds disponibles (fichiers `assets/hits/<fond>_<slug>.mp4`).
+  static const styles = ['fire', 'ring'];
+
+  String randomAsset([Random? random]) {
+    final s = styles[(random ?? Award._random).nextInt(styles.length)];
+    return 'assets/hits/${s}_$slug.mp4';
+  }
+
+  /// Animation de la fléchette [hit], ou null.
+  static HitClip? of(DartHit? hit) {
+    if (hit == null) return null;
+    if (hit.ring == Ring.innerBull) return HitClip.doubleBull;
+    if (hit.isBull) return HitClip.bull;
+    if (hit.number == 20 && hit.ring == Ring.triple) return HitClip.triple20;
+    return null;
+  }
+}
+
 /// Joue les animations par-dessus tout l'écran (téléphone et TV). Une seule
 /// à la fois ; on la passe en touchant l'écran, et elle s'arrête quand la
 /// partie continue.
@@ -82,7 +109,16 @@ class AwardPlayer {
 
   /// Lance l'animation de [award]. Renvoie faux si elle ne peut pas être
   /// affichée (l'appelant garde alors son annonce habituelle).
-  static bool play(BuildContext? context, Award award) {
+  static bool play(BuildContext? context, Award award) =>
+      playAsset(context, award.randomAsset());
+
+  /// Une animation est à l'écran.
+  static bool get active => _entry != null;
+
+  /// Lance la vidéo [asset] (voir [play]). [opacity] < 1 laisse deviner la
+  /// partie derrière.
+  static bool playAsset(BuildContext? context, String asset,
+      {double opacity = 1}) {
     if (!enabled || context == null) return false;
     final overlay = Overlay.maybeOf(context, rootOverlay: true);
     if (overlay == null) return false;
@@ -90,7 +126,8 @@ class AwardPlayer {
     late final OverlayEntry entry;
     entry = OverlayEntry(
       builder: (_) => _AwardVideo(
-        asset: award.randomAsset(),
+        asset: asset,
+        opacity: opacity,
         onDone: () {
           if (identical(_entry, entry)) _entry = null;
           if (entry.mounted) entry.remove();
@@ -112,8 +149,10 @@ class AwardPlayer {
 
 class _AwardVideo extends StatefulWidget {
   final String asset;
+  final double opacity;
   final VoidCallback onDone;
-  const _AwardVideo({required this.asset, required this.onDone});
+  const _AwardVideo(
+      {required this.asset, required this.onDone, this.opacity = 1});
 
   @override
   State<_AwardVideo> createState() => _AwardVideoState();
@@ -185,7 +224,7 @@ class _AwardVideoState extends State<_AwardVideo> {
         behavior: HitTestBehavior.opaque,
         onTap: _close,
         child: AnimatedOpacity(
-          opacity: _ready ? 1 : 0,
+          opacity: _ready ? widget.opacity : 0,
           duration: const Duration(milliseconds: 150),
           child: ColoredBox(
             color: Colors.black,

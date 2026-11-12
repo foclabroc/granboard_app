@@ -61,8 +61,28 @@ class GameFx {
     }
   }
 
+  /// Animation courte de la fléchette en cours (triple 20, bull, double
+  /// bull) : son bruitage habituel est remplacé par le son de la vidéo.
+  HitClip? _clip;
+
   /// Après une fléchette, quel que soit le jeu.
   void afterAnyDart(DartsGame game, DartHit? hit, {bool outerRing = false}) {
+    AwardPlayer.stop();
+    _clip = AwardPlayer.enabled ? HitClip.of(hit) : null;
+    _afterDart(game, hit, outerRing: outerRing);
+    final clip = _clip;
+    _clip = null;
+    // Pas par-dessus un coup de manche (ton, hat trick…), une victoire ou
+    // un bust, qui ont leur propre annonce
+    if (clip == null || AwardPlayer.active || game.finished) return;
+    if (game is MatchGame && game.betweenLegs) return;
+    final leg = game is MatchGame ? game.leg : game;
+    if (leg is X01Game && leg.currentTurn.isBust) return;
+    AwardPlayer.playAsset(splash.currentContext, clip.randomAsset(),
+        opacity: 0.92);
+  }
+
+  void _afterDart(DartsGame game, DartHit? hit, {bool outerRing = false}) {
     switch (game) {
       case X01Game g:
         afterDart(g, hit, outerRing: outerRing);
@@ -106,7 +126,7 @@ class GameFx {
           _hitSound(hit, outerRing: outerRing);
           _legWon(m);
         } else {
-          afterAnyDart(m.leg, hit, outerRing: outerRing);
+          _afterDart(m.leg, hit, outerRing: outerRing);
         }
     }
   }
@@ -203,6 +223,7 @@ class GameFx {
   }
 
   void _hitSound(DartHit? hit, {bool outerRing = false}) {
+    if (_clip != null) return;
     if (hit != null) {
       audio.play(hit.isBull
           ? Sfx.bull

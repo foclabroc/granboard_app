@@ -39,6 +39,7 @@ flutter:
     - assets/music/
     - assets/images/
     - assets/awards/
+    - assets/hits/
   fonts:
     - family: Barlow
       fonts:
