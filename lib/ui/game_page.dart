@@ -17,6 +17,7 @@ import '../online/online.dart';
 import '../online/video.dart';
 import '../players.dart';
 import '../tv_link.dart';
+import 'award.dart';
 import 'cricket_view.dart';
 import 'dartboard.dart';
 import 'match_view.dart';
@@ -77,6 +78,7 @@ class _GamePageState extends State<GamePage> {
 
   @override
   void dispose() {
+    AwardPlayer.stop();
     _sub.cancel();
     WakelockPlus.disable().catchError((_) {});
     final online = OnlineService.instance;
@@ -205,6 +207,7 @@ class _GamePageState extends State<GamePage> {
   }
 
   void _undo() {
+    AwardPlayer.stop();
     final room = _room;
     final log = game.actionLog;
     if (log.isEmpty) return;

@@ -2,6 +2,7 @@
 
 ## v0.6.1
 
+- **Animations des coups réussis** en plein écran, avec leur son, sur le téléphone et la TV : LOW TON (100 à 150), HIGH TON (151 à 179), TON 80 (180), HAT TRICK (3 bulls), 3 IN THE BLACK (3 bulls au centre), 3 IN A BED (3 fois le même double ou triple), WHITE HORSE (Cricket). Un style au hasard à chaque fois (glitch, néon, rose) ; on la passe en touchant l'écran ou en jouant la suite
 - Démarrage : plus d'écran blanc (fond noir avec l'icône dès le lancement) et premier écran affiché sans attendre la voix et les sons, qui se préparent en arrière-plan (plusieurs secondes sur une Android TV)
 - Réglages d'une partie : en venant d'une tuile de l'accueil, on ne voit plus que ce jeu (plus de choix 01 / Cricket / Match…), la colonne des joueurs est plus étroite et les réglages plus larges ; « Règles » passe en haut à droite
 

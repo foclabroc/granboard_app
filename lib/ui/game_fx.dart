@@ -11,6 +11,7 @@ import '../game/match.dart';
 import '../game/practice.dart';
 import '../game/x01.dart';
 import '../granboard.dart';
+import 'award.dart';
 import 'setup_page.dart' show kTeamNames;
 import 'theme.dart';
 
@@ -24,6 +25,11 @@ class GameFx {
 
   void _show(String text, Color color, {bool big = false}) =>
       splash.currentState?.show(text, color, big: big);
+
+  /// Animation plein écran d'un coup réussi (elle a son propre son). Faux
+  /// si elle ne peut pas être jouée : on garde alors l'annonce habituelle.
+  bool _award(Award? award) =>
+      award != null && AwardPlayer.play(splash.currentContext, award);
 
   void _haptic(bool heavy) {
     if (!haptics) return;
@@ -71,6 +77,14 @@ class GameFx {
         _haptic(false);
         final note = g.currentTurn.note;
         final key = '${g.turns.length}:$note';
+        final hits = g.turnHits;
+        if (hits.length == 3 &&
+            _award(awardOf(hits,
+                whiteHorse: g.settings.kind == PracticeKind.targetHorse ||
+                    g.settings.kind == PracticeKind.crCountUp))) {
+          _lastNote = key;
+          return;
+        }
         if (note == null || key == _lastNote) return;
         _lastNote = key;
         if (_badNote(note)) {
@@ -99,6 +113,7 @@ class GameFx {
 
   /// Après « joueur suivant », quel que soit le jeu.
   void afterAnyNext(DartsGame game) {
+    AwardPlayer.stop();
     switch (game) {
       case X01Game g:
         afterNext(g);
@@ -221,7 +236,9 @@ class GameFx {
     _hitSound(hit, outerRing: outerRing);
     if (turn.darts.length == 3) {
       final total = turn.total;
-      if (total == 180) {
+      if (_award(awardOf(game.turnHits, total: total))) {
+        _haptic(true);
+      } else if (total == 180) {
         audio.play(Sfx.crowd);
         audio.sayLater('Cent quatre-vingts !', 500);
         _show('180', Tv.gold, big: true);
@@ -275,7 +292,11 @@ class GameFx {
         for (final d in t.darts)
           if (d.hit?.ring == Ring.triple && d.marks > 0) d.hit!.number
       };
-      if (m == 9 && triples.length == 3) {
+      if (_award(m == 9 && triples.length == 3
+          ? Award.whiteHorse
+          : awardOf(game.turnHits))) {
+        _haptic(true);
+      } else if (m == 9 && triples.length == 3) {
         audio.play(Sfx.crowd);
         audio.sayLater('White horse !', 500);
         _show('WHITE HORSE', Tv.gold, big: true);
