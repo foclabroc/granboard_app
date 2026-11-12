@@ -2,6 +2,7 @@
 
 ## v0.6.1
 
+- Cible : doubles, triples et bull plus larges (comme une cible électronique, plus les anneaux fins d'une cible anglaise) ; 6 styles de cible en plus (Électro, Néon, Or noir, Glace, Sakura, Braise), soit 8 au choix
 - **Thèmes de l'appli** (accueil › ⋮ › Thème de l'appli) : Retransmission (noir et or), Néon, Sakura, Braise. Chacun a ses couleurs et son fond animé (projecteurs, grille, pétales, braises), visible derrière toutes les pages ; le thème est mémorisé et envoyé aux écrans TV reliés
 - Accueil : tuiles en couleurs vives avec bordure lumineuse et illustration animée par jeu ; pages enchaînées en fondu
 - **Animations des coups réussis** en plein écran, avec leur son, sur le téléphone et la TV : LOW TON (100 à 150), HIGH TON (151 à 179), TON 80 (180), HAT TRICK (3 bulls), 3 IN THE BLACK (3 bulls au centre), 3 IN A BED (3 fois le même double ou triple), WHITE HORSE (Cricket). Un style au hasard à chaque fois (glitch, néon, rose) ; on la passe en touchant l'écran ou en jouant la suite

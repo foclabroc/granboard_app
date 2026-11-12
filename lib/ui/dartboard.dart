@@ -60,7 +60,94 @@ class BoardSkin {
     numbers: Color(0xFFF3E3B8),
   );
 
-  static const all = [classic, pub];
+  static const electro = BoardSkin(
+    id: 'electro',
+    name: 'Électro',
+    background: Color(0xFF07080C),
+    rim: Color(0xFF3A6BFF),
+    singleDark: Color(0xFF101218),
+    singleLight: Color(0xFF2B2F3A),
+    ringA: Color(0xFFE5202B),
+    ringB: Color(0xFF2460F5),
+    wire: Color(0xFF6C7386),
+    numbers: Color(0xFFF4F4F6),
+  );
+
+  static const neon = BoardSkin(
+    id: 'neon',
+    name: 'Néon',
+    background: Color(0xFF05061A),
+    rim: Color(0xFF2DE2FF),
+    singleDark: Color(0xFF0A0C26),
+    singleLight: Color(0xFF1B2060),
+    ringA: Color(0xFFFF2BD6),
+    ringB: Color(0xFF2DE2FF),
+    wire: Color(0xFF6F78D8),
+    numbers: Color(0xFFA6F4FF),
+  );
+
+  static const blackGold = BoardSkin(
+    id: 'blackgold',
+    name: 'Or noir',
+    background: Color(0xFF060606),
+    rim: Color(0xFFE8B63C),
+    singleDark: Color(0xFF0E0E10),
+    singleLight: Color(0xFF2A2620),
+    ringA: Color(0xFFE8B63C),
+    ringB: Color(0xFF8C6716),
+    wire: Color(0xFFBFA056),
+    numbers: Color(0xFFFFD877),
+  );
+
+  static const ice = BoardSkin(
+    id: 'ice',
+    name: 'Glace',
+    background: Color(0xFF0B1B2B),
+    rim: Color(0xFF9FDCFF),
+    singleDark: Color(0xFF14405F),
+    singleLight: Color(0xFFEAF6FF),
+    ringA: Color(0xFF1E88E5),
+    ringB: Color(0xFF7FD3FF),
+    wire: Color(0xFFB9D6EA),
+    numbers: Color(0xFFEAF6FF),
+  );
+
+  static const sakura = BoardSkin(
+    id: 'sakura',
+    name: 'Sakura',
+    background: Color(0xFF190B17),
+    rim: Color(0xFFFF7EB6),
+    singleDark: Color(0xFF2A1226),
+    singleLight: Color(0xFFFFE3F0),
+    ringA: Color(0xFFE0457F),
+    ringB: Color(0xFF8E5BE8),
+    wire: Color(0xFFD9A9C4),
+    numbers: Color(0xFFFFC2DD),
+  );
+
+  static const ember = BoardSkin(
+    id: 'ember',
+    name: 'Braise',
+    background: Color(0xFF120803),
+    rim: Color(0xFFFF8A2B),
+    singleDark: Color(0xFF1C0F08),
+    singleLight: Color(0xFF4A2A14),
+    ringA: Color(0xFFFF3B1F),
+    ringB: Color(0xFFFFA63D),
+    wire: Color(0xFFB98052),
+    numbers: Color(0xFFFFC27A),
+  );
+
+  static const all = [
+    classic,
+    pub,
+    electro,
+    neon,
+    blackGold,
+    ice,
+    sakura,
+    ember
+  ];
   static BoardSkin byId(String? id) =>
       all.firstWhere((s) => s.id == id, orElse: () => classic);
 
@@ -135,13 +222,15 @@ class _BoardPainter extends CustomPainter {
   _BoardPainter(this.highlights, this.showNumbers,
       {this.skin = BoardSkin.classic});
 
-  // Rayons relatifs (1 = bord extérieur de la zone des doubles)
+  // Rayons relatifs (1 = bord extérieur de la zone des doubles). Doubles,
+  // triples et bull larges comme sur une cible électronique (pas les
+  // anneaux fins d'une cible anglaise).
   static const rDoubleOut = 1.0;
-  static const rDoubleIn = 0.905;
-  static const rTripleOut = 0.62;
-  static const rTripleIn = 0.525;
-  static const rBullOut = 0.094;
-  static const rBullIn = 0.037;
+  static const rDoubleIn = 0.86;
+  static const rTripleOut = 0.63;
+  static const rTripleIn = 0.49;
+  static const rBullOut = 0.12;
+  static const rBullIn = 0.055;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -323,7 +412,7 @@ class _BoardPainter extends CustomPainter {
 /// Point d'impact d'une fléchette (centre de la zone + léger décalage stable).
 Offset dartPoint(Offset c, double r, DartHit h, int order) {
   if (h.isBull) {
-    final rr = h.ring == Ring.innerBull ? 0.02 : 0.066;
+    final rr = h.ring == Ring.innerBull ? 0.03 : 0.088;
     final a = order * 2.1;
     return c + Offset(math.cos(a), math.sin(a)) * r * rr;
   }

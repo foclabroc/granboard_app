@@ -234,7 +234,7 @@ class _HomePageState extends State<HomePage>
                           ),
                           child: Column(
                             children: [
-                              DartboardPreview(skin: sk, size: 120),
+                              DartboardPreview(skin: sk, size: 104),
                               const SizedBox(height: 6),
                               Text(sk.name.toUpperCase(),
                                   style: Tv.title(18,
