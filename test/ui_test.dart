@@ -6,6 +6,7 @@ import 'package:granboard_proto/players.dart';
 import 'package:granboard_proto/ui/calibration_page.dart';
 import 'package:granboard_proto/ui/game_page.dart';
 import 'package:granboard_proto/ui/players_page.dart';
+import 'package:granboard_proto/ui/rules.dart';
 import 'package:granboard_proto/ui/setup_page.dart';
 import 'package:granboard_proto/ui/account_page.dart';
 import 'package:granboard_proto/ui/ranking_page.dart';
@@ -79,7 +80,10 @@ void main() {
     for (final kind in ['x01', 'cricket', 'match', 'practice', 'party']) {
       await tester.pumpWidget(app(SetupPage(key: ValueKey(kind), kind: kind)));
       await tester.pump(const Duration(milliseconds: 300));
-      await tester.tap(find.text('RÈGLES'));
+      // Ouvert depuis l'accueil : ce jeu seulement, pas le choix du jeu
+      expect(find.text('NOUVELLE PARTIE'), findsNothing);
+      expect(find.text('ENTRAÎN.'), findsNothing);
+      await tester.tap(find.byType(RulesButton));
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.textContaining('RÈGLES · '), findsOneWidget);
       expect(tester.takeException(), isNull);

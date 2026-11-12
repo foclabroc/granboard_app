@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.1
+
+- Réglages d'une partie : en venant d'une tuile de l'accueil, on ne voit plus que ce jeu (plus de choix 01 / Cricket / Match…), la colonne des joueurs est plus étroite et les réglages plus larges ; « Règles » passe en haut à droite
+
 ## v0.6.0
 
 - **Jeu en ligne** (tuile « En ligne ») : 1 contre 1, chacun chez soi sur sa cible. Liste des joueurs en ligne (libre / en partie), bouton « Défier » puis choix du jeu (01, Cricket, Match, Entraînement, Fête à 2) et de celui qui commence ; l'adversaire reçoit le défi par-dessus n'importe quel écran et a 45 s pour accepter

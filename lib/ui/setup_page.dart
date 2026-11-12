@@ -66,6 +66,17 @@ class _SetupPageState extends State<SetupPage> {
 
   bool get _online => widget.online != null;
 
+  /// Ouvert depuis une tuile de l'accueil : le choix du jeu est masqué.
+  bool get _fixed => widget.kind != null && !_online;
+
+  String get _familyName => switch (_kind) {
+        'cricket' => 'CRICKET',
+        'match' => 'MATCH',
+        'practice' => 'ENTRAÎNEMENT',
+        'party' => 'FÊTE',
+        _ => '01',
+      };
+
   /// En ligne, qui commence : 0 moi, 1 l'adversaire, 2 au hasard.
   int _first = 2;
 
@@ -359,50 +370,64 @@ class _SetupPageState extends State<SetupPage> {
 
     return Scaffold(
       appBar: AppBar(
-          title: Text(_online
-              ? 'DÉFIER ${widget.online!.last.name.toUpperCase()}'
-              : 'NOUVELLE PARTIE')),
+        title: Text(_online
+            ? 'DÉFIER ${widget.online!.last.name.toUpperCase()}'
+            : _fixed
+                ? _familyName
+                : 'NOUVELLE PARTIE'),
+        actions: [
+          if (_fixed) ...[
+            RulesButton(title: _gameName, text: _rulesText),
+            const SizedBox(width: 8),
+          ],
+        ],
+      ),
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ─── Mode et règles ───
           Expanded(
+            flex: _online ? 1 : 5,
             child: ListView(
               padding: const EdgeInsets.only(bottom: 16),
               children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: TvSection('Jeu',
-                          padding: EdgeInsets.fromLTRB(16, 4, 16, 8)),
-                    ),
-                    RulesButton(title: _gameName, text: _rulesText),
-                    const SizedBox(width: 8),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SegmentedButton<String>(
-                    showSelectedIcon: false,
-                    style: SegmentedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 4)),
-                    segments: [
-                      for (final (v, l) in const [
-                        ('x01', '01'),
-                        ('cricket', 'CRICKET'),
-                        ('match', 'MATCH'),
-                        ('practice', 'ENTRAÎN.'),
-                        ('party', 'FÊTE'),
-                      ])
-                        ButtonSegment(
-                            value: v,
-                            label: FittedBox(
-                                fit: BoxFit.scaleDown, child: Text(l))),
+                // Ouvert depuis une tuile de l'accueil : ce jeu seulement
+                if (!_fixed)
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: TvSection('Jeu',
+                            padding: EdgeInsets.fromLTRB(16, 4, 16, 8)),
+                      ),
+                      RulesButton(title: _gameName, text: _rulesText),
+                      const SizedBox(width: 8),
                     ],
-                    selected: {_kind},
-                    onSelectionChanged: (v) => setState(() => _kind = v.first),
                   ),
-                ),
+                if (!_fixed)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SegmentedButton<String>(
+                      showSelectedIcon: false,
+                      style: SegmentedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 4)),
+                      segments: [
+                        for (final (v, l) in const [
+                          ('x01', '01'),
+                          ('cricket', 'CRICKET'),
+                          ('match', 'MATCH'),
+                          ('practice', 'ENTRAÎN.'),
+                          ('party', 'FÊTE'),
+                        ])
+                          ButtonSegment(
+                              value: v,
+                              label: FittedBox(
+                                  fit: BoxFit.scaleDown, child: Text(l))),
+                      ],
+                      selected: {_kind},
+                      onSelectionChanged: (v) =>
+                          setState(() => _kind = v.first),
+                    ),
+                  ),
                 if (_practiceOn)
                   ..._practiceOptions()
                 else if (_matchOn)
@@ -420,13 +445,13 @@ class _SetupPageState extends State<SetupPage> {
             Expanded(child: _onlinePanel(problem))
           else
             Expanded(
+              flex: 3,
               child: Column(
                 children: [
                   Expanded(
                     child: ListView(
                       children: [
-                        TvSection(
-                            'Joueurs ${_selected.length}/$_maxPlayers · ordre de lancer',
+                        TvSection('Joueurs ${_selected.length}/$_maxPlayers',
                             padding: const EdgeInsets.fromLTRB(16, 4, 16, 6)),
                         if (_selected.isNotEmpty)
                           ReorderableListView(
@@ -498,8 +523,11 @@ class _SetupPageState extends State<SetupPage> {
                             child: FilledButton.icon(
                               onPressed: problem == null ? _startGame : null,
                               icon: const Icon(Icons.play_arrow),
-                              label: Text('LANCER ${_gameName.toUpperCase()}',
-                                  style: Tv.title(22, color: Colors.black)),
+                              label: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text('LANCER ${_gameName.toUpperCase()}',
+                                    style: Tv.title(22, color: Colors.black)),
+                              ),
                             ),
                           ),
                         ],
@@ -883,6 +911,10 @@ class _SetupPageState extends State<SetupPage> {
     return ListTile(
       key: ValueKey(id),
       dense: true,
+      // Colonne étroite : marges réduites
+      contentPadding: const EdgeInsets.only(left: 10, right: 2),
+      horizontalTitleGap: 6,
+      minLeadingWidth: 0,
       leading: ReorderableDragStartListener(
         index: index,
         child: const Icon(Icons.drag_indicator),
@@ -891,7 +923,7 @@ class _SetupPageState extends State<SetupPage> {
         children: [
           PlayerAvatar(
               id: p?.key, name: name, color: p?.color ?? kGuestColor, size: 28),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Flexible(
             child: Text(name,
                 overflow: TextOverflow.ellipsis, style: Tv.title(18)),
@@ -905,20 +937,26 @@ class _SetupPageState extends State<SetupPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (_teams)
-            SegmentedButton<int>(
-              showSelectedIcon: false,
-              segments: [
-                for (var t = 0; t < 2; t++)
-                  ButtonSegment(
-                    value: t,
-                    label: Text(kTeamNames[t].split(' ').last,
-                        style: TextStyle(
-                            color: kTeamColors[t],
-                            fontWeight: FontWeight.bold)),
-                  ),
-              ],
-              selected: {_teamOf(id)},
-              onSelectionChanged: (s) => setState(() => _team[id] = s.first),
+            SizedBox(
+              width: 88,
+              child: SegmentedButton<int>(
+                showSelectedIcon: false,
+                style: SegmentedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 6)),
+                segments: [
+                  for (var t = 0; t < 2; t++)
+                    ButtonSegment(
+                      value: t,
+                      label: Text(kTeamNames[t].split(' ').last,
+                          style: TextStyle(
+                              color: kTeamColors[t],
+                              fontWeight: FontWeight.bold)),
+                    ),
+                ],
+                selected: {_teamOf(id)},
+                onSelectionChanged: (s) => setState(() => _team[id] = s.first),
+              ),
             ),
           IconButton(
             icon: const Icon(Icons.close),
