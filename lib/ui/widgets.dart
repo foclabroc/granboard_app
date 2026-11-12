@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../board_service.dart';
+import '../game/bot.dart';
 import '../media.dart';
 import '../players.dart';
 import 'theme.dart';
@@ -55,6 +56,18 @@ class PlayerAvatar extends StatelessWidget {
   }
 
   Widget _initial() {
+    if (id != null && isBotId(id!)) {
+      return Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        child: Icon(Icons.smart_toy,
+            size: size * 0.62,
+            color:
+                color.computeLuminance() <= 0.5 ? Colors.white : Colors.black),
+      );
+    }
     final initial = name.isEmpty ? '?' : name.characters.first.toUpperCase();
     final rainbow = isRainbow(color);
     return Container(

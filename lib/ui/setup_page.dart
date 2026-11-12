@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../board_service.dart';
+import '../game/bot.dart';
 import '../game/cricket.dart';
 import '../game/darts_game.dart';
 import '../game/match.dart';
@@ -287,8 +288,20 @@ class _SetupPageState extends State<SetupPage> {
 
   int _teamOf(String id) => _team[id] ?? 0;
 
-  String _nameOf(String id) =>
-      isGuestId(id) ? 'Invité ${id.substring(6)}' : store.byId(id)?.name ?? '?';
+  String _nameOf(String id) => isBotId(id)
+      ? 'Bot ${id.substring(9)}'
+      : isGuestId(id)
+          ? 'Invité ${id.substring(6)}'
+          : store.byId(id)?.name ?? '?';
+
+  /// Bot : son niveau suit celui des joueurs humains de la partie.
+  void _addBot() {
+    var n = 1;
+    while (_selected.contains('guest-bot$n')) {
+      n++;
+    }
+    _select('guest-bot$n');
+  }
 
   void _addGuest() {
     var n = 1;
@@ -568,6 +581,15 @@ class _SetupPageState extends State<SetupPage> {
                                   label: const Text('Invité'),
                                   onPressed: _addGuest,
                                 ),
+                              if (!full)
+                                ActionChip(
+                                  key: const ValueKey('add-bot'),
+                                  visualDensity: chipDensity,
+                                  avatar: const Icon(Icons.smart_toy_outlined,
+                                      size: 18),
+                                  label: const Text('Bot'),
+                                  onPressed: _addBot,
+                                ),
                               ActionChip(
                                 visualDensity: chipDensity,
                                 avatar: const Icon(Icons.person_add, size: 18),
@@ -580,7 +602,8 @@ class _SetupPageState extends State<SetupPage> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
-                              'Les invités jouent sans enregistrer de stats.',
+                              'Les invités et les bots jouent sans enregistrer de stats. '
+                              'Le bot prend le niveau de ses adversaires.',
                               style: Tv.label(12)),
                         ),
                       ],
@@ -1107,13 +1130,17 @@ class _SetupPageState extends State<SetupPage> {
       title: Row(
         children: [
           PlayerAvatar(
-              id: p?.key, name: name, color: p?.color ?? kGuestColor, size: 28),
+              id: p?.key ?? id,
+              name: name,
+              color: p?.color ?? kGuestColor,
+              size: 28),
           const SizedBox(width: 8),
           Flexible(
             child: Text(name,
                 overflow: TextOverflow.ellipsis, style: Tv.title(18)),
           ),
-          if (guest) Text('  INVITÉ', style: Tv.label(10)),
+          if (guest)
+            Text(isBotId(id) ? '  BOT' : '  INVITÉ', style: Tv.label(10)),
           if (p?.expired == true)
             Text('  À RECONNECTER', style: Tv.label(10, color: Tv.red)),
         ],

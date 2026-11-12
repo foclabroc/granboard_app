@@ -8,6 +8,7 @@
 - **Tournoi sur la TV** (maison et en ligne) : la partie en cours pendant un match, le tableau avec le prochain match entre deux parties
 - Pendant un match de tournoi, « PROCHAIN MATCH : X contre Y » (ou « vainqueur de ce match contre … ») en haut de l'écran, sur le téléphone et la TV
 - **Lumières de la GranBoard 3s** (⋮ › Lumières de la cible) : contour à la couleur du joueur en cours, clignotement en face du numéro touché (1 à 3 fois selon simple / double / triple), vague sur un 180 ou une victoire, contour rouge sur un bust, numéros à viser allumés en orange (Cricket, fin en 01, entraînement) ; bouton ESSAYER ; protocole non officiel, à confirmer sur la cible
+- **Bot** (bouton « Bot » à côté de « Invité », dans tous les jeux à la maison et les tournois à la maison) : il lance tout seul, son niveau part du rang de ses adversaires puis se cale sur ce qu'ils lancent vraiment pendant la partie, avec un léger rattrapage si l'écart devient trop grand ; « Annuler » revient à ta dernière action
 - Accueil : 4 tuiles en haut, 3 en bas
 
 ## v0.6.4

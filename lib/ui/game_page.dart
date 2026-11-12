@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../audio.dart';
 import '../board_lights.dart';
+import '../game/bot.dart';
 import '../board_service.dart';
 import '../game/cricket.dart';
 import '../game/darts_game.dart';
@@ -83,7 +85,10 @@ class _GamePageState extends State<GamePage> {
     MediaStore.instance.ensure(game.players.map((p) => p.id));
     PlayerStore.instance.ensureRatings(game.players.map((p) => p.id));
     _fx.start(game);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _pushTv());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pushTv();
+      _scheduleBot();
+    });
     _loadNext();
     OnlineService.instance.inGame++;
     final room = _room;
@@ -96,6 +101,7 @@ class _GamePageState extends State<GamePage> {
 
   @override
   void dispose() {
+    _botTimer?.cancel();
     AwardPlayer.stop();
     TurnBanner.hide();
     BoardLights.instance.clear();
@@ -119,7 +125,7 @@ class _GamePageState extends State<GamePage> {
   /// C'est à ce téléphone de jouer (toujours vrai hors ligne).
   bool get _canAct {
     final room = _room;
-    if (room == null) return true;
+    if (room == null) return !_botTurn || _botMove;
     final g = game;
     if (g is MatchGame && g.betweenLegs) return true;
     return g.currentPlayer.id == room.myId;
@@ -139,8 +145,62 @@ class _GamePageState extends State<GamePage> {
           content: Text('C\'est au tour de ${game.currentPlayer.name}')));
   }
 
+  // ─── Bot ───
+
+  Timer? _botTimer;
+  bool _botMove = false;
+  final _botRnd = Random();
+
+  bool get _hasHuman => game.players.any((p) => !isBotId(p.id));
+
+  /// Au bot de jouer (jamais en ligne). Entre 2 legs, il n'enchaîne que
+  /// s'il n'y a que des bots (sinon c'est « LEG SUIVANT »).
+  bool get _botTurn {
+    final g = game;
+    if (_room != null || g.finished) return false;
+    if (g is MatchGame && g.betweenLegs) return !_hasHuman;
+    return isBotId(g.currentPlayer.id);
+  }
+
+  void _scheduleBot() {
+    _botTimer?.cancel();
+    if (!_botTurn) return;
+    final g = game;
+    final wait = g.turnOver || (g is MatchGame && g.betweenLegs)
+        ? 1800
+        : g.turnHits.isEmpty
+            ? 1500
+            : 1100;
+    _botTimer = Timer(Duration(milliseconds: wait), _botPlay);
+  }
+
+  void _botPlay() {
+    if (!mounted || !_botTurn) return;
+    // une vidéo plein écran joue : on attend qu'elle finisse
+    if (AwardPlayer.active) {
+      _botTimer = Timer(const Duration(milliseconds: 500), _botPlay);
+      return;
+    }
+    final g = game;
+    _botMove = true;
+    try {
+      if (g.turnOver ||
+          (g is MatchGame && g.betweenLegs) ||
+          g.turnHits.length >= 12) {
+        _next();
+      } else {
+        final sigma = Bot.sigmaNow(g, PlayerStore.instance.ratingOf);
+        _dart(Bot.throwAt(Bot.aim(g, _botRnd), sigma, _botRnd));
+      }
+    } finally {
+      _botMove = false;
+    }
+    _scheduleBot();
+  }
+
   /// Après une action : envoi à l'adversaire et à la TV.
   void _sync() {
+    _scheduleBot();
     _room?.push(game.actionLog);
     _pushTv();
     _reportTournament();
@@ -257,7 +317,17 @@ class _GamePageState extends State<GamePage> {
     final room = _room;
     final log = game.actionLog;
     if (log.isEmpty) return;
-    setState(() => game.undo());
+    _botTimer?.cancel();
+    setState(() {
+      game.undo();
+      // On revient jusqu'à la dernière action d'un humain
+      while (_room == null &&
+          _hasHuman &&
+          isBotId(game.currentPlayer.id) &&
+          game.actionLog.isNotEmpty) {
+        game.undo();
+      }
+    });
     // En ligne, on n'annule que ses propres actions : après l'annulation,
     // ce doit être à moi de jouer
     if (room != null && game.currentPlayer.id != room.myId) {
