@@ -257,8 +257,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Cricket en colonnes : 10 joueurs, bascule de vue',
-      (tester) async {
+  testWidgets('Cricket en lignes : 10 joueurs, bascule de vue', (tester) async {
     await phone(tester);
     await CricketStyle.choose(CricketStyle.columns);
     addTearDown(() => CricketStyle.current.value = CricketStyle.classic);
@@ -270,27 +269,27 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     expect(tester.takeException(), isNull);
     for (var i = 0; i < 10; i++) {
-      expect(find.byKey(ValueKey('cricket-col-$i')), findsOneWidget);
+      expect(find.byKey(ValueKey('cricket-row-$i')), findsOneWidget);
     }
-    // Colonne du joueur en cours plus large
-    final cur = tester.getSize(find.byKey(const ValueKey('cricket-col-0')));
-    final other = tester.getSize(find.byKey(const ValueKey('cricket-col-1')));
-    expect(cur.width, greaterThan(other.width));
-    expect(cur.height, other.height); // marges incluses : vérifié sur captures
+    // Ligne du joueur en cours plus haute
+    final cur = tester.getSize(find.byKey(const ValueKey('cricket-row-0')));
+    final other = tester.getSize(find.byKey(const ValueKey('cricket-row-1')));
+    expect(cur.height, greaterThan(other.height));
 
     await tester.tap(find.text('SUIVANT'));
     await tester.pump(const Duration(seconds: 2));
-    final now = tester.getSize(find.byKey(const ValueKey('cricket-col-1')));
+    final now = tester.getSize(find.byKey(const ValueKey('cricket-row-1')));
     expect(
-        now.width,
-        greaterThan(
-            tester.getSize(find.byKey(const ValueKey('cricket-col-0'))).width));
+        now.height,
+        greaterThan(tester
+            .getSize(find.byKey(const ValueKey('cricket-row-0')))
+            .height));
 
     // Bouton VUE : retour à la vue classique
     await tester.tap(find.byKey(const ValueKey('cricket-style')));
     await tester.pump(const Duration(milliseconds: 300));
     expect(CricketStyle.current.value, CricketStyle.classic);
-    expect(find.byKey(const ValueKey('cricket-col-0')), findsNothing);
+    expect(find.byKey(const ValueKey('cricket-row-0')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
