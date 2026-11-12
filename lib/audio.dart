@@ -1,13 +1,18 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'voice.dart';
+
 enum Sfx { hit, double, triple, bull, bust, next, ton, crowd, win }
 
-/// Effets sonores, musique de menu et annonceur (synthèse vocale française).
+/// Effets sonores, musique de menu et annonceur (voix enregistrée de
+/// `assets/voice/` ; synthèse vocale du téléphone pour les pseudos).
 /// Tout est désactivable dans les réglages ; aucune erreur audio ne doit
 /// gêner la partie, donc tout est protégé.
 class AudioService extends ChangeNotifier {
@@ -26,7 +31,7 @@ class AudioService extends ChangeNotifier {
     _muted = v;
     if (v) {
       _music?.stop().catchError((_) {});
-      _tts?.stop().catchError((_) => 0);
+      _stopVoice();
     } else if (_musicWanted) {
       startMusic();
     }
@@ -56,6 +61,12 @@ class AudioService extends ChangeNotifier {
   AudioPlayer? _cue; // son du tour du joueur
   int _cueId = 0;
   FlutterTts? _tts;
+  AudioPlayer? _speaker; // voix enregistrée
+  VoiceBank? _bank;
+  int _sayId = 0;
+
+  /// Pseudos des joueurs : lus par la synthèse vocale (pas d'enregistrement).
+  Iterable<String> names = const [];
   bool _musicWanted = false;
 
   /// Lit les réglages (rapide), puis prépare les lecteurs et la voix en
@@ -95,6 +106,15 @@ class AudioService extends ChangeNotifier {
       final c = AudioPlayer();
       await c.setReleaseMode(ReleaseMode.stop);
       _cue = c;
+      final sp = AudioPlayer();
+      await sp.setReleaseMode(ReleaseMode.stop);
+      _speaker = sp;
+    } catch (_) {}
+
+    try {
+      final index = jsonDecode(
+          await rootBundle.loadString('assets/voice/index.json')) as Map;
+      _bank = VoiceBank(index.cast<String, String>());
     } catch (_) {}
 
     try {
@@ -102,7 +122,7 @@ class AudioService extends ChangeNotifier {
       await tts.setLanguage('fr-FR');
       await tts.setSpeechRate(0.5);
       await tts.setPitch(0.95);
-      await tts.awaitSpeakCompletion(false);
+      await tts.awaitSpeakCompletion(true);
       _tts = tts;
     } catch (_) {}
   }
@@ -122,7 +142,7 @@ class AudioService extends ChangeNotifier {
 
   void setVoice(bool v) {
     voice = v;
-    if (!v) _tts?.stop().catchError((_) => 0);
+    if (!v) _stopVoice();
     _save();
   }
 
@@ -204,15 +224,37 @@ class AudioService extends ChangeNotifier {
     }();
   }
 
-  /// Annonce vocale (coupe l'annonce précédente).
+  void _stopVoice() {
+    _sayId++;
+    _speaker?.stop().catchError((_) {});
+    _tts?.stop().catchError((_) => 0);
+  }
+
+  /// Annonce vocale (coupe l'annonce précédente) : voix enregistrée pour
+  /// tout ce qu'elle connaît, synthèse vocale pour le reste (pseudos).
   void say(String text) {
+    if (_muted || !voice) return;
     final tts = _tts;
-    if (_muted || !voice || tts == null) return;
+    final sp = _speaker;
+    final parts = sp == null ? null : _bank?.plan(text, names);
+    final id = ++_sayId;
     () async {
       try {
-        await tts.stop();
-        await tts.speak(text);
+        await sp?.stop();
+        await tts?.stop();
       } catch (_) {}
+      for (final p in parts ?? [VoicePart.tts(text)]) {
+        if (id != _sayId || _muted || !voice) return;
+        try {
+          if (p.clip != null) {
+            final done = sp!.onPlayerComplete.first;
+            await sp.play(AssetSource('voice/${p.clip}'), volume: 1.0);
+            await done.timeout(const Duration(seconds: 6));
+          } else if (tts != null) {
+            await tts.speak(p.text!).timeout(const Duration(seconds: 8));
+          }
+        } catch (_) {}
+      }
     }();
   }
 

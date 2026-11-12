@@ -45,7 +45,13 @@ class GameFx {
         sound: media.soundOf(id), voice: media.voiceOf(id), ms: ms, next: next);
   }
 
+  /// Les pseudos sont lus par la synthèse vocale, le reste par la voix
+  /// enregistrée.
+  void _names(DartsGame game) =>
+      audio.names = [for (final p in game.players) p.name];
+
   void start(DartsGame game) {
+    _names(game);
     final title = game is MatchGame
         ? 'Match en ${game.settings.legs} legs. Leg 1, ${game.leg.title}'
         : game.title;
@@ -70,6 +76,7 @@ class GameFx {
   void afterAnyDart(DartsGame game, DartHit? hit, {bool outerRing = false}) {
     AwardPlayer.stop();
     TurnBanner.hide();
+    _names(game);
     _clip = AwardPlayer.enabled ? HitClip.of(hit) : null;
     _afterDart(game, hit, outerRing: outerRing);
     final clip = _clip;
@@ -136,6 +143,7 @@ class GameFx {
   /// Après « joueur suivant », quel que soit le jeu.
   void afterAnyNext(DartsGame game) {
     AwardPlayer.stop();
+    _names(game);
     _afterNext(game);
     // Bandeau « au tour de … » (pas en solo, ni entre 2 legs ou à la fin)
     if (game.finished || game.players.length < 2) return;

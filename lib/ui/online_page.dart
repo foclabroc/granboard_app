@@ -51,7 +51,9 @@ Future<void> openOnlineGame(BuildContext context, int roomId) async {
 /// quel écran). Se ferme seule si le défi est annulé ou expire.
 Future<void> showInviteDialog(BuildContext context, OnlineInvite invite) async {
   AudioService.instance.play(Sfx.ton);
-  AudioService.instance.sayLater('${invite.from.name} te défie');
+  AudioService.instance
+    ..names = [invite.from.name]
+    ..sayLater('${invite.from.name} te défie');
   final accept = await showDialog<bool>(
     context: context,
     barrierDismissible: false,
