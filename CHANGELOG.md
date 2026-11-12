@@ -2,6 +2,7 @@
 
 ## v0.6.6
 
+- **Partager l'appli** (⋮ › Partager l'appli) : QR code à faire scanner, qui télécharge directement la dernière version (la release contient aussi l'APK sous le nom fixe `Foclaboard.apk`)
 - Couleurs toutes différentes dans **tous** les jeux (01, Match, résultats, bandeau, TV, lumières de la cible) : le premier garde la couleur de son compte, les suivants qui ont la même, les invités et les bots reçoivent chacun une couleur libre (15 couleurs) ; la couleur du compte ne change pas
 
 ## v0.6.5

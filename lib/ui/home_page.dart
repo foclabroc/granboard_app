@@ -20,6 +20,7 @@ import 'ranking_page.dart';
 import 'setup_page.dart';
 import 'sound_settings.dart';
 import 'lights_sheet.dart';
+import 'share_sheet.dart';
 import 'theme.dart';
 import 'wallpaper.dart';
 import 'wallpaper_picker.dart';
@@ -364,6 +365,7 @@ class _HomePageState extends State<HomePage>
                           if (v == 'theme') _chooseTheme();
                           if (v == 'skin') _chooseSkin();
                           if (v == 'lights') showLightsSheet(context);
+                          if (v == 'share') showShareSheet(context);
                           if (v == 'update') _checkUpdate();
                         },
                         itemBuilder: (_) => [
@@ -374,6 +376,9 @@ class _HomePageState extends State<HomePage>
                           const PopupMenuItem(
                               value: 'lights',
                               child: Text('Lumières de la cible')),
+                          const PopupMenuItem(
+                              value: 'share',
+                              child: Text('Partager l\'appli (QR code)')),
                           const PopupMenuItem(
                               value: 'update',
                               child: Text('Mises à jour (v$kAppVersion)')),

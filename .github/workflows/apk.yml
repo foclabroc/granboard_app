@@ -90,10 +90,14 @@ jobs:
           V=${{ steps.v.outputs.version }}
           # notes de version = la section « ## vX.Y.Z » du CHANGELOG
           awk -v v="## v$V" 'index($0, v) == 1 {on=1; next} on && /^## v/ {exit} on {print}' CHANGELOG.md > notes.md
-          { echo; echo "---"; echo "📲 **Installation** : télécharge \`granboard.V$V.apk\` ci-dessous et ouvre-le sur ton téléphone Android."; } >> notes.md
+          { echo; echo "---"; echo "📲 **Installation** : télécharge \`Foclaboard.apk\` ci-dessous et ouvre-le sur ton téléphone Android."; } >> notes.md
           if gh release view "v$V" >/dev/null 2>&1; then
             gh release edit "v$V" --notes-file notes.md
           else
             gh release create "v$V" --title "Foclaboard v$V" --notes-file notes.md --latest
           fi
           gh release upload "v$V" "granboard.V$V.apk" --clobber
+          # même APK sous un nom fixe : lien (et QR code) qui donne toujours
+          # la dernière version
+          cp "granboard.V$V.apk" Foclaboard.apk
+          gh release upload "v$V" Foclaboard.apk --clobber

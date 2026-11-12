@@ -19,6 +19,12 @@ const kAppVersion = '0.6.6';
 
 const _apiLatest =
     'https://api.github.com/repos/foclabroc/granboard_app/releases/latest';
+
+/// Lien direct de la dernière version (copie à nom fixe faite par le
+/// workflow) : QR code de « Partager l'appli ».
+const kApkLink =
+    'https://github.com/foclabroc/granboard_app/releases/latest/download/Foclaboard.apk';
+
 const _releasesPage =
     'https://github.com/foclabroc/granboard_app/releases/latest';
 
