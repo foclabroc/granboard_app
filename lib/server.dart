@@ -37,6 +37,14 @@ class ApiError implements Exception {
         return 'Partie refusée par le serveur';
       case 'photo':
         return 'Photo refusée (trop lourde ?)';
+      case 'on_offline':
+        return 'Ce joueur n\'est plus en ligne';
+      case 'on_busy':
+        return 'Ce joueur est déjà en partie ou a un défi en cours';
+      case 'on_gone':
+        return 'Ce défi n\'existe plus';
+      case 'on_room':
+        return 'Cette partie n\'existe plus';
       case 'voice':
       case 'sound':
         return 'Son refusé (enregistrement trop long ?)';

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../audio.dart';
 import '../board_service.dart';
 import '../game/practice.dart';
+import '../online/online.dart';
 import '../players.dart';
 import '../tv_link.dart';
 import '../update_check.dart';
@@ -13,6 +14,7 @@ import 'calibration_page.dart';
 import 'connect_page.dart';
 import 'dartboard.dart';
 import 'diagnostic_page.dart';
+import 'online_page.dart';
 import 'players_page.dart';
 import 'ranking_page.dart';
 import 'setup_page.dart';
@@ -50,6 +52,8 @@ class _HomePageState extends State<HomePage>
     AudioService.instance.startMusic();
     TvLink.instance.pushLobby();
     _loadStart();
+    // Jeu en ligne : défis reçus (affichés par-dessus tout écran)
+    _online.addListener(_onOnline);
     // Premier lancement : profil principal
     final store = PlayerStore.instance;
     if (!store.welcomed && store.players.isEmpty) {
@@ -66,8 +70,19 @@ class _HomePageState extends State<HomePage>
     }
   }
 
+  final _online = OnlineService.instance;
+  int? _shownInvite;
+
+  void _onOnline() {
+    final inv = _online.invite;
+    if (inv == null || inv.id == _shownInvite || !mounted) return;
+    _shownInvite = inv.id;
+    showInviteDialog(context, inv);
+  }
+
   @override
   void dispose() {
+    _online.removeListener(_onOnline);
     _spin.dispose();
     super.dispose();
   }
@@ -171,8 +186,10 @@ class _HomePageState extends State<HomePage>
                   height: 46,
                   child: Row(
                     children: [
-                      Flexible(
-                        flex: 0,
+                      // Largeur bornée : le titre rétrécit au lieu de pousser
+                      // la pastille de la cible hors de la barre
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 190),
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: ShaderMask(
@@ -329,20 +346,25 @@ class _HomePageState extends State<HomePage>
                             icon: Icons.celebration,
                             onTap: () => _open(const SetupPage(kind: 'party')),
                           ),
-                          _Tile(
-                            colors: const [
-                              Color(0xFF1E2228),
-                              Color(0xFF0C0E11)
-                            ],
-                            kicker: 'BIENTÔT',
-                            title: 'EN LIGNE',
-                            icon: Icons.public,
-                            soon: true,
-                            onTap: () => ScaffoldMessenger.of(context)
-                              ..hideCurrentSnackBar()
-                              ..showSnackBar(const SnackBar(
-                                  content: Text(
-                                      'Jeu en ligne : un joueur chez lui avec sa cible, bientôt !'))),
+                          ListenableBuilder(
+                            listenable: _online,
+                            builder: (context, _) {
+                              final n = _online.players.length;
+                              return _Tile(
+                                colors: const [
+                                  Color(0xFF0B2E3D),
+                                  Color(0xFF06141B)
+                                ],
+                                kicker: _online.resumeRoom != null
+                                    ? 'PARTIE À REPRENDRE'
+                                    : n == 0
+                                        ? '1 CONTRE 1 · VIDÉO'
+                                        : '$n JOUEUR${n > 1 ? 'S' : ''} EN LIGNE',
+                                title: 'EN LIGNE',
+                                icon: Icons.public,
+                                onTap: () => _open(const OnlinePage()),
+                              );
+                            },
                           ),
                         ]),
                       ),
@@ -376,7 +398,6 @@ class _Tile extends StatelessWidget {
   final String title;
   final IconData? icon;
   final bool gold;
-  final bool soon;
   final Animation<double>? spin;
   final VoidCallback onTap;
   const _Tile(
@@ -386,7 +407,6 @@ class _Tile extends StatelessWidget {
       required this.onTap,
       this.icon,
       this.gold = false,
-      this.soon = false,
       this.spin});
 
   @override
@@ -437,19 +457,14 @@ class _Tile extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(kicker,
-                            style: Tv.label(12,
-                                color: soon ? Tv.gold : Colors.white70)),
+                            style: Tv.label(12, color: Colors.white70)),
                         const Spacer(),
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(title,
                               style: Tv.title(38,
-                                  color: gold
-                                      ? Tv.goldLight
-                                      : soon
-                                          ? Colors.white54
-                                          : Colors.white)),
+                                  color: gold ? Tv.goldLight : Colors.white)),
                         ),
                       ],
                     ),

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'audio.dart';
 import 'board_service.dart';
 import 'media.dart';
+import 'online/online.dart';
 import 'players.dart';
 import 'tv/tv_home.dart';
 import 'tv_link.dart';
@@ -54,7 +55,11 @@ Future<void> main() async {
   if (!tv) await TvLink.instance.load();
   runApp(GranBoardApp(tv: tv, androidTv: androidTv));
   // Comptes : vérifie les sessions, envoie les parties en attente
-  if (!tv) PlayerStore.instance.sync();
+  if (!tv) {
+    PlayerStore.instance.sync();
+    // Jeu en ligne : présence et défis tant que l'appli est ouverte
+    OnlineService.instance.start();
+  }
 }
 
 class GranBoardApp extends StatefulWidget {
@@ -80,6 +85,7 @@ class GranBoardAppState extends State<GranBoardApp> {
         TvLink.instance.load(),
       ]);
     }
+    on ? OnlineService.instance.stop() : OnlineService.instance.start();
     setState(() => tv = on);
   }
 

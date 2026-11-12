@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:granboard_proto/server.dart';
 
 /// Faux serveur en mémoire qui imite les fonctions SQL gb_* (tests).
@@ -10,6 +12,21 @@ class FakeServer {
       <String, Map<String, dynamic>>{}; // code → {key, host, state, seq}
   int _next = 1;
   final media = <int, Map<String, dynamic>>{}; // id → {v, photo, sound, voice}
+
+  // Jeu en ligne
+  final online = <int, bool>{}; // id → occupé
+  final invites = <int, Map<String, dynamic>>{};
+  final rooms = <int, Map<String, dynamic>>{};
+
+  /// Copie comme après un passage par le réseau.
+  dynamic _json(dynamic v) => jsonDecode(jsonEncode(v));
+
+  Map<String, dynamic> _onPlayer(int id) => {
+        'id': id,
+        'pseudo': accounts[id]!['pseudo'],
+        'color': accounts[id]!['color'],
+        'rating': null,
+      };
 
   int _auth(dynamic token) {
     final id = sessions[token];
@@ -144,6 +161,143 @@ class FakeServer {
           return {'seq': r['seq']};
         }
         return {'seq': r['seq'], 'state': r['state']};
+      case 'gb_on_ping':
+        final me = _auth(b['p_token']);
+        online[me] = b['p_busy'] == true;
+        final inv = invites.values
+            .where((i) => i['to'] == me && i['status'] == 'pending')
+            .lastOrNull;
+        final snt = invites.values.where((i) => i['from'] == me).lastOrNull;
+        final room = rooms.entries
+            .where((r) =>
+                (r.value['a'] == me || r.value['b'] == me) &&
+                r.value['left'] == null)
+            .lastOrNull;
+        return _json({
+          'me': me,
+          'topic': 'rc_u$me',
+          'online': [
+            for (final e in online.entries)
+              if (e.key != me) {..._onPlayer(e.key), 'busy': e.value}
+          ],
+          'invite': inv == null
+              ? null
+              : {
+                  'id': inv['id'],
+                  'from': _onPlayer(inv['from'] as int),
+                  'game': inv['game']
+                },
+          'sent': snt == null
+              ? null
+              : {
+                  'id': snt['id'],
+                  'to': snt['to'],
+                  'status': snt['status'],
+                  'room': snt['room']
+                },
+          'room': room?.key,
+        });
+      case 'gb_on_bye':
+        online.remove(_auth(b['p_token']));
+        return null;
+      case 'gb_on_invite':
+        final me = _auth(b['p_token']);
+        final to = b['p_to'] as int;
+        if (!online.containsKey(to)) return {'error': 'on_offline'};
+        if (online[to] == true) return {'error': 'on_busy'};
+        final id = invites.length + 1;
+        invites[id] = {
+          'id': id,
+          'from': me,
+          'to': to,
+          'game': _json(b['p_game']),
+          'status': 'pending',
+          'room': null
+        };
+        return {'id': id};
+      case 'gb_on_cancel':
+        final me = _auth(b['p_token']);
+        final i = invites[b['p_invite']];
+        if (i != null && i['from'] == me && i['status'] == 'pending') {
+          i['status'] = 'cancelled';
+        }
+        return null;
+      case 'gb_on_answer':
+        final me = _auth(b['p_token']);
+        final i = invites[b['p_invite']];
+        if (i == null || i['to'] != me || i['status'] != 'pending') {
+          return {'error': 'on_gone'};
+        }
+        if (b['p_accept'] != true) {
+          i['status'] = 'declined';
+          return <String, dynamic>{};
+        }
+        final id = rooms.length + 1;
+        rooms[id] = {
+          'a': i['from'],
+          'b': me,
+          'game': i['game'],
+          'seq': 1,
+          'left': null,
+          'signals': <Map<String, dynamic>>[],
+          'age': 0,
+        };
+        i['status'] = 'accepted';
+        i['room'] = id;
+        online[i['from'] as int] = true;
+        online[me] = true;
+        return {'room': id};
+      case 'gb_on_get':
+        final me = _auth(b['p_token']);
+        final r = rooms[b['p_room']];
+        if (r == null || (r['a'] != me && r['b'] != me)) {
+          return {'error': 'on_room'};
+        }
+        final a = r['a'] == me;
+        return _json({
+          'seq': r['seq'],
+          'side': a ? 'a' : 'b',
+          'peer': _onPlayer((a ? r['b'] : r['a']) as int),
+          'peer_age': r['age'],
+          'left': r['left'] != null,
+          'topic': 'rc_r${b['p_room']}',
+          'ice': [],
+          'signals': [
+            for (final s in (r['signals'] as List))
+              if (s['from'] != me && (s['id'] as int) > (b['p_sig'] as int))
+                {'id': s['id'], 'data': s['data']}
+          ],
+          if ((r['seq'] as int) > (b['p_since'] as int)) 'game': r['game'],
+        });
+      case 'gb_on_push':
+        final me = _auth(b['p_token']);
+        final r = rooms[b['p_room']];
+        if (r == null || (r['a'] != me && r['b'] != me) || r['left'] != null) {
+          return {'error': 'on_room'};
+        }
+        final g = Map<String, dynamic>.from(_json(b['p_game']) as Map);
+        final old = Map<String, dynamic>.from(r['game'] as Map);
+        if (jsonEncode({...g, 'actions': null}) !=
+            jsonEncode({...old, 'actions': null})) {
+          throw const ApiError('on_game');
+        }
+        if (r['seq'] != b['p_seq']) return {'error': 'on_conflict'};
+        r['game'] = g;
+        r['seq'] = (r['seq'] as int) + 1;
+        return {'seq': r['seq']};
+      case 'gb_on_signal':
+        final me = _auth(b['p_token']);
+        final r = rooms[b['p_room']]!;
+        final sigs = r['signals'] as List;
+        sigs.add(
+            {'id': sigs.length + 1, 'from': me, 'data': _json(b['p_data'])});
+        return sigs.length;
+      case 'gb_on_leave':
+        final me = _auth(b['p_token']);
+        final r = rooms[b['p_room']];
+        if (r != null) r['left'] ??= me;
+        online[me] = false;
+        return null;
       case 'gb_top':
         return [
           for (final e in accounts.entries)

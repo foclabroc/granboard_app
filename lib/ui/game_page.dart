@@ -13,6 +13,8 @@ import '../game/practice.dart';
 import '../game/x01.dart';
 import '../granboard.dart';
 import '../media.dart';
+import '../online/online.dart';
+import '../online/video.dart';
 import '../players.dart';
 import '../tv_link.dart';
 import 'cricket_view.dart';
@@ -32,7 +34,11 @@ class GamePage extends StatefulWidget {
   final X01Settings? settings;
   final List<X01Player>? players;
   final DartsGame? game;
-  const GamePage({super.key, this.settings, this.players, this.game})
+
+  /// Partie en ligne : salle partagée avec l'adversaire ([game] vient d'elle).
+  final OnlineRoom? online;
+  const GamePage(
+      {super.key, this.settings, this.players, this.game, this.online})
       : assert(game != null || (settings != null && players != null));
 
   @override
@@ -40,8 +46,11 @@ class GamePage extends StatefulWidget {
 }
 
 class _GamePageState extends State<GamePage> {
-  late final DartsGame game =
+  late DartsGame game =
       widget.game ?? X01Game(widget.settings!, widget.players!);
+  OnlineRoom? get _room => widget.online;
+  VideoCall? _video;
+  int _roomVersion = 0;
   late final StreamSubscription<BoardEvent> _sub;
   final _splash = GlobalKey<GameSplashState>();
   late final _fx = GameFx(_splash);
@@ -56,13 +65,89 @@ class _GamePageState extends State<GamePage> {
     MediaStore.instance.ensure(game.players.map((p) => p.id));
     _fx.start(game);
     WidgetsBinding.instance.addPostFrameCallback((_) => _pushTv());
+    OnlineService.instance.inGame++;
+    final room = _room;
+    if (room != null) {
+      _roomVersion = room.gameVersion;
+      room.addListener(_onRoom);
+      if (OnlineRoom.videoEnabled) _video = VideoCall(room)..start();
+    }
   }
 
   @override
   void dispose() {
     _sub.cancel();
     WakelockPlus.disable().catchError((_) {});
+    final online = OnlineService.instance;
+    if (online.inGame > 0) online.inGame--;
+    final room = _room;
+    if (room != null) {
+      room.removeListener(_onRoom);
+      _video?.close();
+      room.leave().whenComplete(online.ping);
+    }
     super.dispose();
+  }
+
+  // ─── Partie en ligne ───
+
+  /// C'est à ce téléphone de jouer (toujours vrai hors ligne).
+  bool get _canAct {
+    final room = _room;
+    if (room == null) return true;
+    final g = game;
+    if (g is MatchGame && g.betweenLegs) return true;
+    return g.currentPlayer.id == room.myId;
+  }
+
+  DateTime _lastHint = DateTime(2000);
+
+  void _notMyTurn() {
+    final now = DateTime.now();
+    if (now.difference(_lastHint) < const Duration(seconds: 3)) return;
+    _lastHint = now;
+    HapticFeedback.heavyImpact();
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text('C\'est au tour de ${game.currentPlayer.name}')));
+  }
+
+  /// Après une action : envoi à l'adversaire et à la TV.
+  void _sync() {
+    _room?.push(game.actionLog);
+    _pushTv();
+  }
+
+  /// La salle a changé : rejoue les actions de l'adversaire (effets pour la
+  /// dernière seulement), ou repart de la partie du serveur.
+  void _onRoom() {
+    final room = _room!;
+    if (!mounted) return;
+    if (room.gameVersion == _roomVersion) {
+      setState(() {}); // présence, connexion
+      return;
+    }
+    _roomVersion = room.gameVersion;
+    final actions = room.actions;
+    final old = game.actionLog;
+    final extends_ = !room.conflict &&
+        actions.length >= old.length &&
+        List.generate(old.length, (i) => old[i] == actions[i]).every((x) => x);
+    room.conflict = false;
+    setState(() {
+      if (!extends_) {
+        game = gameFromJson(room.game); // annulation ou conflit : sans effet
+        return;
+      }
+      for (var i = old.length; i < actions.length; i++) {
+        final a = actions[i];
+        if (!game.applyLogEntry(a) || i != actions.length - 1) continue;
+        _fx.afterAction(game, a);
+      }
+    });
+    _pushTv();
   }
 
   void _onEvent(BoardEvent e) {
@@ -93,6 +178,7 @@ class _GamePageState extends State<GamePage> {
 
   void _dart(DartHit? hit, {bool outerRing = false}) {
     if (game.finished) return;
+    if (!_canAct) return _notMyTurn();
     if (game.turnOver) {
       HapticFeedback.heavyImpact();
       ScaffoldMessenger.of(context)
@@ -105,20 +191,35 @@ class _GamePageState extends State<GamePage> {
     }
     setState(() => game.throwDart(hit));
     _fx.afterAnyDart(game, hit, outerRing: outerRing);
-    _pushTv();
+    _sync();
   }
 
   void _next() {
     if (game.finished) return;
+    if (!_canAct) return _notMyTurn();
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     setState(() => game.next());
     _fx.afterAnyNext(game);
-    _pushTv();
+    _sync();
   }
 
   void _undo() {
+    final room = _room;
+    final log = game.actionLog;
+    if (log.isEmpty) return;
     setState(() => game.undo());
-    _pushTv();
+    // En ligne, on n'annule que ses propres actions : après l'annulation,
+    // ce doit être à moi de jouer
+    if (room != null && game.currentPlayer.id != room.myId) {
+      setState(() => game.applyLogEntry(log.last));
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(
+            duration: Duration(seconds: 2),
+            content: Text('Tu ne peux annuler que tes propres actions')));
+      return;
+    }
+    _sync();
   }
 
   void _pushTv() => TvLink.instance.pushGame(game);
@@ -127,9 +228,10 @@ class _GamePageState extends State<GamePage> {
   void _changeTarget(int n) {
     final g = game;
     if (g is! PracticeGame) return;
+    if (!_canAct) return _notMyTurn();
     setState(() => g.changeTarget(n));
     audio.say('Nouvelle cible : ${n == 25 ? 'bull' : '$n'}');
-    _pushTv();
+    _sync();
   }
 
   Future<bool>? _saving;
@@ -145,8 +247,12 @@ class _GamePageState extends State<GamePage> {
       _ => Future.value(true),
     };
     TvLink.instance.pushGame(game, screen: 'results');
-    Navigator.pushReplacement(context,
-        MaterialPageRoute(builder: (_) => resultsPageFor(g, saving: _saving)));
+    Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+            builder: (_) => _room == null
+                ? resultsPageFor(g, saving: _saving)
+                : OnlineResultsPage(game: g, saving: _saving)));
   }
 
   Future<bool> _confirmQuit() async {
@@ -155,7 +261,10 @@ class _GamePageState extends State<GamePage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Abandonner la partie ?', style: Tv.title(22)),
-        content: const Text('Les statistiques ne seront pas enregistrées.'),
+        content: Text(_room == null
+            ? 'Les statistiques ne seront pas enregistrées.'
+            : 'Ton adversaire sera prévenu. Les statistiques ne seront pas '
+                'enregistrées.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -200,6 +309,11 @@ class _GamePageState extends State<GamePage> {
             ],
           ),
           actions: [
+            if (_room != null && !game.finished)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _TurnChip(mine: _canAct, name: game.currentPlayer.name),
+              ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
@@ -227,13 +341,130 @@ class _GamePageState extends State<GamePage> {
         body: Column(
           children: [
             const BoardBanner(),
+            if (_room != null)
+              _OnlineBanner(
+                  room: _room!,
+                  finished: game.finished,
+                  onQuit: () => Navigator.pop(context)),
             Expanded(
-              child: gameView(game, _splash,
-                  actionBar: actionBar, onChangeTarget: _changeTarget),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: gameView(game, _splash,
+                        actionBar: actionBar, onChangeTarget: _changeTarget),
+                  ),
+                  if (_video != null)
+                    Positioned.fill(
+                      child: VideoBubble(
+                          call: _video!,
+                          peerName: _room!.peer?.name ?? 'l\'adversaire'),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// En ligne : à qui de jouer.
+class _TurnChip extends StatelessWidget {
+  final bool mine;
+  final String name;
+  const _TurnChip({required this.mine, required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = mine ? Tv.green : Tv.muted;
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 170),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: c),
+      ),
+      child: Text(mine ? 'À TOI' : 'AU TOUR DE ${name.toUpperCase()}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Tv.title(15, color: mine ? Tv.green : Tv.text)),
+    );
+  }
+}
+
+/// En ligne : bandeau fin si l'adversaire est parti, ne répond plus, ou si
+/// le serveur est injoignable.
+class _OnlineBanner extends StatelessWidget {
+  final OnlineRoom room;
+  final bool finished;
+  final VoidCallback onQuit;
+  const _OnlineBanner(
+      {required this.room, required this.finished, required this.onQuit});
+
+  @override
+  Widget build(BuildContext context) {
+    final peer = room.peer?.name ?? 'Ton adversaire';
+    String? text;
+    var quit = false;
+    if (room.left) {
+      if (finished) return const SizedBox.shrink();
+      text = '$peer a quitté la partie';
+      quit = true;
+    } else if (room.error != null) {
+      text = 'Connexion au serveur perdue, nouvel essai…';
+    } else if (room.peerAge >= 20) {
+      text = '$peer ne répond plus (${room.peerAge} s)';
+      quit = room.peerAge >= 60;
+    }
+    if (text == null) return const SizedBox.shrink();
+    return Container(
+      height: 34,
+      color: Tv.red.withValues(alpha: 0.28),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          const Icon(Icons.wifi_off, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Tv.title(15)),
+          ),
+          if (quit) TextButton(onPressed: onQuit, child: const Text('QUITTER')),
+        ],
+      ),
+    );
+  }
+}
+
+/// Résultats d'une partie en ligne : ceux du jeu, sans « Rejouer » (la
+/// revanche se lance depuis l'écran En ligne).
+class OnlineResultsPage extends StatelessWidget {
+  final DartsGame game;
+  final Future<bool>? saving;
+  const OnlineResultsPage({super.key, required this.game, this.saving});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(child: resultsPageFor(game, saving: saving, tv: true)),
+        Positioned(
+          right: 12,
+          bottom: 10,
+          child: SafeArea(
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(minimumSize: const Size(150, 46)),
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.public),
+              label: Text('TERMINER', style: Tv.title(20, color: Colors.black)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

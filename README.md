@@ -28,6 +28,12 @@ Règles détaillées : `docs/regles_granboard.md`.
 
 Installe le même APK sur l'Android TV : elle démarre en mode écran et affiche un code. Sur le téléphone : icône TV › entre le code. La TV affiche la partie en grand et joue le son (au choix). Plusieurs écrans possibles.
 
+## Jeu en ligne
+
+1 contre 1, chacun chez soi sur sa cible. Tuile **En ligne** : la liste des joueurs qui ont l'appli ouverte ; **Défier**, choisis le jeu, l'autre a 45 s pour accepter. Pendant la partie, la vidéo de l'adversaire est dans une vignette (à déplacer au doigt ; touche-la pour couper caméra ou micro, passer à la caméra arrière, agrandir). Il faut un profil sur chaque téléphone.
+
+La vidéo passe en direct entre les 2 téléphones (WebRTC) ; le serveur ne fait que la mise en relation. Si elle ne s'établit pas sur certains réseaux (4G, certaines box), il faut ajouter un relais TURN dans `gb_config` (clé `ice`, voir le fichier SQL).
+
 ## Personnalisation
 
 - Style de la cible : Classique ou Pub en bois (menu ⋮ de l'accueil), aussi sur la TV.
@@ -62,6 +68,7 @@ Stats, note, classements, photos et sons des joueurs sont sur le serveur maison.
 3. `2026-11-11_cricket.sql`
 4. `2026-11-11_entrainement.sql`
 5. `2026-11-11_photo_son.sql`
+6. `2026-11-12_en_ligne.sql`
 
 `psql -U postgres -d postgres -f fichier.sql`
 

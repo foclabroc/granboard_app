@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../board_service.dart';
 import '../game/cricket.dart';
+import '../game/darts_game.dart';
 import '../game/match.dart';
 import '../game/practice.dart';
 import '../game/x01.dart';
@@ -25,7 +26,11 @@ const kTeamColors = [Color(0xFFE53935), Color(0xFF1E88E5)];
 class SetupPage extends StatefulWidget {
   /// Famille de jeux ouverte d'office : x01, cricket, match, practice, party.
   final String? kind;
-  const SetupPage({super.key, this.kind});
+
+  /// Défi en ligne : moi puis l'adversaire. La page ne lance pas la partie,
+  /// elle renvoie son JSON (`Navigator.pop`) pour l'envoyer avec le défi.
+  final List<X01Player>? online;
+  const SetupPage({super.key, this.kind, this.online});
 
   @override
   State<SetupPage> createState() => _SetupPageState();
@@ -57,6 +62,11 @@ class _SetupPageState extends State<SetupPage> {
   List<LegKind> _mPattern = MatchSettings.alternate(13);
   final List<String> _selected = [];
   final Map<String, int> _team = {};
+
+  bool get _online => widget.online != null;
+
+  /// En ligne, qui commence : 0 moi, 1 l'adversaire, 2 au hasard.
+  int _first = 2;
 
   @override
   void initState() {
@@ -154,12 +164,12 @@ class _SetupPageState extends State<SetupPage> {
         outRule: _out,
         bullMode: _bull,
         roundLimit: _limit,
-        freeze: _freeze,
+        freeze: _freeze && !_online,
       );
 
   CricketSettings get _cricket => CricketSettings(
         variant: _variant,
-        teams: _cTeams,
+        teams: _cTeams && !_online,
         roundLimit: _cLimit,
         seed: DateTime.now().microsecondsSinceEpoch,
       );
@@ -203,7 +213,7 @@ class _SetupPageState extends State<SetupPage> {
       );
 
   /// Jeu en équipes (Freeze ou Team Cricket).
-  bool get _teams => _matchOn || _practiceOn
+  bool get _teams => _matchOn || _practiceOn || _online
       ? false
       : _cricketOn
           ? _cTeams
@@ -232,6 +242,16 @@ class _SetupPageState extends State<SetupPage> {
 
   /// Joueurs dans l'ordre de lancer (Freeze : équipes en alternance).
   List<X01Player> get _order {
+    final on = widget.online;
+    if (on != null) {
+      final swap = _first == 1 ||
+          (_first == 2 && DateTime.now().microsecondsSinceEpoch.isOdd);
+      final ps = swap ? on.reversed.toList() : on;
+      return [
+        for (var i = 0; i < ps.length; i++)
+          X01Player(id: ps[i].id, name: ps[i].name, team: i)
+      ];
+    }
     X01Player mk(String id, int team) =>
         X01Player(id: id, name: _nameOf(id), team: team);
     if (!_teams) {
@@ -245,13 +265,14 @@ class _SetupPageState extends State<SetupPage> {
   }
 
   String? get _problem {
-    if (_selected.isEmpty) return 'Ajoute au moins un joueur';
+    final n = _online ? 2 : _selected.length;
+    if (n == 0) return 'Ajoute au moins un joueur';
     if (_practiceOn) {
       final i = _pInfo;
-      if (_selected.length < i.minPlayers) {
+      if (n < i.minPlayers) {
         return '${i.name} : ${i.minPlayers} joueurs minimum';
       }
-      if (_selected.length > i.maxPlayers) {
+      if (n > i.maxPlayers) {
         return '${i.name} : ${i.maxPlayers} joueur${i.maxPlayers > 1 ? 's' : ''} maximum';
       }
     }
@@ -289,6 +310,17 @@ class _SetupPageState extends State<SetupPage> {
   Future<void> _startGame() async {
     await _save();
     if (!mounted) return;
+    if (_online) {
+      final DartsGame g = _practiceOn
+          ? PracticeGame(_practice, _order)
+          : _matchOn
+              ? MatchGame(_match, _order)
+              : _cricketOn
+                  ? CricketGame(_cricket, _order)
+                  : X01Game(_settings, _order);
+      Navigator.pop(context, g.toJson());
+      return;
+    }
     if (!BoardService.instance.isConnected) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Cible non connectée : connecte-la pour jouer')));
@@ -314,7 +346,10 @@ class _SetupPageState extends State<SetupPage> {
     final full = _selected.length >= _maxPlayers;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('NOUVELLE PARTIE')),
+      appBar: AppBar(
+          title: Text(_online
+              ? 'DÉFIER ${widget.online!.last.name.toUpperCase()}'
+              : 'NOUVELLE PARTIE')),
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -361,98 +396,192 @@ class _SetupPageState extends State<SetupPage> {
           ),
           const VerticalDivider(width: 1),
           // ─── Joueurs ───
-          Expanded(
-            child: Column(
-              children: [
-                Expanded(
-                  child: ListView(
-                    children: [
-                      TvSection(
-                          'Joueurs ${_selected.length}/$_maxPlayers · ordre de lancer',
-                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 6)),
-                      if (_selected.isNotEmpty)
-                        ReorderableListView(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          buildDefaultDragHandles: false,
-                          onReorderItem: (from, to) => setState(() =>
-                              _selected.insert(to, _selected.removeAt(from))),
-                          children: [
-                            for (var i = 0; i < _selected.length; i++)
-                              _playerTile(i, _selected[i]),
-                          ],
-                        ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            if (!full)
-                              for (final p in available)
-                                ActionChip(
-                                  avatar: PlayerAvatar.of(p, size: 24),
-                                  label:
-                                      Text(p.expired ? '${p.name} ⚠' : p.name),
-                                  onPressed: () => _select(p.key),
-                                ),
-                            if (!full)
-                              ActionChip(
-                                avatar:
-                                    const Icon(Icons.person_outline, size: 18),
-                                label: const Text('Invité'),
-                                onPressed: _addGuest,
-                              ),
-                            ActionChip(
-                              avatar: const Icon(Icons.person_add, size: 18),
-                              label: const Text('Ajouter un joueur'),
-                              onPressed: _newPlayer,
-                            ),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                            'Les invités jouent sans enregistrer de stats.',
-                            style: Tv.label(12)),
-                      ),
-                    ],
-                  ),
-                ),
-                SafeArea(
-                  top: false,
-                  left: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+          if (_online)
+            Expanded(child: _onlinePanel(problem))
+          else
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListView(
                       children: [
-                        if (problem != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Text(problem,
-                                style: Tv.title(15, color: Tv.red)),
+                        TvSection(
+                            'Joueurs ${_selected.length}/$_maxPlayers · ordre de lancer',
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 6)),
+                        if (_selected.isNotEmpty)
+                          ReorderableListView(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            buildDefaultDragHandles: false,
+                            onReorderItem: (from, to) => setState(() =>
+                                _selected.insert(to, _selected.removeAt(from))),
+                            children: [
+                              for (var i = 0; i < _selected.length; i++)
+                                _playerTile(i, _selected[i]),
+                            ],
                           ),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 54,
-                          child: FilledButton.icon(
-                            onPressed: problem == null ? _startGame : null,
-                            icon: const Icon(Icons.play_arrow),
-                            label: Text('LANCER ${_gameName.toUpperCase()}',
-                                style: Tv.title(22, color: Colors.black)),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              if (!full)
+                                for (final p in available)
+                                  ActionChip(
+                                    avatar: PlayerAvatar.of(p, size: 24),
+                                    label: Text(
+                                        p.expired ? '${p.name} ⚠' : p.name),
+                                    onPressed: () => _select(p.key),
+                                  ),
+                              if (!full)
+                                ActionChip(
+                                  avatar: const Icon(Icons.person_outline,
+                                      size: 18),
+                                  label: const Text('Invité'),
+                                  onPressed: _addGuest,
+                                ),
+                              ActionChip(
+                                avatar: const Icon(Icons.person_add, size: 18),
+                                label: const Text('Ajouter un joueur'),
+                                onPressed: _newPlayer,
+                              ),
+                            ],
                           ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                              'Les invités jouent sans enregistrer de stats.',
+                              style: Tv.label(12)),
                         ),
                       ],
+                    ),
+                  ),
+                  SafeArea(
+                    top: false,
+                    left: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (problem != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Text(problem,
+                                  style: Tv.title(15, color: Tv.red)),
+                            ),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 54,
+                            child: FilledButton.icon(
+                              onPressed: problem == null ? _startGame : null,
+                              icon: const Icon(Icons.play_arrow),
+                              label: Text('LANCER ${_gameName.toUpperCase()}',
+                                  style: Tv.title(22, color: Colors.black)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Défi en ligne : l'adversaire, qui commence, bouton « Défier ».
+  Widget _onlinePanel(String? problem) {
+    final me = widget.online!.first;
+    final opp = widget.online!.last;
+    Widget who(X01Player p) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            PlayerAvatar(
+                name: p.name, color: store.colorOf(p.id), size: 54, id: p.id),
+            const SizedBox(height: 4),
+            Text(p.name.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Tv.title(18)),
+          ],
+        );
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            children: [
+              const TvSection('Partie en ligne', padding: EdgeInsets.zero),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Expanded(child: who(me)),
+                  Text('VS', style: Tv.title(26, color: Tv.gold)),
+                  Expanded(child: who(opp)),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const TvSection('Qui commence', padding: EdgeInsets.zero),
+              const SizedBox(height: 6),
+              SegmentedButton<int>(
+                showSelectedIcon: false,
+                segments: [
+                  const ButtonSegment(value: 0, label: Text('MOI')),
+                  ButtonSegment(
+                      value: 1,
+                      label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(opp.name.toUpperCase()))),
+                  const ButtonSegment(value: 2, label: Text('AU HASARD')),
+                ],
+                selected: {_first},
+                onSelectionChanged: (v) => setState(() => _first = v.first),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                  'Chacun joue chez soi sur sa cible. Les stats comptent '
+                  'comme une partie normale.',
+                  style: Tv.label(12)),
+            ],
+          ),
+        ),
+        SafeArea(
+          top: false,
+          left: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (problem != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(problem, style: Tv.title(15, color: Tv.red)),
+                  ),
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: FilledButton.icon(
+                    onPressed: problem == null ? _startGame : null,
+                    icon: const Icon(Icons.public),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('DÉFIER : ${_gameName.toUpperCase()}',
+                          style: Tv.title(22, color: Colors.black)),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -637,7 +766,7 @@ class _SetupPageState extends State<SetupPage> {
             ],
           ),
         ),
-        if (!match)
+        if (!match && !_online)
           SwitchListTile(
             title: Text('Freeze (équipes)', style: Tv.title(18)),
             subtitle:
@@ -704,13 +833,14 @@ class _SetupPageState extends State<SetupPage> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: Text(_variant.help, style: Tv.label(12, color: Tv.text)),
         ),
-        SwitchListTile(
-          title: Text('Équipes (Team Cricket)', style: Tv.title(18)),
-          subtitle: const Text(
-              'Marques et points communs à l\'équipe, joueurs en alternance.'),
-          value: _cTeams,
-          onChanged: (v) => setState(() => _cTeams = v),
-        ),
+        if (!_online)
+          SwitchListTile(
+            title: Text('Équipes (Team Cricket)', style: Tv.title(18)),
+            subtitle: const Text(
+                'Marques et points communs à l\'équipe, joueurs en alternance.'),
+            value: _cTeams,
+            onChanged: (v) => setState(() => _cTeams = v),
+          ),
         ListTile(
           title: Text('Limite de manches', style: Tv.title(17)),
           subtitle: const Text('À la limite, le meilleur score gagne'),
