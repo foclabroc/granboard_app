@@ -64,7 +64,11 @@ class _MatchResultsPageState extends State<MatchResultsPage> {
         if (w != 0) return w;
         return m.legWinsOf(b).compareTo(m.legWinsOf(a));
       });
-    const medals = {1: Tv.gold, 2: Color(0xFFC0C4CC), 3: Color(0xFFCD7F32)};
+    final medals = {
+      1: Tv.gold,
+      2: const Color(0xFFC0C4CC),
+      3: const Color(0xFFCD7F32)
+    };
     final legWinners = m.legWinners;
     return Scaffold(
       appBar: AppBar(
@@ -170,8 +174,7 @@ class _MatchResultsPageState extends State<MatchResultsPage> {
                             Expanded(
                                 child: Text(l.title.toUpperCase(),
                                     style: Tv.title(17))),
-                            const Icon(Icons.emoji_events,
-                                color: Tv.gold, size: 18),
+                            Icon(Icons.emoji_events, color: Tv.gold, size: 18),
                             const SizedBox(width: 4),
                             Text(
                                 legWinners[k]

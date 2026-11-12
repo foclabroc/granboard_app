@@ -234,7 +234,7 @@ class _History extends StatelessWidget {
                   for (final t in shown)
                     Container(
                       height: rowH,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                           border: Border(bottom: BorderSide(color: Tv.line))),
                       child: Row(
                         children: [
@@ -779,7 +779,11 @@ class _SideRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final g = game;
     final won = g.winners.any((i) => g.sideOf(i) == side);
-    const medals = {1: Tv.gold, 2: Color(0xFFC0C4CC), 3: Color(0xFFCD7F32)};
+    final medals = {
+      1: Tv.gold,
+      2: const Color(0xFFC0C4CC),
+      3: const Color(0xFFCD7F32)
+    };
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),

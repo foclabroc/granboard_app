@@ -68,6 +68,10 @@ class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
     if (s?['skin'] is String) {
       BoardSkin.current.value = BoardSkin.byId(s!['skin']);
     }
+    // … et le thème de l'appli
+    if (s?['theme'] is String && s!['theme'] != Tv.skin.value.id) {
+      Tv.choose(AppSkin.byId(s['theme']));
+    }
     final screen = s?['screen'] as String?;
     if (screen != _screen) {
       _screen = screen;

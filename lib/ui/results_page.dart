@@ -181,7 +181,11 @@ class _Podium extends StatelessWidget {
       if (ranking.length > 2) (ranking[2], 3),
     ];
     const heights = {1: 110.0, 2: 78.0, 3: 56.0};
-    const medals = {1: Tv.gold, 2: Color(0xFFC0C4CC), 3: Color(0xFFCD7F32)};
+    final medals = {
+      1: Tv.gold,
+      2: const Color(0xFFC0C4CC),
+      3: const Color(0xFFCD7F32)
+    };
 
     return SizedBox(
       height: 272,

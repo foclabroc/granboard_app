@@ -20,6 +20,7 @@ import 'ranking_page.dart';
 import 'setup_page.dart';
 import 'sound_settings.dart';
 import 'theme.dart';
+import 'tile_art.dart';
 import 'tv_sheet.dart';
 import 'welcome_page.dart';
 import 'widgets.dart';
@@ -114,6 +115,88 @@ class _HomePageState extends State<HomePage>
     TvLink.instance.pushLobby();
     _loadStart();
   }
+
+  Future<void> _chooseTheme() => showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (ctx) => ValueListenableBuilder<AppSkin>(
+          valueListenable: Tv.skin,
+          builder: (ctx, cur, _) => SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const TvSection('Thème de l\'appli',
+                    padding: EdgeInsets.only(bottom: 10)),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final sk in AppSkin.all)
+                      InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          Tv.choose(sk);
+                          TvLink.instance.pushLobby();
+                        },
+                        child: Container(
+                          width: 150,
+                          height: 84,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            gradient: RadialGradient(
+                              center: const Alignment(-0.6, -1),
+                              radius: 1.6,
+                              colors: [
+                                Color.lerp(sk.accent, sk.bg, 0.55)!,
+                                sk.bg,
+                                Color.lerp(sk.glow, sk.bg, 0.6)!,
+                              ],
+                            ),
+                            border: Border.all(
+                                color: cur == sk ? sk.accent : sk.line,
+                                width: cur == sk ? 3 : 1),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  for (final c in [
+                                    sk.accent,
+                                    sk.glow,
+                                    sk.panel2
+                                  ])
+                                    Container(
+                                      width: 16,
+                                      height: 16,
+                                      margin: const EdgeInsets.only(right: 5),
+                                      decoration: BoxDecoration(
+                                          color: c, shape: BoxShape.circle),
+                                    ),
+                                  const Spacer(),
+                                  if (cur == sk)
+                                    Icon(Icons.check_circle,
+                                        color: sk.accent, size: 20),
+                                ],
+                              ),
+                              Text(sk.name.toUpperCase(),
+                                  style: Tv.title(20, color: sk.accentLight)),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
 
   Future<void> _chooseSkin() => showModalBottomSheet(
         context: context,
@@ -261,10 +344,13 @@ class _HomePageState extends State<HomePage>
                       PopupMenuButton<String>(
                         tooltip: 'Plus',
                         onSelected: (v) {
+                          if (v == 'theme') _chooseTheme();
                           if (v == 'skin') _chooseSkin();
                           if (v == 'update') _checkUpdate();
                         },
                         itemBuilder: (_) => [
+                          const PopupMenuItem(
+                              value: 'theme', child: Text('Thème de l\'appli')),
                           const PopupMenuItem(
                               value: 'skin', child: Text('Style de la cible')),
                           const PopupMenuItem(
@@ -289,10 +375,8 @@ class _HomePageState extends State<HomePage>
                       Expanded(
                         child: _row([
                           _Tile(
-                            colors: const [
-                              Color(0xFF3A2805),
-                              Color(0xFF1A1205)
-                            ],
+                            tint: Tv.gold,
+                            anim: _spin,
                             kicker: 'X01 · FREEZE',
                             title: '$_start',
                             gold: true,
@@ -300,10 +384,9 @@ class _HomePageState extends State<HomePage>
                             onTap: () => _open(const SetupPage(kind: 'x01')),
                           ),
                           _Tile(
-                            colors: const [
-                              Color(0xFF0E3B24),
-                              Color(0xFF07170F)
-                            ],
+                            tint: const Color(0xFF21C46B),
+                            anim: _spin,
+                            art: TileArt.cricket,
                             kicker: '8 VARIANTES',
                             title: 'CRICKET',
                             icon: Icons.grid_view_rounded,
@@ -311,10 +394,9 @@ class _HomePageState extends State<HomePage>
                                 _open(const SetupPage(kind: 'cricket')),
                           ),
                           _Tile(
-                            colors: const [
-                              Color(0xFF3A1214),
-                              Color(0xFF16080A)
-                            ],
+                            tint: const Color(0xFFFF4D4D),
+                            anim: _spin,
+                            art: TileArt.match,
                             kicker: '01 + CRICKET',
                             title: 'MATCH',
                             icon: Icons.emoji_events,
@@ -326,10 +408,9 @@ class _HomePageState extends State<HomePage>
                       Expanded(
                         child: _row([
                           _Tile(
-                            colors: const [
-                              Color(0xFF0D2534),
-                              Color(0xFF061018)
-                            ],
+                            tint: const Color(0xFF3BA7FF),
+                            anim: _spin,
+                            art: TileArt.practice,
                             kicker: '$_practiceCount JEUX',
                             title: 'ENTRAÎNEMENT',
                             icon: Icons.fitness_center,
@@ -337,10 +418,9 @@ class _HomePageState extends State<HomePage>
                                 _open(const SetupPage(kind: 'practice')),
                           ),
                           _Tile(
-                            colors: const [
-                              Color(0xFF2A1240),
-                              Color(0xFF10071A)
-                            ],
+                            tint: const Color(0xFFB45CFF),
+                            anim: _spin,
+                            art: TileArt.party,
                             kicker: '$_partyCount JEUX',
                             title: 'FÊTE',
                             icon: Icons.celebration,
@@ -351,10 +431,9 @@ class _HomePageState extends State<HomePage>
                             builder: (context, _) {
                               final n = _online.players.length;
                               return _Tile(
-                                colors: const [
-                                  Color(0xFF0B2E3D),
-                                  Color(0xFF06141B)
-                                ],
+                                tint: const Color(0xFF22D3C5),
+                                anim: _spin,
+                                art: TileArt.online,
                                 kicker: _online.resumeRoom != null
                                     ? 'PARTIE À REPRENDRE'
                                     : n == 0
@@ -393,7 +472,10 @@ Widget _row(List<Widget> tiles) => Row(
 
 /// Tuile d'une famille de jeux.
 class _Tile extends StatelessWidget {
-  final List<Color> colors;
+  /// Couleur de la tuile (dégradé, bordure lumineuse, illustration).
+  final Color tint;
+  final Animation<double> anim;
+  final TileArt? art;
   final String kicker;
   final String title;
   final IconData? icon;
@@ -401,7 +483,9 @@ class _Tile extends StatelessWidget {
   final Animation<double>? spin;
   final VoidCallback onTap;
   const _Tile(
-      {required this.colors,
+      {required this.tint,
+      required this.anim,
+      this.art,
       required this.kicker,
       required this.title,
       required this.onTap,
@@ -418,9 +502,15 @@ class _Tile extends StatelessWidget {
           gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: colors),
+              colors: [
+                Color.lerp(tint, Colors.black, 0.50)!,
+                Color.lerp(tint, Colors.black, 0.86)!,
+              ]),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+          border: Border.all(color: tint.withValues(alpha: 0.55), width: 1.5),
+          boxShadow: [
+            BoxShadow(color: tint.withValues(alpha: 0.22), blurRadius: 14),
+          ],
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
@@ -443,14 +533,35 @@ class _Tile extends StatelessWidget {
                         ),
                       ),
                     )
-                  else if (icon != null)
-                    Positioned(
-                      right: -8,
-                      bottom: -10,
-                      child: Icon(icon,
-                          size: c.maxHeight * 0.75,
-                          color: Colors.white.withValues(alpha: 0.07)),
+                  else if (art != null)
+                    Positioned.fill(
+                      child: RepaintBoundary(
+                        child: CustomPaint(
+                            painter: TileArtPainter(art!,
+                                Color.lerp(tint, Colors.white, 0.35)!, anim)),
+                      ),
                     ),
+                  // Reflet en haut de la tuile
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    height: c.maxHeight * 0.45,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.white.withValues(alpha: 0.10),
+                              Colors.white.withValues(alpha: 0),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.all(14),
                     child: Column(
@@ -464,7 +575,12 @@ class _Tile extends StatelessWidget {
                           alignment: Alignment.centerLeft,
                           child: Text(title,
                               style: Tv.title(38,
-                                  color: gold ? Tv.goldLight : Colors.white)),
+                                      color: gold ? Tv.goldLight : Colors.white)
+                                  .copyWith(shadows: [
+                                Shadow(
+                                    color: Colors.black.withValues(alpha: 0.7),
+                                    blurRadius: 8),
+                              ])),
                         ),
                       ],
                     ),
@@ -502,10 +618,10 @@ class _MeChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             me == null
-                ? const CircleAvatar(
+                ? CircleAvatar(
                     radius: 15,
                     backgroundColor: Tv.panel,
-                    child: Icon(Icons.groups, size: 18, color: Tv.text))
+                    child: const Icon(Icons.groups, size: 18, color: Tv.text))
                 : PlayerAvatar.of(me, size: 30),
             const SizedBox(width: 6),
             Text(me == null ? 'JOUEURS' : me.name.toUpperCase(),

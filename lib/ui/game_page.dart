@@ -895,7 +895,7 @@ class _PlayerBar extends StatelessWidget {
           SizedBox(
             width: 22,
             child: current
-                ? const Icon(Icons.play_arrow, color: Tv.gold, size: 20)
+                ? Icon(Icons.play_arrow, color: Tv.gold, size: 20)
                 : null,
           ),
           Expanded(
@@ -997,7 +997,7 @@ class _ActionBar extends StatelessWidget {
       );
     }
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Tv.panel,
         border: Border(top: BorderSide(color: Tv.line)),
       ),

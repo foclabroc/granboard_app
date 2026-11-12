@@ -210,7 +210,7 @@ class _Panel extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: Tv.panelGradient,
         borderRadius: BorderRadius.circular(16),
-        border: const Border(top: BorderSide(color: Tv.gold, width: 4)),
+        border: Border(top: BorderSide(color: Tv.gold, width: 4)),
       ),
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       child: Column(
@@ -392,8 +392,7 @@ class _Scores extends StatelessWidget {
                     SizedBox(
                       width: 22,
                       child: current
-                          ? const Icon(Icons.play_arrow,
-                              color: Tv.gold, size: 20)
+                          ? Icon(Icons.play_arrow, color: Tv.gold, size: 20)
                           : null,
                     ),
                     Expanded(
@@ -476,7 +475,11 @@ class _PracticeResultsPageState extends State<PracticeResultsPage> {
 
   @override
   Widget build(BuildContext context) {
-    const medals = {1: Tv.gold, 2: Color(0xFFC0C4CC), 3: Color(0xFFCD7F32)};
+    final medals = {
+      1: Tv.gold,
+      2: const Color(0xFFC0C4CC),
+      3: const Color(0xFFCD7F32)
+    };
     final reason = switch (g.endReason) {
       PracticeEnd.goal =>
         'OBJECTIF ATTEINT EN ${g.round} MANCHE${g.round > 1 ? 'S' : ''}',

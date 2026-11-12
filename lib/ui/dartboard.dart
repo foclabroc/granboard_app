@@ -37,7 +37,7 @@ class BoardSkin {
     id: 'classic',
     name: 'Classique',
     background: Color(0xFF0B0B0E),
-    rim: Tv.gold,
+    rim: Color(0xFFE8B63C),
     singleDark: Color(0xFF121216),
     singleLight: Tv.cream,
     ringA: Tv.red,
@@ -180,7 +180,8 @@ class _BoardPainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = math.max(2, outer * 0.025)
-          ..color = skin.rim);
+          // Cible classique : le cercle prend la couleur du thème
+          ..color = skin == BoardSkin.classic ? Tv.gold : skin.rim);
 
     const seg = 2 * math.pi / 20;
     for (var i = 0; i < 20; i++) {
@@ -348,7 +349,7 @@ class AnimatedDartboard extends StatefulWidget {
   final List<DartHit> hits;
   final bool bust;
   final bool win;
-  final Color dartColor;
+  final Color? dartColor;
 
   /// Zone à viser pour finir (contour vert qui pulse).
   final List<DartHit> targets;
@@ -359,7 +360,7 @@ class AnimatedDartboard extends StatefulWidget {
     this.targets = const [],
     this.bust = false,
     this.win = false,
-    this.dartColor = Tv.gold,
+    this.dartColor,
   });
 
   @override
@@ -418,7 +419,7 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
                     pulse: _pulse.value,
                     flash: _flash.value,
                     flashColor: widget.win ? Tv.gold : Tv.red,
-                    dartColor: widget.dartColor,
+                    dartColor: widget.dartColor ?? Tv.gold,
                   ),
                 ),
               ),

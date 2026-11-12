@@ -231,13 +231,13 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                           children: [
                             PlayerAvatar.of(p, size: 84),
                             if (!p.expired)
-                              const Positioned(
+                              Positioned(
                                 right: 0,
                                 bottom: 0,
                                 child: CircleAvatar(
                                   radius: 14,
                                   backgroundColor: Tv.gold,
-                                  child: Icon(Icons.photo_camera,
+                                  child: const Icon(Icons.photo_camera,
                                       size: 16, color: Colors.black),
                                 ),
                               ),

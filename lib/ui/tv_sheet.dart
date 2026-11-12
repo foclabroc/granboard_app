@@ -127,8 +127,8 @@ class _TvSheetState extends State<_TvSheet> {
                         child:
                             Text(s.label.toUpperCase(), style: Tv.title(20))),
                     if (link.soundOn == s.code)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 4),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4),
                         child: Icon(Icons.volume_up, color: Tv.gold),
                       ),
                     TextButton.icon(

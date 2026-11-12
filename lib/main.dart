@@ -48,6 +48,7 @@ Future<void> main() async {
   await Future.wait([
     AudioService.instance.init(),
     BoardSkin.load(),
+    Tv.load(),
     MediaStore.instance.load(),
     if (!tv) BoardService.instance.init(),
     if (!tv) PlayerStore.instance.load(),
@@ -91,10 +92,19 @@ class GranBoardAppState extends State<GranBoardApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Tout se redessine quand le thème change
+    return ValueListenableBuilder<AppSkin>(
+      valueListenable: Tv.skin,
+      builder: (context, skin, _) => _app(),
+    );
+  }
+
+  Widget _app() {
     return MaterialApp(
       title: 'Foclaboard',
       debugShowCheckedModeBanner: false,
       theme: Tv.theme(),
+      builder: Tv.appBuilder,
       home: UpdateGate(
         key: updateGateKey,
         child: tv

@@ -65,14 +65,14 @@ class _SoundSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    const Icon(Icons.volume_down, color: Tv.muted),
+                    Icon(Icons.volume_down, color: Tv.muted),
                     Expanded(
                       child: Slider(
                         value: a.musicVolume,
                         onChanged: a.music ? a.setMusicVolume : null,
                       ),
                     ),
-                    const Icon(Icons.volume_up, color: Tv.muted),
+                    Icon(Icons.volume_up, color: Tv.muted),
                   ],
                 ),
               ),
