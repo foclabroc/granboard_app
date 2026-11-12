@@ -78,9 +78,11 @@ class GameFx {
   ];
 
   /// Une fléchette dite à voix haute : « triple 20 », « double 16 », « 5 »,
-  /// « bull », « 25 », « raté » (vide si l'annonce des fléchettes est coupée).
+  /// « bull », « 25 », « raté » (vide si l'annonce des fléchettes est coupée
+  /// ou si une animation `HitClip` joue pour cette fléchette).
   String _call(DartHit? hit) {
-    if (!audio.dartCalls) return '';
+    // Triple 20, bull, double bull : l'animation et son son suffisent
+    if (!audio.dartCalls || _clip != null) return '';
     if (hit == null) return 'raté';
     return switch (hit.ring) {
       Ring.innerBull => 'bull',

@@ -2,7 +2,7 @@
 
 ## v0.6.6
 
-- **Annonceur** : il dit chaque fléchette (« triple 20 », « double 16 », « 25 », « bull », « raté » ; réglable dans Sons › Annoncer chaque fléchette), la fin conseillée au début du tour (« il te reste 40, double 20 »), « match point », le nombre de 180 de la soirée (« troisième 180 de la soirée »), les fins à 100 et plus (« fin à 121, plus haute fin de la soirée ») et, au Cricket, les derniers numéros à fermer (« plus que 15 et bull »)
+- **Annonceur** : il dit chaque fléchette (« triple 20 », « double 16 », « 25 », « bull », « raté » ; pas pour le triple 20 et les bulls, qui ont déjà leur animation avec son ; réglable dans Sons › Annoncer chaque fléchette), la fin conseillée au début du tour (« il te reste 40, double 20 »), « match point », le nombre de 180 de la soirée (« troisième 180 de la soirée »), les fins à 100 et plus (« fin à 121, plus haute fin de la soirée ») et, au Cricket, les derniers numéros à fermer (« plus que 15 et bull »)
 - **Partager l'appli** (⋮ › Partager l'appli) : QR code à faire scanner, qui télécharge directement la dernière version (la release contient aussi l'APK sous le nom fixe `Foclaboard.apk`)
 - Couleurs toutes différentes dans **tous** les jeux (01, Match, résultats, bandeau, TV, lumières de la cible) : le premier garde la couleur de son compte, les suivants qui ont la même, les invités et les bots reçoivent chacun une couleur libre (15 couleurs) ; la couleur du compte ne change pas
 
