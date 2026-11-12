@@ -497,17 +497,60 @@ class _ColumnsArena extends StatelessWidget {
 
       return Padding(
         padding: const EdgeInsets.all(pad),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            header(),
-            const SizedBox(height: gap),
-            for (final s in sides) row(s),
-          ],
+        child: Center(
+          child: SizedBox(
+            width: w,
+            child: Stack(
+              children: [
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    header(),
+                    const SizedBox(height: gap),
+                    for (final s in sides) row(s),
+                  ],
+                ),
+                // Traits fins entre les numéros, du haut jusqu'en bas
+                Positioned.fill(
+                  bottom: gap,
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: _TargetLines(
+                          left: nameW, right: scoreW, count: targets),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     });
   }
+}
+
+/// Traits verticaux très fins qui séparent les numéros (vue en lignes).
+class _TargetLines extends CustomPainter {
+  final double left;
+  final double right;
+  final int count;
+  _TargetLines({required this.left, required this.right, required this.count});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = Colors.white.withValues(alpha: 0.14)
+      ..strokeWidth = 1;
+    final cell = (size.width - left - right) / count;
+    for (var k = 1; k < count; k++) {
+      final x = (left + cell * k).roundToDouble() + 0.5;
+      canvas.drawLine(Offset(x, 4), Offset(x, size.height - 2), p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_TargetLines old) =>
+      old.left != left || old.right != right || old.count != count;
 }
 
 /// Gauche : statut + manches du joueur en cours (R1 / / /, R2 Ⓧ Ⓧ…).
