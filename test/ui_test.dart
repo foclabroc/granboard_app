@@ -245,10 +245,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('PRENDRE UNE PHOTO'), findsOneWidget);
-    expect(find.byKey(const ValueKey('avatar-fox')), findsOneWidget);
-    expect(find.byKey(const ValueKey('avatar-target')), findsOneWidget);
+    expect(find.byKey(const ValueKey('avatar-bullseye')), findsOneWidget);
+    expect(find.byKey(const ValueKey('avatar-ice')), findsOneWidget);
     await tester.runAsync(() async {
-      await tester.tap(find.byKey(const ValueKey('avatar-robot')));
+      await tester.tap(find.byKey(const ValueKey('avatar-crown')));
       await Future<void>.delayed(const Duration(milliseconds: 200));
     });
     await tester.pump();

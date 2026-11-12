@@ -1,3 +1,1 @@
-Avatars : Fluent Emoji de Microsoft (https://github.com/microsoft/fluentui-emoji), licence MIT.
-Copyright (c) Microsoft Corporation.
-Images 3D posées sur un fond sombre, 256 x 256.
+Avatars dessinés pour Foclaboard (SVG, thème fléchettes), sans licence tierce.
