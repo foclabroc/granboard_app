@@ -418,7 +418,11 @@ class _TournamentPageState extends State<TournamentPage> {
       final t = await TournamentApi.get(widget.id);
       PlayerStore.instance.ensureRatings(t.players.map((p) => p.key));
       MediaStore.instance.ensure(t.players.map((p) => p.key));
-      TvLink.instance.pushTournament(t.toJson());
+      // Pendant un match (partie ouverte par-dessus), la TV garde la partie :
+      // le tableau revient dès que cette page est de nouveau au premier plan.
+      if (mounted && (ModalRoute.of(context)?.isCurrent ?? true)) {
+        TvLink.instance.pushTournament(t.toJson());
+      }
       if (mounted) {
         setState(() {
           _t = t;

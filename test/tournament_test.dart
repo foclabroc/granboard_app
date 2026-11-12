@@ -12,6 +12,7 @@ import 'package:granboard_proto/players.dart';
 import 'package:granboard_proto/server.dart';
 import 'package:granboard_proto/tournament.dart';
 import 'package:granboard_proto/tv/tv_client.dart';
+import 'package:granboard_proto/tv_link.dart';
 import 'package:granboard_proto/tv/tv_home.dart';
 import 'package:granboard_proto/ui/game_page.dart';
 import 'package:granboard_proto/ui/theme.dart';
@@ -30,6 +31,7 @@ Future<void> phone(WidgetTester tester) async {
 
 void main() {
   late List<PlayerProfile> ps;
+  late FakeServer server;
 
   final game = X01Game(const X01Settings(startScore: 301), const [
     X01Player(id: '1', name: 'A'),
@@ -42,7 +44,8 @@ void main() {
     OnlineRoom.videoEnabled = false;
     TournamentPage.poll = false;
     LocalTournamentStore.instance.debugReset();
-    FakeServer().install();
+    server = FakeServer()..install();
+    await TvLink.instance.load();
     final store = PlayerStore.instance;
     await store.load();
     await BoardService.instance.init();
@@ -250,10 +253,19 @@ void main() {
           const X01Player(id: 'guest-1', name: 'Invité 1'),
         ]);
     await tester.runAsync(() => LocalTournamentStore.instance.add(lt));
+    final tv = TvClient(realtime: false);
+    addTearDown(tv.dispose);
+    await tester.runAsync(() async {
+      await tv.start();
+      await TvLink.instance.link(tv.code!);
+    });
+    String? tvScreen() => server.tvRooms[tv.code]!['state']?['screen'];
     await tester.pumpWidget(
         MaterialApp(theme: Tv.theme(), home: LocalTournamentPage(uid: lt.uid)));
     await tester.pump(const Duration(milliseconds: 300));
+    await tester.runAsync(settle);
     expect(find.text('FINALE'), findsOneWidget);
+    expect(tvScreen(), 'tournament', reason: 'tableau sur la TV');
     expect(find.textContaining('PROCHAIN MATCH'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('tn-play')));
     await tester.pump();
@@ -265,12 +277,16 @@ void main() {
     ]) {
       BoardService.instance.injectFrame(f.codeUnits);
       await tester.pump(const Duration(milliseconds: 300));
+      await tester.runAsync(settle);
+      expect(tvScreen(), 'game', reason: 'partie en cours sur la TV');
     }
     await tester.pump(const Duration(seconds: 3));
     expect(find.text('TABLEAU'), findsOneWidget);
     await tester.tap(find.text('TABLEAU'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
+    await tester.runAsync(settle);
+    expect(tvScreen(), 'tournament', reason: 'tableau entre 2 matchs');
     expect(lt.winner, isNotNull, reason: 'celui qui a commencé gagne');
     expect(find.textContaining('REMPORTE LE TOURNOI'), findsOneWidget);
     expect(tester.takeException(), isNull);
