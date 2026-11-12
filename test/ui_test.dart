@@ -11,6 +11,7 @@ import 'package:granboard_proto/ui/setup_page.dart';
 import 'package:granboard_proto/ui/account_page.dart';
 import 'package:granboard_proto/ui/ranking_page.dart';
 import 'package:granboard_proto/ui/theme.dart';
+import 'package:granboard_proto/ui/turn_banner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_server.dart';
@@ -73,6 +74,45 @@ void main() {
     }
     expect(find.textContaining('LIMITE DE 1 MANCHES'), findsOneWidget);
     await tester.pump(const Duration(seconds: 2));
+  });
+
+  testWidgets('Bandeau « au tour de » après Suivant', (tester) async {
+    await phone(tester);
+    TurnBanner.enabled = true;
+    addTearDown(() => TurnBanner.enabled = false);
+    await tester.pumpWidget(app(GamePage(
+      settings: const X01Settings(startScore: 301),
+      players: four.take(2).toList(),
+    )));
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('AU TOUR DE'), findsNothing);
+    await tester.tap(find.text('SUIVANT'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('AU TOUR DE'), findsOneWidget);
+    expect(find.text(four[1].name.toUpperCase()), findsWidgets);
+    expect(tester.takeException(), isNull);
+    // Il ne bloque pas l'écran et disparaît seul
+    await tester.tap(find.text('RATÉ').last, warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('AU TOUR DE'), findsNothing);
+    await tester.tap(find.text('SUIVANT'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('AU TOUR DE'), findsNothing);
+    // Pas de bandeau en solo
+    await tester.pumpWidget(app(GamePage(
+      key: const ValueKey('solo'),
+      settings: const X01Settings(startScore: 301),
+      players: four.take(1).toList(),
+    )));
+    await tester.pump(const Duration(seconds: 2));
+    await tester.tap(find.text('SUIVANT'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('AU TOUR DE'), findsNothing);
+    await tester.pump(const Duration(seconds: 3));
   });
 
   testWidgets('Bouton Règles : réglages et partie', (tester) async {

@@ -14,6 +14,7 @@ import '../granboard.dart';
 import 'award.dart';
 import 'setup_page.dart' show kTeamNames;
 import 'theme.dart';
+import 'turn_banner.dart';
 
 /// Sons, annonces et animations d'une partie, partagés par le téléphone et
 /// l'écran TV (qui rejoue les actions reçues du téléphone).
@@ -68,6 +69,7 @@ class GameFx {
   /// Après une fléchette, quel que soit le jeu.
   void afterAnyDart(DartsGame game, DartHit? hit, {bool outerRing = false}) {
     AwardPlayer.stop();
+    TurnBanner.hide();
     _clip = AwardPlayer.enabled ? HitClip.of(hit) : null;
     _afterDart(game, hit, outerRing: outerRing);
     final clip = _clip;
@@ -134,6 +136,20 @@ class GameFx {
   /// Après « joueur suivant », quel que soit le jeu.
   void afterAnyNext(DartsGame game) {
     AwardPlayer.stop();
+    _afterNext(game);
+    // Bandeau « au tour de … » (pas en solo, ni entre 2 legs ou à la fin)
+    if (game.finished || game.players.length < 2) return;
+    if (game is MatchGame && game.betweenLegs) return;
+    final p = game.currentPlayer;
+    TurnBanner.show(splash.currentContext,
+        id: p.id,
+        name: p.name,
+        sub: game is MatchGame && game.leg.actionLog.isEmpty
+            ? 'LEG ${game.legNumber} · AU TOUR DE'
+            : null);
+  }
+
+  void _afterNext(DartsGame game) {
     switch (game) {
       case X01Game g:
         afterNext(g);
@@ -165,7 +181,7 @@ class GameFx {
               '${m.currentPlayer.name}, à toi.',
               300);
         } else {
-          afterAnyNext(m.leg);
+          _afterNext(m.leg);
         }
     }
   }

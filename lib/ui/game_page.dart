@@ -28,6 +28,7 @@ import 'rules.dart';
 import 'setup_page.dart' show kTeamColors, kTeamNames;
 import 'sound_settings.dart';
 import 'theme.dart';
+import 'turn_banner.dart';
 import 'widgets.dart';
 
 /// Partie en cours (01 / Freeze avec [settings] + [players], ou [game] déjà
@@ -79,6 +80,7 @@ class _GamePageState extends State<GamePage> {
   @override
   void dispose() {
     AwardPlayer.stop();
+    TurnBanner.hide();
     _sub.cancel();
     WakelockPlus.disable().catchError((_) {});
     final online = OnlineService.instance;
@@ -208,6 +210,7 @@ class _GamePageState extends State<GamePage> {
 
   void _undo() {
     AwardPlayer.stop();
+    TurnBanner.hide();
     final room = _room;
     final log = game.actionLog;
     if (log.isEmpty) return;
