@@ -54,7 +54,7 @@ Générés par `tools/make_sounds.py` (100 % synthèse). On peut les remplacer p
 | `assets/sounds/ton.ogg` | Manche de 100+, 5 marques et plus |
 | `assets/sounds/crowd.ogg` | 180, White Horse, après la victoire |
 | `assets/sounds/win.ogg` | Victoire, fin de leg |
-| `assets/sounds/turn/*.ogg` | Sons du tour (fanfare, klaxon, laser, cloche, tambour, guitare, gong, sifflet, piano, arcade, sonar, coq) |
+| `assets/sounds/turn/*.ogg` | Sons du tour (fanfare, klaxon, laser, cloche, tambour, guitare, gong, sifflet, piano, arcade, sonar, coq, let's go, yeah boy, come on man, come here, victoire, démon, non !) |
 | `assets/music/menu1.ogg` … `menu3.ogg` | Musique des menus (les 3 morceaux s'enchaînent, ordre au hasard) |
 
 L'annonceur est la synthèse vocale française du téléphone.

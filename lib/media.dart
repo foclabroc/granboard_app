@@ -24,6 +24,13 @@ const kTurnSounds = {
   'arcade': 'Arcade',
   'sonar': 'Sonar',
   'coq': 'Coq',
+  'lets_go': "Let's go",
+  'yeah_boy': 'Yeah boy',
+  'come_on': 'Come on man',
+  'come_here': 'Come here',
+  'victoire': 'Victoire',
+  'demon': 'Démon',
+  'non': 'Non !',
 };
 
 /// Son « voix enregistrée ».

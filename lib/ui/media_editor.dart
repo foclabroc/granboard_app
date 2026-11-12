@@ -190,25 +190,31 @@ class _TurnSoundSheetState extends State<_TurnSoundSheet> {
                     'Joué quand c\'est ton tour, puis l\'annonceur dit ton nom.',
                     style: Tv.label(13, color: Tv.muted)),
                 const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    chip('', 'Aucun'),
-                    for (final e in kTurnSounds.entries) chip(e.key, e.value),
-                    if (voice != null)
-                      chip(kVoiceSound, 'Ma voix',
-                          icon: Icons.record_voice_over),
-                    ActionChip(
-                      avatar: const Icon(Icons.mic, size: 18, color: Tv.red),
-                      label: Text(
-                          voice == null
-                              ? 'ENREGISTRER MA VOIX'
-                              : 'RÉENREGISTRER',
-                          style: Tv.title(16)),
-                      onPressed: _busy ? null : _record,
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        chip('', 'Aucun'),
+                        for (final e in kTurnSounds.entries)
+                          chip(e.key, e.value),
+                        if (voice != null)
+                          chip(kVoiceSound, 'Ma voix',
+                              icon: Icons.record_voice_over),
+                        ActionChip(
+                          avatar:
+                              const Icon(Icons.mic, size: 18, color: Tv.red),
+                          label: Text(
+                              voice == null
+                                  ? 'ENREGISTRER MA VOIX'
+                                  : 'RÉENREGISTRER',
+                              style: Tv.title(16)),
+                          onPressed: _busy ? null : _record,
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),

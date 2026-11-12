@@ -340,6 +340,6 @@ if __name__ == '__main__':
     save(whoosh(), 'assets/sounds/next.ogg')
     save(ton(), 'assets/sounds/ton.ogg')
     save(crowd(3.2, 1.2), 'assets/sounds/crowd.ogg')
-    save(fanfare(), 'assets/sounds/win.ogg')
+    # win.ogg = « winner » fourni par foclabroc (plus généré)
     for name, x in turn_sounds().items():
         save(x, f'assets/sounds/turn/{name}.ogg')
