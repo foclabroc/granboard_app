@@ -15,6 +15,7 @@ import 'players_page.dart' show RatingBadge;
 import 'setup_page.dart';
 import 'theme.dart';
 import 'widgets.dart';
+import 'stats_page.dart';
 
 /// Ouvre la partie en ligne de la salle [roomId] (défi accepté ou reprise).
 Future<void> openOnlineGame(BuildContext context, int roomId) async {
@@ -302,22 +303,26 @@ class _OnlinePageState extends State<OnlinePage> {
           PlayerAvatar(name: p.name, color: p.color, size: 40, id: p.key),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(p.name.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Tv.title(20)),
-                Row(
-                  children: [
-                    Icon(Icons.circle,
-                        size: 9, color: p.busy ? Tv.gold : Tv.green),
-                    const SizedBox(width: 5),
-                    Text(p.busy ? 'EN PARTIE' : 'LIBRE', style: Tv.label(11)),
-                  ],
-                ),
-              ],
+            child: InkWell(
+              onTap: () => openPlayerStats(context,
+                  id: p.key, name: p.name, color: p.color),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(p.name.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Tv.title(20)),
+                  Row(
+                    children: [
+                      Icon(Icons.circle,
+                          size: 9, color: p.busy ? Tv.gold : Tv.green),
+                      const SizedBox(width: 5),
+                      Text(p.busy ? 'EN PARTIE' : 'LIBRE', style: Tv.label(11)),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           if (p.rating != null) ...[

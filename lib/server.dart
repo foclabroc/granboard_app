@@ -162,6 +162,11 @@ class GbServer {
   static Future<Map<String, dynamic>> profile(int id) async =>
       _map(await rpc('gb_profile', {'p_id': id}));
 
+  /// Page de stats : {g80, g100 (rangs), s01, scr (30 dernières parties),
+  /// practice}. N'importe quel joueur.
+  static Future<Map<String, dynamic>> stats(int id) async =>
+      _map(await rpc('gb_stats', {'p_id': id}));
+
   /// [kind] : rating, wins, avg, n180, checkout, high
   static Future<List<Map<String, dynamic>>> top(String kind,
           {int limit = 50}) async =>

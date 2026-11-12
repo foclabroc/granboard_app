@@ -9,6 +9,7 @@ import 'game/practice.dart';
 import 'game/x01.dart';
 import 'media.dart';
 import 'server.dart';
+import 'rank.dart';
 
 const kPlayerColors = [
   Color(0xFFE53935),
@@ -52,16 +53,8 @@ Gradient? playerFill(Color c) =>
 
 const kGuestColor = Color(0xFF8D8D9C);
 
-/// Classe de niveau d'après la note (moyenne aux 3 fléchettes).
-String ratingClass(double r) {
-  if (r >= 80) return 'MASTER';
-  if (r >= 65) return 'AAA';
-  if (r >= 55) return 'AA';
-  if (r >= 45) return 'A';
-  if (r >= 35) return 'B';
-  if (r >= 25) return 'C';
-  return 'D';
-}
+/// Rang (C … GM) d'après la note sur 20 (voir `rank.dart`).
+String ratingClass(double r) => rankOf(r).label;
 
 bool isGuestId(String id) => id.startsWith('guest-');
 

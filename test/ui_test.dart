@@ -22,6 +22,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:granboard_proto/server.dart';
 
 import 'fake_server.dart';
+import 'package:granboard_proto/ui/stats_page.dart';
 
 Widget app(Widget home) => MaterialApp(theme: Tv.theme(), home: home);
 
@@ -316,8 +317,59 @@ void main() {
     await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 300)));
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('go'), findsOneWidget, reason: 'page quittée sans question');
+    expect(find.text('go'), findsOneWidget,
+        reason: 'page quittée sans question');
     expect(server.games.length, 1, reason: 'partie envoyée');
+  });
+
+  testWidgets('Stats et rang d\'un joueur, tableau des rangs', (tester) async {
+    await phone(tester);
+    final server = FakeServer()..install();
+    final p = await PlayerStore.instance.register('Rang', '1234');
+    server.statsOf[p.id] = {
+      'id': p.id,
+      'pseudo': 'Rang',
+      'color': 1,
+      'g80': {'ppr': 43.42, 'mpr': 1.88, 'r01': 3.68, 'rcr': 5.4, 'rating': 4.54},
+      'g100': {'ppr': 40.1, 'mpr': 1.7, 'r01': 3.02, 'rcr': 4.5, 'rating': 3.76},
+      's01': [
+        for (var i = 0; i < 12; i++) {'d': '2026-11-01', 'v': 30 + i * 2}
+      ],
+      'scr': [
+        for (var i = 0; i < 30; i++) {'d': '2026-11-01', 'v': 1.5 + (i % 5) * 0.2}
+      ],
+      'practice': {
+        'countUp': {'games': 3, 'best': 447, 'avg': 380.5},
+        'halfIt': {'games': 1, 'best': 120, 'avg': 120},
+      },
+    };
+    await tester.pumpWidget(app(PlayerStatsPage(
+        id: p.key, name: p.name, color: kPlayerColors[1])));
+    await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('CC'), findsWidgets);
+    expect(find.text('4,54'), findsWidgets);
+    expect(find.text('43,42'), findsWidgets);
+    expect(find.text('B'), findsOneWidget, reason: 'rang suivant');
+    expect(find.text('1,46'), findsOneWidget, reason: '6 - 4,54');
+    // 100 % : autres chiffres
+    await tester.tap(find.text('100 %'));
+    await tester.pump();
+    expect(find.text('3,76'), findsWidgets);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -600));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('COUNT UP'), findsOneWidget);
+    // Tableau des rangs, fermé par la croix
+    await tester.tap(find.byKey(const ValueKey('rank-table')));
+    await tester.pumpAndSettle();
+    expect(find.text('GM'), findsOneWidget);
+    expect(find.text('142,00-'), findsOneWidget);
+    expect(find.text('35,00-39,99'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('sheet-close')));
+    await tester.pumpAndSettle();
+    expect(find.text('142,00-'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Classements s\'affichent', (tester) async {

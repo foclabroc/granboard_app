@@ -7,6 +7,7 @@ class FakeServer {
   final accounts = <int, Map<String, dynamic>>{}; // id → {pseudo, pin, color}
   final sessions = <String, int>{}; // jeton → id
   final games = <String, Map<String, dynamic>>{}; // cid → partie
+  final statsOf = <int, Map<String, dynamic>>{}; // réponses de gb_stats
   bool offline = false;
   final tvRooms =
       <String, Map<String, dynamic>>{}; // code → {key, host, state, seq}
@@ -121,6 +122,31 @@ class FakeServer {
           'rank': null,
           'recent': [],
         };
+      case 'gb_stats':
+        final id = b['p_id'] as int;
+        return statsOf[id] ??
+            {
+              'id': id,
+              'pseudo': accounts[id]?['pseudo'] ?? '?',
+              'color': accounts[id]?['color'] ?? 0,
+              'g80': {
+                'ppr': null,
+                'mpr': null,
+                'r01': null,
+                'rcr': null,
+                'rating': null
+              },
+              'g100': {
+                'ppr': null,
+                'mpr': null,
+                'r01': null,
+                'rcr': null,
+                'rating': null
+              },
+              's01': [],
+              'scr': [],
+              'practice': {},
+            };
       case 'gb_tv_open':
         final code = 'AB${tvRooms.length + 10}'.substring(0, 4);
         tvRooms[code] = {

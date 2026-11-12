@@ -2,6 +2,9 @@
 
 ## v0.6.4
 
+- **Rangs et stats façon GranBoard** : note sur 20 et rang (C, CC, B, BB, A, AA, S, SS, M, GM) en 01 (PPR), en Cricket (MPR) et général, calculés sur les 30 dernières parties (80 % meilleures ou 100 %), points requis pour le rang suivant, courbe des 30 dernières parties, analyse de l'entraînement (moyenne et meilleur score par jeu), tableau des rangs
+- Touche un joueur dans les classements ou dans « En ligne » pour voir sa page de stats ; bouton **STATS ET RANG** dans la fiche de tes joueurs
+- Le classement « NOTE » devient « RANG » (note sur 20)
 - Corrigé : une partie terminée puis quittée avec le bouton retour (sans ouvrir les résultats) n'était pas enregistrée dans les stats
 - Petits téléphones : barre de l'accueil qui ne déborde plus (pastille de la cible visible), noms des joueurs lisibles dans les tableaux des scores (réduits au lieu d'être coupés), tous les joueurs visibles en Freeze, historique du Cricket qui tient, réglages plus serrés
 - Les fenêtres qui montent du bas (sons, TV, couleur, avatar, thème, style de la cible, son du tour) ont une petite croix pour fermer et s'ouvrent en grand

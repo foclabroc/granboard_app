@@ -6,6 +6,7 @@ import 'package:granboard_proto/server.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_server.dart';
+import 'package:granboard_proto/rank.dart';
 
 X01Game finishedGame(List<X01Player> players) {
   final g = X01Game(const X01Settings(startScore: 301, roundLimit: 1), players);
@@ -89,9 +90,17 @@ void main() {
     expect(server.games.length, 1);
   });
 
-  test('Classes de niveau', () {
-    expect(ratingClass(20), 'D');
-    expect(ratingClass(45), 'A');
-    expect(ratingClass(90), 'MASTER');
+  test('Rangs façon GranBoard', () {
+    expect(ratingClass(1), 'C');
+    expect(ratingClass(4.56), 'CC');
+    expect(ratingClass(12), 'AA');
+    expect(ratingClass(20), 'GM');
+    // Même calcul que gb__band (SQL)
+    expect(bandRating(43.42, kPprBounds), 3.68);
+    expect(bandRating(1.88, kMprBounds), 5.4);
+    expect(bandRating(150, kPprBounds), 20);
+    expect(nextRank(4.56)!.label, 'B');
+    expect(nextRank(20), isNull);
+    expect(rankProgress(5), closeTo(0.5, 1e-9));
   });
 }

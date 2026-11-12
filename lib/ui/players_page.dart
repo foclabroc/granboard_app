@@ -8,6 +8,8 @@ import 'media_editor.dart';
 import 'theme.dart';
 import 'widgets.dart';
 import '../format.dart';
+import '../rank.dart';
+import 'stats_page.dart';
 
 /// Joueurs mémorisés sur ce téléphone.
 class PlayersPage extends StatelessWidget {
@@ -117,7 +119,7 @@ class _PlayerCard extends StatelessWidget {
   }
 }
 
-/// Note + classe (ex. « 52.3 · A »).
+/// Rang + note sur 20 (ex. « CC · 4,56 »), à la couleur du rang.
 class RatingBadge extends StatelessWidget {
   final double rating;
   final bool big;
@@ -129,16 +131,16 @@ class RatingBadge extends StatelessWidget {
       padding:
           EdgeInsets.symmetric(horizontal: big ? 14 : 8, vertical: big ? 6 : 3),
       decoration: BoxDecoration(
-        gradient: Tv.goldGradient,
+        color: Colors.black,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: rankOf(rating).color, width: big ? 2.5 : 1.5),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(ratingClass(rating),
-              style: Tv.title(big ? 26 : 16, color: Colors.black)),
-          Text(rating.fr(1),
-              style: Tv.label(big ? 13 : 10, color: Colors.black87)),
+          Text(rankOf(rating).label,
+              style: Tv.title(big ? 26 : 16, color: rankOf(rating).color)),
+          Text(rating.fr(2), style: Tv.label(big ? 13 : 10, color: Tv.text)),
         ],
       ),
     );
@@ -251,8 +253,8 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                       Center(child: RatingBadge(rating: p.rating!, big: true))
                     else
                       Center(
-                          child: Text('NOTE APRÈS 3 PARTIES',
-                              style: Tv.label(12))),
+                          child:
+                              Text('PAS ENCORE DE RANG', style: Tv.label(12))),
                     if (p.rank != null)
                       Center(
                         child: Padding(
@@ -262,7 +264,15 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                               style: Tv.title(16, color: Tv.gold)),
                         ),
                       ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 10),
+                    FilledButton.icon(
+                      key: const ValueKey('open-stats'),
+                      onPressed: () => openPlayerStats(context,
+                          id: p.key, name: p.name, color: p.color),
+                      icon: const Icon(Icons.insights),
+                      label: const Text('STATS ET RANG'),
+                    ),
+                    const SizedBox(height: 6),
                     if (p.expired)
                       FilledButton.icon(
                         onPressed: () =>

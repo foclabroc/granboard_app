@@ -9,9 +9,10 @@ import 'players_page.dart' show RatingBadge;
 import 'theme.dart';
 import 'widgets.dart';
 import '../format.dart';
+import 'stats_page.dart';
 
 const _kinds = [
-  ('rating', 'NOTE'),
+  ('rating', 'RANG'),
   ('wins', 'VICTOIRES'),
   ('avg', 'MOYENNE'),
   ('n180', '180'),
@@ -173,9 +174,11 @@ class _TopListState extends State<_TopList> {
 
   String _value(num v) => widget.kind == 'mpr'
       ? v.fr(2)
-      : widget.kind == 'rating' || widget.kind == 'avg'
-          ? v.fr(1)
-          : '${v.toInt()}';
+      : widget.kind == 'rating'
+          ? v.fr(2)
+          : widget.kind == 'avg'
+              ? v.fr(1)
+              : '${v.toInt()}';
 
   @override
   Widget build(BuildContext context) {
@@ -241,52 +244,61 @@ class _TopListState extends State<_TopList> {
                 2 => const Color(0xFFCD7F32),
                 _ => Tv.muted,
               };
-              return Container(
-                height: 50,
-                margin: const EdgeInsets.symmetric(vertical: 3),
-                decoration: BoxDecoration(
-                  color: me ? const Color(0xFF2A2210) : Tv.panel,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: me ? Tv.gold : Tv.line),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 48,
-                      child: Center(
-                          child: Text('${i + 1}',
-                              style: Tv.title(24, color: medal))),
-                    ),
-                    PlayerAvatar(
-                        id: '${r['id']}',
-                        name: '${r['pseudo']}',
-                        color: kPlayerColors[
-                            ((r['color'] as num?)?.toInt() ?? 0) %
-                                kPlayerColors.length],
-                        size: 32),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text('${r['pseudo']}'.toUpperCase(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              Tv.title(20, color: me ? Tv.goldLight : Tv.text)),
-                    ),
-                    Text('${r['games']} PARTIES   ', style: Tv.label(11)),
-                    if (widget.kind == 'rating')
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: RatingBadge(rating: value.toDouble()),
-                      )
-                    else
-                      Container(
-                        width: 80,
-                        color: Colors.black,
-                        alignment: Alignment.center,
-                        child: Text(_value(value), style: Tv.title(24)),
+              // Toucher un joueur : sa page de stats et de rang
+              return GestureDetector(
+                key: ValueKey('rank-row-${r['id']}'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => openPlayerStats(context,
+                    id: '${r['id']}',
+                    name: '${r['pseudo']}',
+                    color: colorOfIndex(r['color'])),
+                child: Container(
+                  height: 50,
+                  margin: const EdgeInsets.symmetric(vertical: 3),
+                  decoration: BoxDecoration(
+                    color: me ? const Color(0xFF2A2210) : Tv.panel,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: me ? Tv.gold : Tv.line),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 48,
+                        child: Center(
+                            child: Text('${i + 1}',
+                                style: Tv.title(24, color: medal))),
                       ),
-                  ],
+                      PlayerAvatar(
+                          id: '${r['id']}',
+                          name: '${r['pseudo']}',
+                          color: kPlayerColors[
+                              ((r['color'] as num?)?.toInt() ?? 0) %
+                                  kPlayerColors.length],
+                          size: 32),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text('${r['pseudo']}'.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Tv.title(20,
+                                color: me ? Tv.goldLight : Tv.text)),
+                      ),
+                      Text('${r['games']} PARTIES   ', style: Tv.label(11)),
+                      if (widget.kind == 'rating')
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: RatingBadge(rating: value.toDouble()),
+                        )
+                      else
+                        Container(
+                          width: 80,
+                          color: Colors.black,
+                          alignment: Alignment.center,
+                          child: Text(_value(value), style: Tv.title(24)),
+                        ),
+                    ],
+                  ),
                 ),
               );
             },
