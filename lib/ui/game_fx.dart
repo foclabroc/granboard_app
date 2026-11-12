@@ -39,6 +39,10 @@ class GameFx {
 
   /// Son du tour du joueur en cours (s'il en a un), puis l'annonce.
   void _turn(DartsGame game, String text, [int ms = 250, bool next = true]) {
+    if (_lead.isNotEmpty) {
+      text = '${_lead.join('. ')}. $text';
+      _lead.clear();
+    }
     final id = game.currentPlayer.id;
     final media = MediaStore.instance;
     audio.turnCue(text,
@@ -49,6 +53,82 @@ class GameFx {
   /// enregistrée.
   void _names(DartsGame game) =>
       audio.names = [for (final p in game.players) p.name];
+
+  // ─── Commentaires ───
+
+  /// Phrases à dire avant la prochaine annonce du tour (180 de la soirée,
+  /// match point…).
+  final _lead = <String>[];
+
+  /// 180 et meilleure fin de la soirée (remis à zéro après 6 h sans 180).
+  static int session180 = 0;
+  static int sessionBestCheckout = 0;
+  static DateTime _sessionAt = DateTime.now();
+  static void _session() {
+    if (DateTime.now().difference(_sessionAt) > const Duration(hours: 6)) {
+      session180 = 0;
+      sessionBestCheckout = 0;
+    }
+    _sessionAt = DateTime.now();
+  }
+
+  static const _ordinals = [
+    '', '', 'Deuxième', 'Troisième', 'Quatrième', 'Cinquième', 'Sixième', //
+    'Septième', 'Huitième', 'Neuvième', 'Dixième',
+  ];
+
+  /// Une fléchette dite à voix haute : « triple 20 », « double 16 », « 5 »,
+  /// « bull », « 25 », « raté » (vide si l'annonce des fléchettes est coupée).
+  String _call(DartHit? hit) {
+    if (!audio.dartCalls) return '';
+    if (hit == null) return 'raté';
+    return switch (hit.ring) {
+      Ring.innerBull => 'bull',
+      Ring.outerBull => '25',
+      Ring.triple => 'triple ${hit.number}',
+      Ring.double => 'double ${hit.number}',
+      _ => '${hit.number}',
+    };
+  }
+
+  /// « [fléchette], [annonce] » ou l'un des deux.
+  static String _join(String a, String b) =>
+      a.isEmpty ? b : (b.isEmpty ? a : '$a, $b');
+
+  /// Fin conseillée lisible : « triple 20, double 20 ».
+  static String _route(List<String> labels) => labels
+      .map((l) => l == 'BULL'
+          ? 'bull'
+          : l.startsWith('T')
+              ? 'triple ${l.substring(1)}'
+              : l.startsWith('D')
+                  ? 'double ${l.substring(1)}'
+                  : l)
+      .join(', ');
+
+  /// Un 180 : compté pour la soirée, annoncé au tour suivant à partir du 2e.
+  void _count180() {
+    _session();
+    session180++;
+    final n = session180;
+    if (n < 2) return;
+    _lead.add(n < _ordinals.length
+        ? '${_ordinals[n]} 180 de la soirée'
+        : 'Encore un 180');
+  }
+
+  /// Fin à 100 ou plus : « Fin à 121 », et record de la soirée.
+  String _checkoutNote(X01Game g) {
+    if (g.winners.isEmpty) return '';
+    final c = g.stateOf(g.winners.first).checkout ?? 0;
+    if (c < 100) return '';
+    _session();
+    final best = c > sessionBestCheckout;
+    if (best) sessionBestCheckout = c;
+    return best && c >= 100
+        ? 'Fin à $c. Plus haute fin de la soirée. '
+        : 'Fin à $c. ';
+  }
 
   void start(DartsGame game) {
     _names(game);
@@ -111,6 +191,10 @@ class GameFx {
         final note = g.currentTurn.note;
         final key = '${g.turns.length}:$note';
         final hits = g.turnHits;
+        final call = _call(hit);
+        if (call.isNotEmpty && (note == null || key == _lastNote)) {
+          audio.sayLater(call, 150 + _wait);
+        }
         if (hits.length == 3 &&
             _award(awardOf(hits,
                 whiteHorse: g.settings.kind == PracticeKind.targetHorse ||
@@ -193,7 +277,13 @@ class GameFx {
               '${m.currentPlayer.name}, à toi.',
               300);
         } else {
-          _afterNext(m.leg);
+          final leg = m.leg;
+          if (m.legWinsOf(m.current) == m.settings.winsNeeded - 1 &&
+              leg is X01Game &&
+              leg.checkoutOptions.isNotEmpty) {
+            _lead.add('Match point');
+          }
+          _afterNext(leg);
         }
     }
   }
@@ -246,7 +336,9 @@ class GameFx {
     final score = [
       for (var i = 0; i < m.players.length; i++) '${m.legWinsOf(i)}'
     ].join(' à ');
-    audio.sayLater('Leg pour $names ! $score.', 700);
+    final leg = m.leg;
+    final fin = leg is X01Game ? _checkoutNote(leg) : '';
+    audio.sayLater('${fin}Leg pour $names ! $score.', 700);
     _show('LEG ${m.legNumber}', Tv.gold, big: true);
   }
 
@@ -283,8 +375,10 @@ class GameFx {
     }
     _haptic(false);
     _hitSound(hit, outerRing: outerRing);
+    final call = _call(hit);
     if (turn.darts.length == 3) {
       final total = turn.total;
+      if (total == 180) _count180();
       if (_award(awardOf(game.turnHits, total: total))) {
         _haptic(true);
       } else if (total == 180) {
@@ -293,11 +387,14 @@ class GameFx {
         _show('180', Tv.gold, big: true);
       } else if (total >= 100) {
         audio.play(Sfx.ton);
-        audio.sayLater('$total !', 400 + _wait);
+        audio.sayLater(_join(call, '$total !'), 400 + _wait);
         _show('$total', Tv.gold);
       } else {
-        audio.sayLater(total == 0 ? 'Aucun point' : '$total', 400 + _wait);
+        audio.sayLater(
+            _join(call, total == 0 ? 'Aucun point' : '$total'), 400 + _wait);
       }
+    } else if (call.isNotEmpty) {
+      audio.sayLater(call, 150 + _wait);
     }
   }
 
@@ -314,6 +411,8 @@ class GameFx {
       text += '. Ton équipe est gelée';
     } else if (s.opened && s.remaining <= 170) {
       text += '. Il te reste ${s.remaining}';
+      final opts = game.checkoutOptions;
+      if (opts.isNotEmpty) text += ', ${_route(opts.first)}';
     }
     _turn(game, text);
   }
@@ -331,9 +430,13 @@ class GameFx {
     _hitSound(hit, outerRing: outerRing);
     final t = game.currentTurn;
     final last = t.darts.isEmpty ? null : t.darts.last;
+    final call = _call(hit);
     if (last != null && last.revealed) {
       final n = last.hit!.isBull ? 'Bull' : '${last.hit!.number}';
-      audio.sayLater('$n découvert !', 250 + _wait);
+      audio.sayLater(_join(t.darts.length == 3 ? '' : call, '$n découvert !'),
+          250 + _wait);
+    } else if (t.darts.length < 3 && call.isNotEmpty) {
+      audio.sayLater(call, 150 + _wait);
     }
     if (t.darts.length == 3) {
       final m = t.marks;
@@ -351,14 +454,16 @@ class GameFx {
         _show('WHITE HORSE', Tv.gold, big: true);
       } else if (m >= 5) {
         audio.play(Sfx.ton);
-        audio.sayLater('$m marques !', 400 + _wait);
+        audio.sayLater(_join(call, '$m marques !'), 400 + _wait);
       } else {
         audio.sayLater(
-            m == 0
-                ? 'Aucune marque'
-                : m == 1
-                    ? 'Une marque'
-                    : '$m marques',
+            _join(
+                call,
+                m == 0
+                    ? 'Aucune marque'
+                    : m == 1
+                        ? 'Une marque'
+                        : '$m marques'),
             400 + _wait);
       }
     }
@@ -370,7 +475,19 @@ class GameFx {
       return;
     }
     var text = '${game.currentPlayer.name}, à toi';
-    if (game.isSpoiler(game.sideOf(game.current))) text += '. Spoiler';
+    final side = game.sideOf(game.current);
+    if (game.isSpoiler(side)) text += '. Spoiler';
+    // Plus que 1 ou 2 numéros à fermer : on les dit
+    final left = [
+      for (var i = 0; i < game.targets.length; i++)
+        if (!game.closedBy(side, i) && !game.dead(i)) game.targets[i]
+    ];
+    if (left.isNotEmpty &&
+        left.length <= 2 &&
+        left.every((t) => t.revealed && t.number <= 25)) {
+      text +=
+          '. Plus que ${left.map((t) => t.number == 25 ? 'bull' : '${t.number}').join(' et ')}';
+    }
     _turn(game, text);
   }
 
@@ -410,7 +527,8 @@ class GameFx {
       _ => false,
     };
     if (byClose) {
-      audio.sayLater('Partie gagnée ! Victoire de $team$names !', 900);
+      final fin = game is X01Game ? _checkoutNote(game) : '';
+      audio.sayLater('${fin}Partie gagnée ! Victoire de $team$names !', 900);
       _show('VICTOIRE', Tv.gold, big: true);
     } else {
       audio.sayLater('Fin de la partie. Victoire de $team$names.', 700);

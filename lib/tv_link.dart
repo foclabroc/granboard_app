@@ -216,6 +216,7 @@ class TvLink extends ChangeNotifier {
         'skin': BoardSkin.current.value.id,
         'cricket': CricketStyle.current.value,
         'theme': Tv.skin.value.id,
+        'calls': AudioService.instance.dartCalls,
         'wall': Wallpaper.instance.forTv,
       };
       if (!_sending.contains(s.code)) _flush(s);

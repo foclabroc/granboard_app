@@ -175,18 +175,47 @@ for t in [
     add(t)
 
 
+# ─── Commentaires de l'annonceur (v0.6.6) ───
+add('raté')
+add('25')
+add('Match point')
+add('Fin à', 'Fin à,')
+add('Plus haute fin de la soirée')
+add('plus que', 'plus que,')
+for i, o in enumerate(['Deuxième', 'Troisième', 'Quatrième', 'Cinquième',
+                       'Sixième', 'Septième', 'Huitième', 'Neuvième',
+                       'Dixième'], start=2):
+    add(f'{o} 180 de la soirée', f'{o} cent quatre-vingts de la soirée !')
+add('Encore un 180', 'Encore un cent quatre-vingts !')
+
+
 def main():
+    # --add : ne fabrique que les annonces absentes de index.json (les
+    # fichiers existants ne bougent pas)
     if len(sys.argv) < 2:
         sys.exit(__doc__)
+    only_new = '--add' in sys.argv
+    model = [a for a in sys.argv[1:] if a != '--add'][0]
     from piper import PiperVoice
-    voice = PiperVoice.load(sys.argv[1])
+    voice = PiperVoice.load(model)
     os.makedirs(OUT, exist_ok=True)
-    for f in os.listdir(OUT):
-        os.remove(os.path.join(OUT, f))
     index = {}
+    if only_new:
+        with open(os.path.join(OUT, 'index.json'), encoding='utf-8') as f:
+            index = json.load(f)
+    else:
+        for f in os.listdir(OUT):
+            os.remove(os.path.join(OUT, f))
+    used = set(index.values())
     tmp = tempfile.mkdtemp()
-    for i, (key, spoken) in enumerate(sorted(entries.items())):
+    i = 0
+    for key, spoken in sorted(entries.items()):
+        if key in index:
+            continue
+        while f'{i:04d}.mp3' in used:
+            i += 1
         name = f'{i:04d}.mp3'
+        used.add(name)
         wav = os.path.join(tmp, 'a.wav')
         with wave.open(wav, 'wb') as w:
             voice.synthesize_wav(spoken, w)

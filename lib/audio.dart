@@ -24,6 +24,9 @@ class AudioService extends ChangeNotifier {
 
   bool voice = true;
 
+  /// L'annonceur dit chaque fléchette (« triple 20 », « double 16 »…).
+  bool dartCalls = true;
+
   /// Coupé quand une TV est reliée (le son passe sur la TV).
   bool _muted = false;
   bool get muted => _muted;
@@ -88,6 +91,7 @@ class AudioService extends ChangeNotifier {
         effects = v[1] == '1';
         music = v[2] == '1';
         musicVolume = double.tryParse(v[3]) ?? musicVolume;
+        if (v.length >= 5) dartCalls = v[4] == '1';
       }
     } catch (_) {}
     unawaited(_initEngines());
@@ -124,8 +128,9 @@ class AudioService extends ChangeNotifier {
     } catch (_) {}
 
     try {
-      final index = jsonDecode(
-          await rootBundle.loadString('assets/voice/index.json')) as Map;
+      final index =
+          jsonDecode(await rootBundle.loadString('assets/voice/index.json'))
+              as Map;
       _bank = VoiceBank(index.cast<String, String>());
     } catch (_) {}
 
@@ -148,8 +153,14 @@ class AudioService extends ChangeNotifier {
         effects ? '1' : '0',
         music ? '1' : '0',
         musicVolume.toStringAsFixed(2),
+        dartCalls ? '1' : '0',
       ]);
     } catch (_) {}
+  }
+
+  void setDartCalls(bool v) {
+    dartCalls = v;
+    _save();
   }
 
   void setVoice(bool v) {
@@ -244,8 +255,14 @@ class AudioService extends ChangeNotifier {
 
   /// Annonce vocale (coupe l'annonce précédente) : voix enregistrée pour
   /// tout ce qu'elle connaît, synthèse vocale pour le reste (pseudos).
+  /// Dernières annonces (tests).
+  @visibleForTesting
+  final said = <String>[];
+
   void say(String text) {
     if (_muted || !voice) return;
+    said.add(text);
+    if (said.length > 50) said.removeAt(0);
     final tts = _tts;
     final sp = _speaker;
     final parts = sp == null ? null : _bank?.plan(text, names);

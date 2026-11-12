@@ -45,6 +45,14 @@ class _SoundSheet extends StatelessWidget {
                 onChanged: a.setVoice,
               ),
               SwitchListTile(
+                key: const ValueKey('dart-calls'),
+                secondary: const Icon(Icons.campaign_outlined),
+                title: Text('Annoncer chaque fléchette', style: Tv.title(18)),
+                subtitle: const Text('« Triple 20 », « double 16 », « raté »…'),
+                value: a.dartCalls,
+                onChanged: a.voice ? a.setDartCalls : null,
+              ),
+              SwitchListTile(
                 secondary: const Icon(Icons.graphic_eq),
                 title: Text('Effets sonores', style: Tv.title(18)),
                 value: a.effects,

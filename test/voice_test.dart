@@ -78,4 +78,29 @@ void main() {
     // Passage inconnu : lu d'un bloc par la synthèse vocale
     expect(plan('Foc, zone mystère 42'), 'Foc|zone mystère 42');
   });
+
+  test('Commentaires et fléchettes annoncées : tout est enregistré', () {
+    bool allClips(String t) =>
+        bank.plan(t, names).every((p) => p.clip != null);
+    for (var n = 1; n <= 20; n++) {
+      for (final t in ['$n', 'triple $n', 'double $n']) {
+        expect(allClips(t), isTrue, reason: t);
+      }
+    }
+    for (final t in [
+      'raté', 'bull', '25', 'triple 20, 140 !', 'double 5, 46',
+      'raté, Aucun point', 'triple 19, 6 marques !', '15, 15 découvert !',
+      'Il te reste 40, double 20', 'Il te reste 170, triple 20, triple 20, bull',
+      'Il te reste 61, 25, double 18', 'Deuxième 180 de la soirée',
+      'Dixième 180 de la soirée', 'Encore un 180', 'Match point',
+      'Plus que 15 et bull', 'Plus que 20',
+      'Fin à 121. Plus haute fin de la soirée. Partie gagnée ! Victoire de',
+      'Fin à 100. Leg pour',
+    ]) {
+      expect(allClips(t), isTrue, reason: '${plan(t)} ← $t');
+    }
+    expect(plan('Troisième 180 de la soirée. Match point. Foc, à toi. '
+            'Il te reste 32, double 16'),
+        '#|#|Foc|#|#|#');
+  });
 }

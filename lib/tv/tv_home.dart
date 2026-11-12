@@ -89,6 +89,7 @@ class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
       Tv.choose(AppSkin.byId(s['theme']));
     }
     if (s?['wall'] is String) Wallpaper.instance.applyFromPhone(s!['wall']);
+    if (s?['calls'] is bool) AudioService.instance.dartCalls = s!['calls'];
     final screen = s?['screen'] as String?;
     if (screen != _screen) {
       _screen = screen;
