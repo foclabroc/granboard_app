@@ -19,6 +19,7 @@ import 'players_page.dart';
 import 'ranking_page.dart';
 import 'setup_page.dart';
 import 'sound_settings.dart';
+import 'lights_sheet.dart';
 import 'theme.dart';
 import 'tile_art.dart';
 import 'tv_sheet.dart';
@@ -349,6 +350,7 @@ class _HomePageState extends State<HomePage>
                         onSelected: (v) {
                           if (v == 'theme') _chooseTheme();
                           if (v == 'skin') _chooseSkin();
+                          if (v == 'lights') showLightsSheet(context);
                           if (v == 'update') _checkUpdate();
                         },
                         itemBuilder: (_) => [
@@ -356,6 +358,9 @@ class _HomePageState extends State<HomePage>
                               value: 'theme', child: Text('Thème de l\'appli')),
                           const PopupMenuItem(
                               value: 'skin', child: Text('Style de la cible')),
+                          const PopupMenuItem(
+                              value: 'lights',
+                              child: Text('Lumières de la cible')),
                           const PopupMenuItem(
                               value: 'update',
                               child: Text('Mises à jour (v$kAppVersion)')),

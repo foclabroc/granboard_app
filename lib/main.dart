@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'audio.dart';
+import 'board_lights.dart';
 import 'board_service.dart';
 import 'media.dart';
 import 'online/online.dart';
@@ -54,6 +55,7 @@ Future<void> main() async {
     Tv.load(),
     MediaStore.instance.load(),
     if (!tv) BoardService.instance.init(),
+    if (!tv) BoardLights.instance.load(),
     if (!tv) PlayerStore.instance.load(),
   ]);
   if (!tv) await TvLink.instance.load();

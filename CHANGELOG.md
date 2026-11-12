@@ -7,6 +7,7 @@
 - **Tournoi à la maison** (bouton « À LA MAISON ») : jusqu'à 16 joueurs du téléphone + invités, tirage au sort, les matchs se jouent l'un après l'autre sur la cible (« PROCHAIN MATCH … JOUER »), le vainqueur avance tout seul, forfait possible ; les stats des comptes sont enregistrées comme une partie normale
 - **Tournoi sur la TV** (maison et en ligne) : la partie en cours pendant un match, le tableau avec le prochain match entre deux parties
 - Pendant un match de tournoi, « PROCHAIN MATCH : X contre Y » (ou « vainqueur de ce match contre … ») en haut de l'écran, sur le téléphone et la TV
+- **Lumières de la GranBoard 3s** (⋮ › Lumières de la cible) : contour à la couleur du joueur en cours, clignotement en face du numéro touché (1 à 3 fois selon simple / double / triple), vague sur un 180 ou une victoire, contour rouge sur un bust, numéros à viser allumés en orange (Cricket, fin en 01, entraînement) ; bouton ESSAYER ; protocole non officiel, à confirmer sur la cible
 - Accueil : 4 tuiles en haut, 3 en bas
 
 ## v0.6.4

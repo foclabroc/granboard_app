@@ -6,6 +6,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'board_lights.dart';
 import 'granboard.dart';
 
 enum BoardStatus { disconnected, connecting, connected }
@@ -32,6 +33,10 @@ class BoardService extends ChangeNotifier {
   static const _prefId = 'board_last_id';
   static const _prefName = 'board_last_name';
   static const _prefTable = 'board_table_'; // + identifiant de la cible
+
+  /// Service de la GranBoard (3s) dont la caractéristique d'écriture reçoit
+  /// les commandes des lumières.
+  static const _ledService = '442f1570-8a00-9a28-cbe1-e1d4212d53eb';
 
   final _events = StreamController<BoardEvent>.broadcast();
   final _frames = StreamController<RawFrame>.broadcast();
@@ -122,13 +127,26 @@ class BoardService extends ChangeNotifier {
             status == BoardStatus.connected) {
           status = BoardStatus.disconnected;
           error = 'Cible déconnectée';
+          BoardLights.instance.writer = null;
           notifyListeners();
         }
       }));
 
       final services = await d.discoverServices();
+      BluetoothCharacteristic? writer;
       for (final s in services) {
         for (final c in s.characteristics) {
+          // Écriture des lumières : celle du service GranBoard, sinon la
+          // première d'un service non standard
+          final canWrite =
+              c.properties.write || c.properties.writeWithoutResponse;
+          final id = s.uuid.str128.toLowerCase();
+          if (canWrite &&
+              (id == _ledService ||
+                  (writer == null &&
+                      !id.endsWith('-0000-1000-8000-00805f9b34fb')))) {
+            writer = c;
+          }
           if (c.properties.notify || c.properties.indicate) {
             _subs.add(c.onValueReceived.listen(_onData));
             await c.setNotifyValue(true);
@@ -137,6 +155,13 @@ class BoardService extends ChangeNotifier {
       }
 
       await _loadTable(d.remoteId.str);
+      final w = writer;
+      if (w != null) {
+        BoardLights.instance.writer = (bytes) => w.write(bytes,
+            withoutResponse:
+                w.properties.writeWithoutResponse && !w.properties.write);
+        BoardLights.instance.connected();
+      }
       status = BoardStatus.connected;
       lastId = d.remoteId.str;
       lastName = deviceName;
@@ -154,6 +179,7 @@ class BoardService extends ChangeNotifier {
   }
 
   Future<void> disconnect() async {
+    BoardLights.instance.writer = null;
     for (final s in _subs) {
       await s.cancel();
     }

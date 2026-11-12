@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../audio.dart';
+import '../board_lights.dart';
 import '../board_service.dart';
 import '../game/cricket.dart';
 import '../game/darts_game.dart';
@@ -97,6 +98,7 @@ class _GamePageState extends State<GamePage> {
   void dispose() {
     AwardPlayer.stop();
     TurnBanner.hide();
+    BoardLights.instance.clear();
     _sub.cancel();
     // Partie abandonnée : la musique des menus revient (les résultats la
     // relancent aussi)
@@ -233,8 +235,10 @@ class _GamePageState extends State<GamePage> {
                 'puis « Suivant »')));
       return;
     }
+    final color = _colorOf(game.currentPlayer);
     setState(() => game.throwDart(hit));
     _fx.afterAnyDart(game, hit, outerRing: outerRing);
+    BoardLights.instance.dart(game, hit, color);
     _sync();
   }
 
@@ -268,7 +272,10 @@ class _GamePageState extends State<GamePage> {
     _sync();
   }
 
-  void _pushTv() => TvLink.instance.pushGame(game, next: _nextMatch);
+  void _pushTv() {
+    TvLink.instance.pushGame(game, next: _nextMatch);
+    BoardLights.instance.state(game, _colorOf(game.currentPlayer));
+  }
 
   late String? _nextMatch = widget.nextMatch;
 
