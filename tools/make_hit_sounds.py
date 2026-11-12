@@ -1,3 +1,7 @@
+"""Anciens sons des vidéos (assets/hits/), plus utilisés : depuis la v0.6.2,
+les sons sont 3 fichiers fournis par foclabroc (triple 20, bull, d-bull),
+début silencieux coupé, ramenés à 1,5 s avec fondu, puis montés sur les
+vidéos avec ffmpeg (-map 0:v -map 1:a -c:v copy)."""
 import numpy as np, wave
 SR=44100
 def env(n, a=0.005, d=0.4):

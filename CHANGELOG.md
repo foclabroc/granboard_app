@@ -2,6 +2,7 @@
 
 ## v0.6.2
 
+- Nouveaux sons des vidéos triple 20, bull et d-bull
 - Écran TV : les vidéos (triple 20, bull, d-bull, ton 80, hat trick…) s'affichent enfin aussi sur la TV
 - L'annonceur dit « <pseudo>, à toi » à chaque tour (suivi du reste, de « spoiler » ou de la cible)
 - Après une partie : boutons **MENU PRINCIPAL** et **REJOUER**
