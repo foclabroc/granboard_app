@@ -2,6 +2,7 @@
 
 ## v0.6.1
 
+- Démarrage : plus d'écran blanc (fond noir avec l'icône dès le lancement) et premier écran affiché sans attendre la voix et les sons, qui se préparent en arrière-plan (plusieurs secondes sur une Android TV)
 - Réglages d'une partie : en venant d'une tuile de l'accueil, on ne voit plus que ce jeu (plus de choix 01 / Cricket / Match…), la colonne des joueurs est plus étroite et les réglages plus larges ; « Règles » passe en haut à droite
 
 ## v0.6.0

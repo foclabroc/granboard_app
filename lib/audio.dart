@@ -58,6 +58,9 @@ class AudioService extends ChangeNotifier {
   FlutterTts? _tts;
   bool _musicWanted = false;
 
+  /// Lit les réglages (rapide), puis prépare les lecteurs et la voix en
+  /// arrière-plan : sur une Android TV, la synthèse vocale met plusieurs
+  /// secondes à démarrer et ne doit pas retarder le premier écran.
   Future<void> init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -69,21 +72,20 @@ class AudioService extends ChangeNotifier {
         musicVolume = double.tryParse(v[3]) ?? musicVolume;
       }
     } catch (_) {}
+    unawaited(_initEngines());
+  }
 
-    try {
-      final tts = FlutterTts();
-      await tts.setLanguage('fr-FR');
-      await tts.setSpeechRate(0.5);
-      await tts.setPitch(0.95);
-      await tts.awaitSpeakCompletion(false);
-      _tts = tts;
-    } catch (_) {}
-
+  Future<void> _initEngines() async {
     try {
       // Les effets se mélangent à la musique au lieu de la couper
       await AudioPlayer.global.setAudioContext(
           AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers)
               .build());
+      final m = AudioPlayer();
+      await m.setReleaseMode(ReleaseMode.loop);
+      _music = m;
+      // La musique demandée pendant le démarrage commence maintenant
+      if (_musicWanted) startMusic();
       for (var i = 0; i < 4; i++) {
         final p = AudioPlayer();
         await p.setPlayerMode(PlayerMode.lowLatency);
@@ -93,9 +95,15 @@ class AudioService extends ChangeNotifier {
       final c = AudioPlayer();
       await c.setReleaseMode(ReleaseMode.stop);
       _cue = c;
-      final m = AudioPlayer();
-      await m.setReleaseMode(ReleaseMode.loop);
-      _music = m;
+    } catch (_) {}
+
+    try {
+      final tts = FlutterTts();
+      await tts.setLanguage('fr-FR');
+      await tts.setSpeechRate(0.5);
+      await tts.setPitch(0.95);
+      await tts.awaitSpeakCompletion(false);
+      _tts = tts;
     } catch (_) {}
   }
 
