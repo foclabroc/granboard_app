@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../board_service.dart';
+import '../format.dart';
 import '../game/bot.dart';
 import '../game/cricket.dart';
 import '../game/darts_game.dart';
@@ -14,6 +15,7 @@ import '../players.dart';
 import 'account_page.dart';
 import 'game_page.dart';
 import 'rules.dart';
+import 'setup_widgets.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -105,38 +107,7 @@ class _SetupPageState extends State<SetupPage> {
     try {
       final j = jsonDecode(raw) as Map<String, dynamic>;
       setState(() {
-        _start = j['start'] as int? ?? 501;
-        _freeze = j['freeze'] as bool? ?? false;
-        _in = InRule.values[j['in'] as int? ?? 0];
-        _out = OutRule.values[j['out'] as int? ?? 1];
-        _bull = BullMode.values[j['bull'] as int? ?? 0];
-        _limit = j['limit'] as int?;
-        _kind = widget.kind ?? j['kind'] as String? ?? 'x01';
-        _variant = CricketVariant.values.firstWhere(
-            (v) => v.name == j['variant'],
-            orElse: () => CricketVariant.standard);
-        _cTeams = j['cteams'] as bool? ?? false;
-        _cLimit = j.containsKey('climit') ? j['climit'] as int? : 20;
-        _mLegs = j['mlegs'] as int? ?? 3;
-        _fKind = PracticeKind.values.firstWhere((k) => k.name == j['fkind'],
-            orElse: () => PracticeKind.funMission);
-        _pKind = PracticeKind.values.firstWhere((k) => k.name == j['pkind'],
-            orElse: () => PracticeKind.countUp);
-        _pRounds = j['prounds'] as int?;
-        _pGoal = j['pgoal'] as int?;
-        _pTarget = j['ptarget'] as int? ?? 20;
-        _pOptions
-          ..clear()
-          ..addAll([for (final o in (j['popt'] as List? ?? const [])) '$o']);
-        final mp = [
-          for (final k in (j['mpattern'] as List? ?? const []))
-            LegKind.values
-                .firstWhere((x) => x.name == k, orElse: () => LegKind.x01)
-        ];
-        _mPattern = [
-          for (var i = 0; i < 13; i++)
-            i < mp.length ? mp[i] : MatchSettings.alternate(13)[i]
-        ];
+        _apply(j);
         _selected
           ..clear()
           ..addAll([
@@ -153,6 +124,62 @@ class _SetupPageState extends State<SetupPage> {
     } catch (_) {}
     _selectOwner();
   }
+
+  /// Applique des réglages enregistrés (dernière partie ou favori).
+  void _apply(Map<String, dynamic> j) {
+    _start = j['start'] as int? ?? 501;
+    _freeze = j['freeze'] as bool? ?? false;
+    _in = InRule.values[j['in'] as int? ?? 0];
+    _out = OutRule.values[j['out'] as int? ?? 1];
+    _bull = BullMode.values[j['bull'] as int? ?? 0];
+    _limit = j['limit'] as int?;
+    _kind = widget.kind ?? j['kind'] as String? ?? 'x01';
+    _variant = CricketVariant.values.firstWhere((v) => v.name == j['variant'],
+        orElse: () => CricketVariant.standard);
+    _cTeams = j['cteams'] as bool? ?? false;
+    _cLimit = j.containsKey('climit') ? j['climit'] as int? : 20;
+    _mLegs = j['mlegs'] as int? ?? 3;
+    _fKind = PracticeKind.values.firstWhere((k) => k.name == j['fkind'],
+        orElse: () => PracticeKind.funMission);
+    _pKind = PracticeKind.values.firstWhere((k) => k.name == j['pkind'],
+        orElse: () => PracticeKind.countUp);
+    _pRounds = j['prounds'] as int?;
+    _pGoal = j['pgoal'] as int?;
+    _pTarget = j['ptarget'] as int? ?? 20;
+    _pOptions
+      ..clear()
+      ..addAll([for (final o in (j['popt'] as List? ?? const [])) '$o']);
+    final mp = [
+      for (final k in (j['mpattern'] as List? ?? const []))
+        LegKind.values.firstWhere((x) => x.name == k, orElse: () => LegKind.x01)
+    ];
+    _mPattern = [
+      for (var i = 0; i < 13; i++)
+        i < mp.length ? mp[i] : MatchSettings.alternate(13)[i]
+    ];
+  }
+
+  /// Jeu et règles en cours (sans les joueurs) : favoris.
+  Map<String, dynamic> get _rulesJson => {
+        'start': _start,
+        'freeze': _freeze,
+        'in': _in.index,
+        'out': _out.index,
+        'bull': _bull.index,
+        'limit': _limit,
+        'kind': _kind,
+        'variant': _variant.name,
+        'cteams': _cTeams,
+        'climit': _cLimit,
+        'mlegs': _mLegs,
+        'pkind': _pKind.name,
+        'fkind': _fKind.name,
+        'prounds': _pRounds,
+        'pgoal': _pGoal,
+        'ptarget': _pTarget,
+        'popt': _pOptions.toList(),
+        'mpattern': [for (final k in _mPattern) k.name],
+      };
 
   /// Aucun joueur choisi (premier lancement…) : le profil principal est
   /// coché d'office.
@@ -439,6 +466,7 @@ class _SetupPageState extends State<SetupPage> {
     final full = _selected.length >= _maxPlayers;
     final short = MediaQuery.sizeOf(context).height < 380;
     final chipDensity = short ? VisualDensity.compact : null;
+    if (!_online) return _broadcast(problem, available, full, chipDensity);
 
     return Scaffold(
       appBar: AppBar(
@@ -652,6 +680,559 @@ class _SetupPageState extends State<SetupPage> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  // ─── Mise en page « retransmission » (parties à la maison, tournoi) ───
+
+  /// Favoris : à part pour chaque tuile (et pour le tournoi à la maison).
+  String get _favTile => _localTournament ? 'tournament' : _kind;
+  List<SetupFavorite> _favs = [];
+  String? _favsOf;
+
+  bool _favLoading = false;
+
+  Future<void> _loadFavs() async {
+    final tile = _favTile;
+    if (_favLoading) return;
+    _favLoading = true;
+    final f = await SetupFavorites.of(tile);
+    _favLoading = false;
+    if (mounted) {
+      setState(() {
+        _favs = f;
+        _favsOf = tile;
+      });
+    }
+  }
+
+  /// Nom court de la partie (favori, bandeau du bas).
+  String get _summary {
+    if (_practiceOn) {
+      final i = _pInfo;
+      final parts = [
+        i.name,
+        if (i.rounds != null) '${_pRounds ?? i.defaultRounds} manches',
+        if (i.target) 'cible ${_pTarget == 25 ? 'bull' : _pTarget}',
+      ];
+      return parts.join(' · ');
+    }
+    if (_matchOn) return 'Match $_mLegs legs · $_start ${_out.label}';
+    if (_cricketOn) {
+      return '${_cricket.name}${_cLimit == null ? '' : ' · $_cLimit manches'}';
+    }
+    return [
+      _settings.name,
+      if (_in != InRule.open) _in.label,
+      _out.label,
+      if (_limit != null) '$_limit manches',
+    ].join(' · ');
+  }
+
+  Future<void> _addFavorite() async {
+    final ok =
+        await SetupFavorites.add(_favTile, SetupFavorite(_summary, _rulesJson));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Text(ok
+              ? '« $_summary » ajouté aux favoris'
+              : _favs.length >= SetupFavorites.max
+                  ? '${SetupFavorites.max} favoris maximum : appui long sur un favori pour le retirer'
+                  : 'Déjà dans les favoris')));
+    _loadFavs();
+  }
+
+  Future<void> _removeFavorite(int i) async {
+    final f = _favs[i];
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Retirer « ${f.label} » ?', style: Tv.title(20)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('ANNULER')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('RETIRER')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await SetupFavorites.remove(_favTile, i);
+    _loadFavs();
+  }
+
+  Widget _favBar() {
+    if (_favsOf != _favTile) _loadFavs();
+    return SizedBox(
+      height: 36,
+      child: Row(
+        children: [
+          const SizedBox(width: 14),
+          Icon(Icons.star, size: 16, color: Tv.gold),
+          const SizedBox(width: 4),
+          Text('FAVORIS', style: Tv.label(11, color: Tv.gold)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _favs.isEmpty
+                ? Text('Touche FAVORI en bas pour garder ces réglages',
+                    style: Tv.label(11))
+                : ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _favs.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 6),
+                    itemBuilder: (context, i) {
+                      final f = _favs[i];
+                      final on =
+                          jsonEncode(f.settings) == jsonEncode(_rulesJson);
+                      return Center(
+                        child: Material(
+                          color: on
+                              ? Color.lerp(Tv.panel2, Tv.gold, 0.25)
+                              : Tv.panel2,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: BorderSide(
+                                  color: on ? Tv.gold : Tv.goldDark)),
+                          child: InkWell(
+                            key: ValueKey('fav-$i'),
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () => setState(() => _apply(f.settings)),
+                            onLongPress: () => _removeFavorite(i),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 5),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.star,
+                                      size: 14, color: Tv.goldLight),
+                                  const SizedBox(width: 4),
+                                  Text(f.label,
+                                      style: Tv.title(14, color: Tv.goldLight)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          const SizedBox(width: 10),
+        ],
+      ),
+    );
+  }
+
+  /// Colonne 1 : le jeu (mode, variante, jeu d'entraînement, legs).
+  List<Widget> _gameItems() {
+    if (_practiceOn) {
+      return [
+        for (final k in PracticeKind.values)
+          if (kPracticeInfo[k]!.party == _partyOn)
+            SetupItem(
+              key: ValueKey('game-${k.name}'),
+              label: kPracticeInfo[k]!.name,
+              icon: practiceIcon(k),
+              selected: _curKind == k,
+              onTap: () => setState(() {
+                _curKind = k;
+                _pRounds = null;
+                _pGoal = null;
+              }),
+            ),
+      ];
+    }
+    if (_cricketOn) {
+      return [
+        for (final v in CricketVariant.values)
+          SetupItem(
+            key: ValueKey('game-${v.name}'),
+            label: v.label,
+            icon: cricketIcon(v),
+            selected: _variant == v,
+            onTap: () => setState(() => _variant = v),
+          ),
+      ];
+    }
+    if (_matchOn) {
+      return [
+        for (final n in kMatchLegs)
+          SetupItem(
+            label: '$n legs',
+            icon: Icons.emoji_events_outlined,
+            value: '${n ~/ 2 + 1} pour gagner',
+            selected: _mLegs == n,
+            onTap: () => setState(() => _mLegs = n),
+          ),
+      ];
+    }
+    return [
+      for (final s in kStartScores)
+        SetupItem(
+          key: ValueKey('game-$s'),
+          label: '$s',
+          icon: x01Icon(s),
+          selected: _start == s,
+          onTap: () => setState(() => _start = s),
+        ),
+      if (!widget.tournament)
+        SetupSwitch(
+          label: 'Freeze (équipes)',
+          icon: Icons.ac_unit,
+          value: _freeze,
+          onChanged: (v) => setState(() => _freeze = v),
+        ),
+    ];
+  }
+
+  /// Colonne 2 : les règles du jeu choisi.
+  List<Widget> _ruleItems() {
+    String inOut(Enum r) => r.name == 'open'
+        ? 'Open'
+        : r.name == 'double'
+            ? 'Double'
+            : 'Master';
+    final x01 = [
+      SetupPick<InRule>(
+          label: 'Début',
+          value: _in,
+          values: InRule.values,
+          text: inOut,
+          onChanged: (v) => setState(() => _in = v)),
+      SetupPick<OutRule>(
+          label: 'Fin',
+          value: _out,
+          values: OutRule.values,
+          text: inOut,
+          onChanged: (v) => setState(() => _out = v)),
+      SetupPick<BullMode>(
+          label: 'Bull',
+          value: _bull,
+          values: BullMode.values,
+          text: (b) => b == BullMode.split ? '25 / 50' : '50 / 50',
+          onChanged: (v) => setState(() => _bull = v)),
+    ];
+    if (_practiceOn) {
+      final i = _pInfo;
+      return [
+        if (i.goals != null)
+          SetupPick<int>(
+              label: 'Objectif',
+              value: _pGoal ?? i.defaultGoal!,
+              values: i.goals!,
+              text: (n) => n == 0 ? 'En 10 manches' : '$n',
+              onChanged: (v) => setState(() => _pGoal = v)),
+        if (i.rounds != null)
+          SetupPick<int>(
+              label: _curKind == PracticeKind.checkout121
+                  ? 'Fléchettes'
+                  : 'Manches',
+              value: _pRounds ?? i.defaultRounds!,
+              values: i.rounds!,
+              text: (n) => '$n',
+              onChanged: (v) => setState(() => _pRounds = v)),
+        if (i.target)
+          SetupPick<int>(
+              label: 'Cible',
+              value: _pTarget,
+              values: [for (var n = 20; n >= 1; n--) n, 25],
+              text: (n) => n == 25 ? 'Bull' : '$n',
+              onChanged: (v) => setState(() => _pTarget = v)),
+        for (final o in i.options.entries)
+          SetupSwitch(
+              label: o.value,
+              value: _pOptions.contains(o.key),
+              onChanged: (v) => setState(() {
+                    if (v && (o.key == 'double' || o.key == 'triple')) {
+                      _pOptions.removeAll({'double', 'triple'});
+                    }
+                    v ? _pOptions.add(o.key) : _pOptions.remove(o.key);
+                  })),
+        if (i.bull) x01[2],
+        SetupNote(i.help),
+      ];
+    }
+    if (_cricketOn) {
+      return [
+        SetupPick<int?>(
+            label: 'Manches',
+            value: _cLimit,
+            values: kCricketRoundLimits,
+            text: (l) => l == null ? 'Sans limite' : '$l',
+            onChanged: (v) => setState(() => _cLimit = v)),
+        if (!widget.tournament)
+          SetupSwitch(
+              label: 'Équipes',
+              icon: Icons.groups,
+              value: _cTeams,
+              onChanged: (v) => setState(() => _cTeams = v)),
+        SetupNote(_variant.help),
+      ];
+    }
+    if (_matchOn) {
+      return [
+        for (var i = 0; i < _mLegs; i++)
+          SetupItem(
+            label: 'Leg ${i + 1}',
+            value: _mPattern[i] == LegKind.x01 ? '$_start' : 'Cricket',
+            onTap: () => setState(() => _mPattern[i] =
+                _mPattern[i] == LegKind.x01 ? LegKind.cricket : LegKind.x01),
+          ),
+        const SetupNote(
+            'Touche un leg pour passer de 01 à Cricket et inversement. '
+            'Cricket : règles Standard, 20 manches.'),
+        SetupPick<int>(
+            label: 'Legs 01',
+            value: _start,
+            values: kStartScores,
+            text: (n) => '$n',
+            onChanged: (v) => setState(() => _start = v)),
+        ...x01,
+      ];
+    }
+    return [
+      ...x01,
+      SetupPick<int?>(
+          label: 'Manches',
+          value: _limit,
+          values: _limits,
+          text: (l) => l == null ? 'Sans limite' : '$l',
+          onChanged: (v) => setState(() => _limit = v)),
+      if (_freeze && !widget.tournament)
+        const SetupNote('Freeze : une équipe dont le total restant dépasse '
+            'celui de l\'adversaire est gelée et ne peut pas finir.'),
+    ];
+  }
+
+  Widget _broadcast(String? problem, List<PlayerProfile> available, bool full,
+      VisualDensity? chipDensity) {
+    final first = _order.isEmpty ? null : _order.first.name;
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SetupBand(
+              title: _localTournament
+                  ? 'Tournoi à la maison'
+                  : _fixed
+                      ? _familyName
+                      : 'Nouvelle partie',
+              sub: 'Configuration',
+              actions: [RulesButton(title: _gameName, text: _rulesText)],
+            ),
+            _favBar(),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 2, 10, 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: SetupColumn(
+                        title: _practiceOn
+                            ? 'Jeu (${_gameItems().length})'
+                            : _cricketOn
+                                ? 'Variante'
+                                : _matchOn
+                                    ? 'Legs'
+                                    : 'Jeu',
+                        children: [
+                          if (!_fixed)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(6, 2, 6, 2),
+                              child: Wrap(
+                                spacing: 4,
+                                runSpacing: 4,
+                                children: [
+                                  for (final (v, l) in [
+                                    ('x01', '01'),
+                                    ('cricket', 'CRICKET'),
+                                    ('match', 'MATCH'),
+                                    if (!widget.tournament) ...[
+                                      ('practice', 'ENTRAÎN.'),
+                                      ('party', 'FÊTE'),
+                                    ],
+                                  ])
+                                    ChoiceChip(
+                                      visualDensity: VisualDensity.compact,
+                                      label: Text(l),
+                                      selected: _kind == v,
+                                      onSelected: (_) =>
+                                          setState(() => _kind = v),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          if (_localTournament)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: TextField(
+                                key: const ValueKey('tn-name'),
+                                controller: _tnName,
+                                maxLength: 40,
+                                textCapitalization:
+                                    TextCapitalization.sentences,
+                                decoration: const InputDecoration(
+                                    labelText: 'Nom du tournoi',
+                                    hintText: 'Tournoi du samedi',
+                                    counterText: '',
+                                    isDense: true,
+                                    border: OutlineInputBorder()),
+                                onChanged: (_) => setState(() {}),
+                              ),
+                            ),
+                          ..._gameItems(),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SetupColumn(
+                        title: _practiceOn ? 'Réglages' : 'Règles',
+                        children: _ruleItems(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SetupColumn(
+                        title: 'Joueurs ${_selected.length}/$_maxPlayers',
+                        children: [
+                          if (_selected.isNotEmpty)
+                            ReorderableListView(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              buildDefaultDragHandles: false,
+                              onReorderItem: (from, to) => setState(() =>
+                                  _selected.insert(
+                                      to, _selected.removeAt(from))),
+                              children: [
+                                for (var i = 0; i < _selected.length; i++)
+                                  _playerTile(i, _selected[i]),
+                              ],
+                            ),
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              if (!full)
+                                for (final p in available)
+                                  ActionChip(
+                                    visualDensity: chipDensity,
+                                    avatar: PlayerAvatar.of(p, size: 22),
+                                    label: Text(
+                                        p.expired ? '${p.name} ⚠' : p.name),
+                                    onPressed: () => _select(p.key),
+                                  ),
+                              if (!full)
+                                ActionChip(
+                                  visualDensity: VisualDensity.compact,
+                                  avatar: const Icon(Icons.person_outline,
+                                      size: 18),
+                                  label: const Text('Invité'),
+                                  onPressed: _addGuest,
+                                ),
+                              if (!full)
+                                ActionChip(
+                                  key: const ValueKey('add-bot'),
+                                  visualDensity: VisualDensity.compact,
+                                  avatar: const Icon(Icons.smart_toy_outlined,
+                                      size: 18),
+                                  label: const Text('Bot'),
+                                  onPressed: _addBot,
+                                ),
+                              ActionChip(
+                                visualDensity: VisualDensity.compact,
+                                avatar: const Icon(Icons.person_add, size: 18),
+                                label: const Text('Ajouter un joueur'),
+                                onPressed: _newPlayer,
+                              ),
+                            ],
+                          ),
+                          const SetupNote('Invités et bots jouent sans '
+                              'stats. Le bot prend le niveau de ses '
+                              'adversaires.'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // ─── Bandeau du bas : résumé, favori, lancer ───
+            Container(
+              height: 56,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.85),
+                border: Border(top: BorderSide(color: Tv.gold, width: 2)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_summary.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Tv.title(18, color: Tv.gold)),
+                        Text(
+                            problem ??
+                                '${plural(_selected.length, 'joueur')}'
+                                    '${first == null ? '' : ' · $first commence'}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: problem != null
+                                ? Tv.title(13, color: Tv.red)
+                                : Tv.label(12)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    key: const ValueKey('fav-add'),
+                    onPressed: _addFavorite,
+                    style: OutlinedButton.styleFrom(
+                        foregroundColor: Tv.gold,
+                        side: BorderSide(color: Tv.gold),
+                        visualDensity: VisualDensity.compact),
+                    icon: const Icon(Icons.star_border, size: 18),
+                    label: const Text('FAVORI'),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 42,
+                    child: FilledButton.icon(
+                      onPressed: problem == null ? _startGame : null,
+                      icon: const Icon(Icons.play_arrow),
+                      label: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 190),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                              _localTournament
+                                  ? 'CRÉER LE TOURNOI (${_selected.length})'
+                                  : 'LANCER ${_gameName.toUpperCase()}',
+                              style: Tv.title(20, color: Colors.black)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

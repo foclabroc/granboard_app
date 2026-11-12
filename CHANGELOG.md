@@ -2,6 +2,8 @@
 
 ## v0.6.6
 
+- **Nouvel écran de réglages** façon retransmission TV (toutes les tuiles et le tournoi à la maison) : bandeau doré, 3 colonnes Jeu / Règles / Joueurs avec une petite icône par variante, bandeau du bas avec le résumé de la partie et LANCER ; s'adapte au thème choisi
+- **Favoris** : bouton FAVORI pour garder le jeu et ses règles (sans les joueurs), à part pour chaque tuile ; un toucher sur un favori le remet, appui long pour le retirer (8 par tuile)
 - **Prononciation des pseudos** : un pseudo court ou en majuscules (« ced », « CED ») est lu « Ced » au lieu d'être épelé ; bouton **PRONONCIATION** dans la fiche du joueur pour écrire comment le dire (« Sède »), avec ÉCOUTER ; suivi par la TV
 - **Annonceur** : il dit chaque fléchette (« triple 20 », « double 16 », « 25 », « bull », « raté » ; pas pour le triple 20 et les bulls, qui ont déjà leur animation avec son ; réglable dans Sons › Annoncer chaque fléchette), la fin conseillée au début du tour (« il te reste 40, double 20 »), « match point », le nombre de 180 de la soirée (« troisième 180 de la soirée »), les fins à 100 et plus (« fin à 121, plus haute fin de la soirée ») et, au Cricket, les derniers numéros à fermer (« plus que 15 et bull »)
 - **Partager l'appli** (⋮ › Partager l'appli) : QR code à faire scanner, qui télécharge directement la dernière version (la release contient aussi l'APK sous le nom fixe `Foclaboard.apk`)
