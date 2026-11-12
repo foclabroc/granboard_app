@@ -65,6 +65,7 @@ class _GamePageState extends State<GamePage> {
     _sub = BoardService.instance.events.listen(_onEvent);
     audio.stopMusic();
     MediaStore.instance.ensure(game.players.map((p) => p.id));
+    PlayerStore.instance.ensureRatings(game.players.map((p) => p.id));
     _fx.start(game);
     WidgetsBinding.instance.addPostFrameCallback((_) => _pushTv());
     OnlineService.instance.inGame++;
@@ -648,11 +649,15 @@ class _CurrentPanel extends StatelessWidget {
               PlayerAvatar(id: p.id, name: p.name, color: color, size: 30),
               const SizedBox(width: 8),
               Flexible(
-                child: Text(p.name.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Tv.title(24)),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(p.name.toUpperCase(),
+                      maxLines: 1, style: Tv.title(24)),
+                ),
               ),
+              const SizedBox(width: 8),
+              RankChip(p.id, size: 14),
               if (freeze) ...[
                 const SizedBox(width: 6),
                 Text(kTeamNames[p.team].split(' ').last,
@@ -906,6 +911,7 @@ class _PlayerBar extends StatelessWidget {
     ].join('  ·  ');
 
     return ScoreRow(
+      id: p.id,
       color: _colorOf(p),
       current: current,
       name: '${winner ? '🏆 ' : ''}${p.name.toUpperCase()}',

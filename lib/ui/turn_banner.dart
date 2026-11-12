@@ -197,6 +197,10 @@ class _BannerState extends State<_Banner> with SingleTickerProviderStateMixin {
                                 Shadow(color: Colors.black, blurRadius: 10),
                               ])),
                         ),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: RankChip(widget.id, size: 18),
+                        ),
                       ],
                     ),
                   ),

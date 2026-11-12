@@ -405,9 +405,20 @@ class _ColumnsArena extends StatelessWidget {
                                     style: Tv.title(active ? 24 : 20,
                                         color:
                                             active ? Colors.white : Tv.text)),
-                                if (mpr != null && rh >= 34)
-                                  Text('MPR $mpr',
-                                      style: Tv.label(13, color: Tv.muted)),
+                                if (rh >= 30)
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      for (final i in members) ...[
+                                        RankChip(g.players[i].id, size: 12),
+                                        const SizedBox(width: 4),
+                                      ],
+                                      if (mpr != null && rh >= 34)
+                                        Text('MPR $mpr',
+                                            style:
+                                                Tv.label(13, color: Tv.muted)),
+                                    ],
+                                  ),
                               ],
                             ),
                           ),
@@ -970,12 +981,23 @@ class _PlayersBar extends StatelessWidget {
                           ),
                           SizedBox(
                             height: h * 0.26,
-                            child: active
-                                ? FittedBox(
-                                    child: Text(g.currentPlayer.name,
+                            child: FittedBox(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (active) ...[
+                                    Text(g.currentPlayer.name,
                                         style: Tv.title(18)),
-                                  )
-                                : const SizedBox.shrink(),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  RankChip(
+                                      active
+                                          ? g.currentPlayer.id
+                                          : g.players[g.membersOf(s).first].id,
+                                      size: 14),
+                                ],
+                              ),
+                            ),
                           ),
                         ],
                       ),

@@ -225,11 +225,15 @@ class _Panel extends StatelessWidget {
                   size: 30),
               const SizedBox(width: 8),
               Flexible(
-                child: Text(p.name.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Tv.title(24)),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(p.name.toUpperCase(),
+                      maxLines: 1, style: Tv.title(24)),
+                ),
               ),
+              const SizedBox(width: 8),
+              RankChip(p.id, size: 14),
               if (st.out) ...[
                 const SizedBox(width: 6),
                 Text('ÉLIMINÉ', style: Tv.title(16, color: Tv.red)),
@@ -380,6 +384,7 @@ class _Scores extends StatelessWidget {
               return Opacity(
                 opacity: st.out ? 0.5 : 1,
                 child: ScoreRow(
+                  id: g.players[i].id,
                   color: _colorOf(g, i),
                   current: current,
                   name: '${won ? '🏆 ' : ''}${g.players[i].name.toUpperCase()}',

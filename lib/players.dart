@@ -195,6 +195,46 @@ class PlayerStore extends ChangeNotifier {
   /// Couleurs reçues du téléphone (écran TV : il ne connaît pas les comptes).
   final Map<String, Color> remoteColors = {};
 
+  /// Notes sur 20 des joueurs qui ne sont pas sur ce téléphone (adversaire en
+  /// ligne, joueurs vus par l'écran TV), lues sur le serveur.
+  final Map<String, double?> remoteRatings = {};
+
+  /// Note sur 20 d'un joueur (null : invité, pas encore de partie, inconnu).
+  double? ratingOf(String id) {
+    final p = byId(id);
+    return p != null ? p.rating : remoteRatings[id];
+  }
+
+  /// Va chercher la note des joueurs qui ne sont pas sur ce téléphone.
+  Future<void> ensureRatings(Iterable<String> ids) async {
+    final todo = [
+      for (final id in ids)
+        if (!isGuestId(id) &&
+            byId(id) == null &&
+            !remoteRatings.containsKey(id) &&
+            int.tryParse(id) != null)
+          id
+    ];
+    if (todo.isEmpty) return;
+    for (final id in todo) {
+      remoteRatings[id] = null; // une seule demande par joueur
+    }
+    var changed = false;
+    for (final id in todo) {
+      try {
+        final prof = await GbServer.profile(int.parse(id));
+        final r = ((prof['stats'] as Map?)?['rating'] as num?)?.toDouble();
+        if (r != null) {
+          remoteRatings[id] = r;
+          changed = true;
+        }
+      } catch (_) {
+        remoteRatings.remove(id); // on retentera plus tard
+      }
+    }
+    if (changed) notifyListeners();
+  }
+
   /// Couleurs de joueurs toutes différentes pour une partie : la couleur du
   /// compte, sauf invité ou couleur déjà prise (on prend une couleur libre).
   List<Color> distinctColors(List<String> ids) {

@@ -6,6 +6,8 @@ import '../board_service.dart';
 import '../media.dart';
 import '../players.dart';
 import 'theme.dart';
+import '../rank.dart';
+import '../format.dart';
 
 /// Photo du joueur (si `id` en a une), sinon pastille de couleur avec
 /// l'initiale. La photo est cerclée de la couleur du joueur.
@@ -75,6 +77,42 @@ class PlayerAvatar extends StatelessWidget {
   }
 }
 
+/// Rang + note sur 20 d'un joueur (« CC 4,54 »), à la couleur du rang ;
+/// rien pour un invité ou un joueur sans partie. Se met à jour tout seul.
+class RankChip extends StatelessWidget {
+  final String id;
+  final double size;
+  const RankChip(this.id, {super.key, this.size = 12});
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: PlayerStore.instance,
+        builder: (context, _) {
+          final r = PlayerStore.instance.ratingOf(id);
+          if (r == null) return const SizedBox.shrink();
+          final rank = rankOf(r);
+          return Container(
+            key: ValueKey('rank-chip-$id'),
+            padding: EdgeInsets.symmetric(
+                horizontal: size * 0.4, vertical: size * 0.08),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(size * 0.4),
+              border: Border.all(color: rank.color, width: 1.2),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(rank.label, style: Tv.title(size, color: rank.color)),
+                SizedBox(width: size * 0.3),
+                Text(r.fr(2), style: Tv.title(size * 0.85, color: Tv.text)),
+              ],
+            ),
+          );
+        },
+      );
+}
+
 /// Ligne du tableau des scores (01, entraînement, fête) : bande de couleur,
 /// flèche du joueur en cours, nom + infos (réduits plutôt que coupés),
 /// score. S'adapte à la largeur et à la hauteur données.
@@ -88,7 +126,11 @@ class ScoreRow extends StatelessWidget {
 
   /// Largeur max de la case du score.
   final double scoreWidth;
+
+  /// Joueur : son rang s'affiche devant les infos.
+  final String? id;
   const ScoreRow({
+    this.id,
     super.key,
     required this.color,
     required this.current,
@@ -145,12 +187,25 @@ class ScoreRow extends StatelessWidget {
                                   color: current ? Tv.goldLight : Tv.text)),
                         ),
                       ),
-                      if (info.isNotEmpty && height >= 36)
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(info,
-                              maxLines: 1, style: Tv.label(small ? 9 : 11)),
+                      // Rang (puis infos) sous le nom
+                      if ((info.isNotEmpty || id != null) && height >= 36)
+                        Row(
+                          children: [
+                            if (id != null)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 4),
+                                child: RankChip(id!, size: small ? 9 : 10),
+                              ),
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(info,
+                                    maxLines: 1,
+                                    style: Tv.label(small ? 9 : 11)),
+                              ),
+                            ),
+                          ],
                         ),
                     ],
                   ),

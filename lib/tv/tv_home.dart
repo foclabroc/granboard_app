@@ -63,6 +63,9 @@ class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
             '${e.key}': Color((e.value as num).toInt())
         });
     }
+    if (colors is Map) {
+      PlayerStore.instance.ensureRatings(colors.keys.map((k) => '$k'));
+    }
     // Le téléphone choisit quel appareil joue le son
     AudioService.instance.muted = s != null && s['sound'] == false;
     // … et le style de la cible
