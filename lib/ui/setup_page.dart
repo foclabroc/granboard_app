@@ -214,7 +214,14 @@ class _SetupPageState extends State<SetupPage> {
       );
 
   bool get _cricketOn => _kind == 'cricket';
-  int get _maxPlayers => _cricketOn ? _maxPlayersCricket : _maxPlayersDefault;
+  int get _maxPlayers => widget.tournament
+      ? 16
+      : _cricketOn
+          ? _maxPlayersCricket
+          : _maxPlayersDefault;
+
+  /// Tournoi à la maison (joueurs du téléphone, matchs sur cette cible).
+  bool get _localTournament => widget.tournament && !_online;
   bool get _matchOn => _kind == 'match';
   bool get _practiceOn => _kind == 'practice' || _kind == 'party';
   bool get _partyOn => _kind == 'party';
@@ -253,7 +260,7 @@ class _SetupPageState extends State<SetupPage> {
       );
 
   /// Jeu en équipes (Freeze ou Team Cricket).
-  bool get _teams => _matchOn || _practiceOn || _online
+  bool get _teams => _matchOn || _practiceOn || _online || widget.tournament
       ? false
       : _cricketOn
           ? _cTeams
@@ -318,6 +325,10 @@ class _SetupPageState extends State<SetupPage> {
   String? get _problem {
     final n = _online ? 2 : _selected.length;
     if (n == 0) return 'Ajoute au moins un joueur';
+    if (_localTournament) {
+      if (n < 2) return 'Il faut au moins 2 joueurs';
+      if (_tnName.text.trim().isEmpty) return 'Donne un nom au tournoi';
+    }
     if (n > _maxPlayers) return '$_maxPlayers joueurs maximum pour ce jeu';
     if (_practiceOn) {
       final i = _pInfo;
@@ -362,6 +373,21 @@ class _SetupPageState extends State<SetupPage> {
   Future<void> _startGame() async {
     await _save();
     if (!mounted) return;
+    if (_localTournament) {
+      final players = _order;
+      final DartsGame g = _matchOn
+          ? MatchGame(_match, players.take(2).toList())
+          : _cricketOn
+              ? CricketGame(_cricket, players.take(2).toList())
+              : X01Game(_settings, players.take(2).toList());
+      Navigator.pop(context, {
+        'game': g.toJson(),
+        'label': _gameName,
+        'name': _tnName.text.trim(),
+        'players': [for (final p in players) p.toJson()],
+      });
+      return;
+    }
     if (_online) {
       final DartsGame g = _practiceOn
           ? PracticeGame(_practice, _order)
@@ -402,7 +428,7 @@ class _SetupPageState extends State<SetupPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.tournament
-            ? 'NOUVEAU TOURNOI'
+            ? (_online ? 'NOUVEAU TOURNOI EN LIGNE' : 'TOURNOI À LA MAISON')
             : _online
                 ? 'DÉFIER ${widget.online!.last.name.toUpperCase()}'
                 : _fixed
@@ -424,6 +450,23 @@ class _SetupPageState extends State<SetupPage> {
             child: ListView(
               padding: const EdgeInsets.only(bottom: 16),
               children: [
+                if (_localTournament)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                    child: TextField(
+                      key: const ValueKey('tn-name'),
+                      controller: _tnName,
+                      maxLength: 40,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: const InputDecoration(
+                          labelText: 'Nom du tournoi',
+                          hintText: 'Tournoi du samedi',
+                          counterText: '',
+                          isDense: true,
+                          border: OutlineInputBorder()),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ),
                 // Ouvert depuis une tuile de l'accueil : ce jeu seulement
                 if (!_fixed)
                   Row(
@@ -476,7 +519,7 @@ class _SetupPageState extends State<SetupPage> {
           ),
           const VerticalDivider(width: 1),
           // ─── Joueurs ───
-          if (widget.tournament)
+          if (widget.tournament && _online)
             Expanded(child: _tournamentPanel())
           else if (_online)
             Expanded(child: _onlinePanel(problem))
@@ -568,7 +611,10 @@ class _SetupPageState extends State<SetupPage> {
                               icon: const Icon(Icons.play_arrow),
                               label: FittedBox(
                                 fit: BoxFit.scaleDown,
-                                child: Text('LANCER ${_gameName.toUpperCase()}',
+                                child: Text(
+                                    _localTournament
+                                        ? 'CRÉER LE TOURNOI (${_selected.length})'
+                                        : 'LANCER ${_gameName.toUpperCase()}',
                                     style: Tv.title(22, color: Colors.black)),
                               ),
                             ),
@@ -953,7 +999,7 @@ class _SetupPageState extends State<SetupPage> {
             ],
           ),
         ),
-        if (!match && !_online)
+        if (!match && !_online && !widget.tournament)
           SwitchListTile(
             title: Text('Freeze (équipes)', style: Tv.title(18)),
             subtitle:

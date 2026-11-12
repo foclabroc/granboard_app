@@ -8,6 +8,9 @@ import '../online/online.dart';
 import '../players.dart';
 import '../server.dart';
 import '../tournament.dart';
+import '../tv_link.dart';
+import '../game/darts_game.dart';
+import 'game_page.dart';
 import 'online_page.dart' show waitForAnswer;
 import 'setup_page.dart';
 import 'stats_page.dart' show openPlayerStats;
@@ -33,11 +36,40 @@ class _TournamentsPageState extends State<TournamentsPage> {
   String? _error;
 
   PlayerProfile? get _me => OnlineService.instance.me;
+  final _local = LocalTournamentStore.instance;
 
   @override
   void initState() {
     super.initState();
+    _local.load();
     _load();
+  }
+
+  /// Tournoi à la maison : joueurs du téléphone (comptes + invités), matchs
+  /// sur cette cible.
+  Future<void> _createLocal() async {
+    final r = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(builder: (_) => const SetupPage(tournament: true)),
+    );
+    if (r == null || !mounted) return;
+    final t = LocalTournament.create(
+      name: r['name'] as String,
+      label: r['label'] as String,
+      game: Map<String, dynamic>.from(r['game'] as Map),
+      players: [
+        for (final p in r['players'] as List)
+          X01Player.fromJson(Map<String, dynamic>.from(p as Map))
+      ],
+    );
+    await _local.add(t);
+    if (mounted) _openLocal(t.uid);
+  }
+
+  Future<void> _openLocal(String uid) async {
+    await Navigator.push(context,
+        MaterialPageRoute(builder: (_) => LocalTournamentPage(uid: uid)));
+    if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
@@ -98,77 +130,153 @@ class _TournamentsPageState extends State<TournamentsPage> {
         toolbarHeight: 46,
         title: const Text('TOURNOIS'),
         actions: [
+          FilledButton.icon(
+            key: const ValueKey('tn-new-local'),
+            onPressed: _createLocal,
+            icon: const Icon(Icons.home),
+            label: const Text('À LA MAISON'),
+          ),
+          const SizedBox(width: 8),
           if (me != null)
             Padding(
               padding: const EdgeInsets.only(right: 10),
-              child: FilledButton.icon(
+              child: FilledButton.tonalIcon(
                 key: const ValueKey('tn-new'),
                 onPressed: _create,
-                icon: const Icon(Icons.add),
-                label: const Text('CRÉER UN TOURNOI'),
+                icon: const Icon(Icons.public),
+                label: const Text('EN LIGNE'),
               ),
             ),
         ],
       ),
-      body: me == null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                    'Crée ton profil (Joueurs) pour jouer les tournois en ligne.',
-                    textAlign: TextAlign.center,
-                    style: Tv.title(18, color: Tv.text)),
-              ),
-            )
-          : _list == null
-              ? Center(
-                  child: _error == null
-                      ? const CircularProgressIndicator()
-                      : Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(_error!, style: Tv.title(16, color: Tv.red)),
-                            const SizedBox(height: 8),
-                            OutlinedButton(
-                                onPressed: _load,
-                                child: const Text('RÉESSAYER')),
-                          ],
-                        ))
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: _list!.isEmpty
-                      ? ListView(children: [
-                          const SizedBox(height: 60),
-                          Center(
-                            child: Text(
-                                'Aucun tournoi pour l\'instant :\ncrée le premier !',
-                                textAlign: TextAlign.center,
-                                style: Tv.title(18, color: Tv.text)),
-                          ),
-                        ])
-                      : LayoutBuilder(builder: (context, c) {
-                          final cols = c.maxWidth > 700 ? 2 : 1;
-                          const gap = 10.0;
-                          final w = (c.maxWidth - 24 - gap * (cols - 1)) / cols;
-                          return ListView(
-                            padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-                            children: [
-                              Wrap(
-                                spacing: gap,
-                                runSpacing: gap,
-                                children: [
-                                  for (final t in _list!)
-                                    SizedBox(
-                                        width: w,
-                                        child: _SummaryCard(
-                                            t: t, onTap: () => _open(t.id))),
-                                ],
-                              ),
-                            ],
-                          );
-                        }),
-                ),
+      body: ListenableBuilder(
+        listenable: _local,
+        builder: (context, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_local.list.isNotEmpty) _localStrip(),
+            Expanded(child: _onlineList(me)),
+          ],
+        ),
+      ),
     );
+  }
+
+  /// Tournois à la maison (bande défilante en haut).
+  Widget _localStrip() => SizedBox(
+        height: 74,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
+          children: [
+            for (final lt in _local.list)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: InkWell(
+                  key: ValueKey('tn-local-${lt.uid}'),
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => _openLocal(lt.uid),
+                  child: Container(
+                    width: 230,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: Tv.panel,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: lt.winner == null ? Tv.green : Tv.line),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                            lt.winner == null ? Icons.home : Icons.emoji_events,
+                            color: lt.winner == null ? Tv.green : Tv.gold),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(lt.name.toUpperCase(),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Tv.title(17)),
+                              Text(
+                                  lt.winner == null
+                                      ? 'À LA MAISON · ${lt.players.length} JOUEURS · EN COURS'
+                                      : '🏆 ${lt.playerNo(lt.winner!).name.toUpperCase()}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Tv.label(10)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+
+  Widget _onlineList(PlayerProfile? me) {
+    return me == null
+        ? Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                  'Crée ton profil (Joueurs) pour jouer les tournois en ligne.',
+                  textAlign: TextAlign.center,
+                  style: Tv.title(18, color: Tv.text)),
+            ),
+          )
+        : _list == null
+            ? Center(
+                child: _error == null
+                    ? const CircularProgressIndicator()
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_error!, style: Tv.title(16, color: Tv.red)),
+                          const SizedBox(height: 8),
+                          OutlinedButton(
+                              onPressed: _load, child: const Text('RÉESSAYER')),
+                        ],
+                      ))
+            : RefreshIndicator(
+                onRefresh: _load,
+                child: _list!.isEmpty
+                    ? ListView(children: [
+                        const SizedBox(height: 60),
+                        Center(
+                          child: Text(
+                              'Aucun tournoi pour l\'instant :\ncrée le premier !',
+                              textAlign: TextAlign.center,
+                              style: Tv.title(18, color: Tv.text)),
+                        ),
+                      ])
+                    : LayoutBuilder(builder: (context, c) {
+                        final cols = c.maxWidth > 700 ? 2 : 1;
+                        const gap = 10.0;
+                        final w = (c.maxWidth - 24 - gap * (cols - 1)) / cols;
+                        return ListView(
+                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+                          children: [
+                            Wrap(
+                              spacing: gap,
+                              runSpacing: gap,
+                              children: [
+                                for (final t in _list!)
+                                  SizedBox(
+                                      width: w,
+                                      child: _SummaryCard(
+                                          t: t, onTap: () => _open(t.id))),
+                              ],
+                            ),
+                          ],
+                        );
+                      }),
+              );
   }
 }
 
@@ -310,6 +418,7 @@ class _TournamentPageState extends State<TournamentPage> {
       final t = await TournamentApi.get(widget.id);
       PlayerStore.instance.ensureRatings(t.players.map((p) => p.key));
       MediaStore.instance.ensure(t.players.map((p) => p.key));
+      TvLink.instance.pushTournament(t.toJson());
       if (mounted) {
         setState(() {
           _t = t;
@@ -371,7 +480,7 @@ class _TournamentPageState extends State<TournamentPage> {
     int id;
     try {
       id = await OnlineService.instance
-          .challengeTournament(t.id, m.round, m.slot, opp);
+          .challengeTournament(t.id, m.round, m.slot, opp.online);
     } catch (e) {
       if (mounted) _toast(context, _err(e));
       return;
@@ -392,7 +501,7 @@ class _TournamentPageState extends State<TournamentPage> {
         'rounds': t.rounds
       },
     };
-    await waitForAnswer(context, id, opp, game);
+    await waitForAnswer(context, id, opp.online, game);
     _load();
   }
 
@@ -692,7 +801,11 @@ class _Bracket extends StatelessWidget {
   final Tournament t;
   final int? me;
   final void Function(TnMatch)? onMatch;
-  const _Bracket({required this.t, required this.me, this.onMatch});
+
+  /// Tout faire tenir à l'écran (TV : pas de défilement possible).
+  final bool fit;
+  const _Bracket(
+      {required this.t, required this.me, this.onMatch, this.fit = false});
 
   static const cardW = 176.0, cardH = 62.0, gapX = 34.0, headH = 26.0;
 
@@ -704,53 +817,58 @@ class _Bracket extends StatelessWidget {
       final unit = ((c.maxHeight - headH - 16) / first).clamp(cardH + 8, 140.0);
       final h = headH + unit * first + 8;
       final w = t.rounds * (cardW + gapX) + 12;
+      final box = SizedBox(
+        width: w,
+        height: h,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _LinesPainter(t, unit),
+              ),
+            ),
+            for (var r = 1; r <= t.rounds; r++) ...[
+              Positioned(
+                left: (r - 1) * (cardW + gapX),
+                top: 0,
+                width: cardW,
+                height: headH,
+                child: Center(
+                  child:
+                      Text(t.roundName(r), style: Tv.title(14, color: Tv.gold)),
+                ),
+              ),
+              for (final m in t.round(r))
+                Positioned(
+                  left: (r - 1) * (cardW + gapX),
+                  top: headH +
+                      (m.slot + 0.5) * unit * (1 << (r - 1)) -
+                      cardH / 2,
+                  width: cardW,
+                  height: cardH,
+                  child: _MatchCard(
+                    t: t,
+                    m: m,
+                    me: me,
+                    onTap: onMatch != null && m.playable
+                        ? () => onMatch!(m)
+                        : null,
+                  ),
+                ),
+            ],
+          ],
+        ),
+      );
+      if (fit) {
+        return Padding(
+          padding: const EdgeInsets.all(8),
+          child: FittedBox(fit: BoxFit.contain, child: box),
+        );
+      }
       return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-        child: SingleChildScrollView(
-          child: SizedBox(
-            width: w,
-            height: h,
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _LinesPainter(t, unit),
-                  ),
-                ),
-                for (var r = 1; r <= t.rounds; r++) ...[
-                  Positioned(
-                    left: (r - 1) * (cardW + gapX),
-                    top: 0,
-                    width: cardW,
-                    height: headH,
-                    child: Center(
-                      child: Text(t.roundName(r),
-                          style: Tv.title(14, color: Tv.gold)),
-                    ),
-                  ),
-                  for (final m in t.round(r))
-                    Positioned(
-                      left: (r - 1) * (cardW + gapX),
-                      top: headH +
-                          (m.slot + 0.5) * unit * (1 << (r - 1)) -
-                          cardH / 2,
-                      width: cardW,
-                      height: cardH,
-                      child: _MatchCard(
-                        t: t,
-                        m: m,
-                        me: me,
-                        onTap: onMatch != null && m.playable
-                            ? () => onMatch!(m)
-                            : null,
-                      ),
-                    ),
-                ],
-              ],
-            ),
-          ),
-        ),
+        child: SingleChildScrollView(child: box),
       );
     });
   }
@@ -864,6 +982,308 @@ class _MatchCard extends StatelessWidget {
             line(m.b, byeLine: m.bye),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Tournoi à la maison : tableau, prochain match à jouer sur cette cible,
+/// vainqueur déclaré à la main si besoin. Le tableau s'affiche sur la TV
+/// entre les matchs.
+class LocalTournamentPage extends StatefulWidget {
+  final String uid;
+  const LocalTournamentPage({super.key, required this.uid});
+
+  @override
+  State<LocalTournamentPage> createState() => _LocalTournamentPageState();
+}
+
+class _LocalTournamentPageState extends State<LocalTournamentPage> {
+  final store = LocalTournamentStore.instance;
+
+  LocalTournament? get _lt => store.byUid(widget.uid);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pushTv());
+  }
+
+  void _pushTv() {
+    final lt = _lt;
+    if (lt != null) TvLink.instance.pushTournament(lt.view().toJson());
+  }
+
+  Future<void> _play(TnMatch m) async {
+    final lt = _lt;
+    if (lt == null) return;
+    final game = gameFromJson(lt.gameFor(m));
+    var tie = false;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GamePage(
+          game: game,
+          onTournamentEnd: (g) {
+            if (g.winners.length != 1) {
+              tie = true;
+              return;
+            }
+            final key = g.players[g.winners.first].id;
+            final no = lt.players.indexWhere((p) => p.id == key) + 1;
+            if (no > 0) {
+              lt.advance(m.round, m.slot, no);
+              store.save();
+            }
+          },
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() {});
+    _pushTv();
+    if (tie) _toast(context, 'Égalité : rejouez ce match');
+  }
+
+  Future<void> _matchSheet(TnMatch m) async {
+    final lt = _lt;
+    if (lt == null) return;
+    final t = lt.view();
+    final a = t.player(m.a)!, b = t.player(m.b)!;
+    await showAppSheet(
+      context,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+                '${t.roundName(m.round)} · ${a.name.toUpperCase()} CONTRE ${b.name.toUpperCase()}',
+                style: Tv.title(20)),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 52,
+              child: FilledButton.icon(
+                key: const ValueKey('tn-local-play'),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _play(m);
+                },
+                icon: const Icon(Icons.play_arrow),
+                label: Text('JOUER CE MATCH',
+                    style: Tv.title(20, color: Colors.black)),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text('OU DÉCLARER LE VAINQUEUR (FORFAIT)', style: Tv.label(12)),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                for (final p in [a, b]) ...[
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        lt.advance(m.round, m.slot, p.id, forfeit: true);
+                        store.save();
+                        Navigator.pop(ctx);
+                        setState(() {});
+                        _pushTv();
+                      },
+                      child: Text(p.name.toUpperCase(),
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+                  if (p == a) const SizedBox(width: 10),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _delete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Supprimer le tournoi ?', style: Tv.title(22)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('ANNULER')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('SUPPRIMER')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await store.remove(widget.uid);
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lt = _lt;
+    if (lt == null) {
+      return const Scaffold(body: Center(child: Text('Tournoi introuvable')));
+    }
+    final t = lt.view();
+    final next = t.nextMatch;
+    final champion = t.player(t.winner);
+    return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 46,
+        title: Text(t.name.toUpperCase(), overflow: TextOverflow.ellipsis),
+        actions: [
+          Center(
+            child: Text(
+                '${t.label.toUpperCase()} · ${t.players.length} JOUEURS · À LA MAISON',
+                style: Tv.label(12, color: Tv.text)),
+          ),
+          IconButton(
+            tooltip: 'Supprimer le tournoi',
+            onPressed: _delete,
+            icon: const Icon(Icons.delete_outline),
+          ),
+        ],
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (champion != null)
+            _ChampionBanner(champion: champion)
+          else if (next != null)
+            _Banner(
+              color: Tv.green,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                        'PROCHAIN MATCH (${t.roundName(next.round)}) : '
+                        '${t.player(next.a)!.name.toUpperCase()} CONTRE '
+                        '${t.player(next.b)!.name.toUpperCase()}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Tv.title(18)),
+                  ),
+                  const SizedBox(width: 10),
+                  FilledButton.icon(
+                    key: const ValueKey('tn-play'),
+                    onPressed: () => _play(next),
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text('JOUER'),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: _Bracket(t: t, me: null, onMatch: _matchSheet),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChampionBanner extends StatelessWidget {
+  final TnPlayer champion;
+  final double size;
+  const _ChampionBanner({required this.champion, this.size = 20});
+
+  @override
+  Widget build(BuildContext context) => _Banner(
+        color: Tv.gold,
+        child: Row(
+          children: [
+            Text('🏆', style: TextStyle(fontSize: size * 1.3)),
+            const SizedBox(width: 10),
+            PlayerAvatar(
+                id: champion.key,
+                name: champion.name,
+                color: champion.color,
+                size: size * 1.7),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text('${champion.name.toUpperCase()} REMPORTE LE TOURNOI',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Tv.title(size, color: Tv.goldLight)),
+            ),
+          ],
+        ),
+      );
+}
+
+/// Écran TV : tableau du tournoi en grand, prochain match ou vainqueur.
+class TvTournamentView extends StatefulWidget {
+  final Tournament tournament;
+  const TvTournamentView({super.key, required this.tournament});
+
+  @override
+  State<TvTournamentView> createState() => _TvTournamentViewState();
+}
+
+class _TvTournamentViewState extends State<TvTournamentView> {
+  @override
+  void initState() {
+    super.initState();
+    _ensure();
+  }
+
+  @override
+  void didUpdateWidget(TvTournamentView old) {
+    super.didUpdateWidget(old);
+    _ensure();
+  }
+
+  void _ensure() {
+    final keys = widget.tournament.players.map((p) => p.key);
+    MediaStore.instance.ensure(keys);
+    PlayerStore.instance.ensureRatings(keys);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.tournament;
+    final next = t.nextMatch;
+    final champion = t.player(t.winner);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.account_tree, color: Tv.gold, size: 34),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(t.name.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Tv.title(36, color: Tv.gold)),
+              ),
+              Text(t.label.toUpperCase(), style: Tv.title(20, color: Tv.text)),
+            ],
+          ),
+          if (champion != null)
+            _ChampionBanner(champion: champion, size: 28)
+          else if (next != null)
+            _Banner(
+              color: Tv.green,
+              child: Text(
+                  'PROCHAIN MATCH (${t.roundName(next.round)}) : '
+                  '${t.player(next.a)?.name.toUpperCase() ?? '?'} CONTRE '
+                  '${t.player(next.b)?.name.toUpperCase() ?? '?'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Tv.title(24)),
+            ),
+          const SizedBox(height: 6),
+          Expanded(child: _Bracket(t: t, me: null, fit: true)),
+        ],
       ),
     );
   }

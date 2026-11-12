@@ -11,7 +11,9 @@ import '../ui/cricket_view.dart' show CricketStyle;
 import '../ui/dartboard.dart';
 import '../ui/game_fx.dart';
 import '../ui/game_page.dart' show gameView, resultsPageFor;
+import '../tournament.dart';
 import '../ui/theme.dart';
+import '../ui/tournament_page.dart' show TvTournamentView;
 import 'tv_client.dart';
 
 /// Écran TV : affiche le code du salon, puis ce que le téléphone envoie
@@ -106,6 +108,10 @@ class _TvHomeState extends State<TvHome> with SingleTickerProviderStateMixin {
             gameFromJson(Map<String, dynamic>.from(s['game'] as Map)),
             tv: true),
       );
+    } else if (screen == 'tournament' && s?['tournament'] is Map) {
+      body = TvTournamentView(
+          tournament: Tournament.fromJson(
+              Map<String, dynamic>.from(s!['tournament'] as Map)));
     } else if (screen == 'lobby') {
       body = _Lobby(spin: _spin, host: '${s?['host'] ?? ''}', client: client);
     } else {

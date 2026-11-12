@@ -192,6 +192,13 @@ class TvLink extends ChangeNotifier {
     });
   }
 
+  /// Tableau d'un tournoi (entre les matchs).
+  void pushTournament(Map<String, dynamic> tournament) => _push({
+        'screen': 'tournament',
+        'host': _hostName,
+        'tournament': tournament,
+      });
+
   void _resend() {
     final last = _last;
     if (last != null) _push(last);

@@ -41,8 +41,17 @@ class GamePage extends StatefulWidget {
 
   /// Partie en ligne : salle partagée avec l'adversaire ([game] vient d'elle).
   final OnlineRoom? online;
+
+  /// Match d'un tournoi à la maison : appelé une fois la partie finie quand
+  /// on revient au tableau (bouton « TABLEAU » ou retour).
+  final void Function(DartsGame game)? onTournamentEnd;
   const GamePage(
-      {super.key, this.settings, this.players, this.game, this.online})
+      {super.key,
+      this.settings,
+      this.players,
+      this.game,
+      this.online,
+      this.onTournamentEnd})
       : assert(game != null || (settings != null && players != null));
 
   @override
@@ -279,7 +288,24 @@ class _GamePageState extends State<GamePage> {
     };
   }
 
+  bool _tnEnded = false;
+
+  /// Tournoi à la maison : le vainqueur passe au tour suivant (une fois).
+  void _endLocalTournament() {
+    final f = widget.onTournamentEnd;
+    if (f == null || _tnEnded || !game.finished) return;
+    _tnEnded = true;
+    f(game);
+  }
+
   void _results() {
+    // Tournoi à la maison : stats envoyées, retour au tableau
+    if (widget.onTournamentEnd != null) {
+      _saveStats();
+      _endLocalTournament();
+      Navigator.pop(context);
+      return;
+    }
     // Envoi au serveur en arrière-plan : les résultats s'affichent tout de suite
     final g = game;
     _saveStats();
@@ -296,6 +322,7 @@ class _GamePageState extends State<GamePage> {
     // Partie finie quittée sans ouvrir les résultats : stats envoyées quand même
     if (game.finished) {
       _saveStats();
+      _endLocalTournament();
       return true;
     }
     final r = await showDialog<bool>(
@@ -328,6 +355,7 @@ class _GamePageState extends State<GamePage> {
       onMiss: () => _dart(null),
       onNext: _next,
       onResults: _results,
+      resultsLabel: widget.onTournamentEnd != null ? 'TABLEAU' : 'RÉSULTATS',
       compact: game is CricketGame ||
           (game is MatchGame && (game as MatchGame).leg is CricketGame),
     );
@@ -952,6 +980,7 @@ class _ActionBar extends StatelessWidget {
   final VoidCallback onMiss;
   final VoidCallback onNext;
   final VoidCallback onResults;
+  final String resultsLabel;
 
   /// Version serrée (colonne de droite du Cricket) : 2 petits boutons puis
   /// le bouton principal en dessous.
@@ -962,6 +991,7 @@ class _ActionBar extends StatelessWidget {
       required this.onMiss,
       required this.onNext,
       required this.onResults,
+      this.resultsLabel = 'RÉSULTATS',
       this.compact = false});
 
   String get _nextLabel => game is MatchGame && (game as MatchGame).betweenLegs
@@ -1006,7 +1036,7 @@ class _ActionBar extends StatelessWidget {
                 flex: 3,
                 child: _BarButton(
                     icon: Icons.emoji_events,
-                    label: 'RÉSULTATS',
+                    label: resultsLabel,
                     primary: true,
                     compact: true,
                     onTap: onResults),
@@ -1054,7 +1084,7 @@ class _ActionBar extends StatelessWidget {
                   flex: 3,
                   child: _BarButton(
                       icon: Icons.emoji_events,
-                      label: 'RÉSULTATS',
+                      label: resultsLabel,
                       primary: true,
                       onTap: onResults),
                 ),

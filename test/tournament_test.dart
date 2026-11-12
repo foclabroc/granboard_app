@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:granboard_proto/board_service.dart';
@@ -9,6 +11,8 @@ import 'package:granboard_proto/online/relay.dart';
 import 'package:granboard_proto/players.dart';
 import 'package:granboard_proto/server.dart';
 import 'package:granboard_proto/tournament.dart';
+import 'package:granboard_proto/tv/tv_client.dart';
+import 'package:granboard_proto/tv/tv_home.dart';
 import 'package:granboard_proto/ui/game_page.dart';
 import 'package:granboard_proto/ui/theme.dart';
 import 'package:granboard_proto/ui/tournament_page.dart';
@@ -37,6 +41,7 @@ void main() {
     Relay.enabled = false;
     OnlineRoom.videoEnabled = false;
     TournamentPage.poll = false;
+    LocalTournamentStore.instance.debugReset();
     FakeServer().install();
     final store = PlayerStore.instance;
     await store.load();
@@ -187,5 +192,141 @@ void main() {
     expect(t.winner, foc.id);
     nav.currentState!.pop();
     await tester.pump(const Duration(seconds: 1));
+  });
+
+  test('Tournoi à la maison : tirage, exempts, vainqueur, sauvegarde',
+      () async {
+    final players = [
+      for (final p in ps) X01Player(id: p.key, name: p.name),
+      const X01Player(id: 'guest-1', name: 'Invité 1'),
+    ]; // 6 joueurs → tableau de 8, 2 exempts
+    final lt = LocalTournament.create(
+        name: 'Samedi',
+        label: '301',
+        game: game,
+        players: players,
+        random: math.Random(1));
+    var t = lt.view();
+    expect(t.local, isTrue);
+    expect(t.rounds, 3);
+    expect(t.round(1).where((m) => m.bye).map((m) => m.slot), [0, 2]);
+    expect(t.round(2).first.a, isNotNull, reason: 'exempt déjà au 2e tour');
+    // Partie d'un match : les 2 joueurs, règles du modèle
+    final m = t.nextMatch!;
+    final g = lt.gameFor(m);
+    expect((g['players'] as List).length, 2);
+    expect(g['settings'], game['settings']);
+    while (t.nextMatch != null) {
+      final n = t.nextMatch!;
+      lt.advance(n.round, n.slot, n.b!);
+      t = lt.view();
+    }
+    expect(t.done, isTrue);
+    expect(t.player(t.winner), isNotNull);
+    // Gardé sur le téléphone
+    final store = LocalTournamentStore.instance;
+    await store.add(lt);
+    store.debugReset();
+    await store.load();
+    expect(store.byUid(lt.uid)!.winner, lt.winner);
+    expect(
+        store.byUid(lt.uid)!.view().toJson()['matches'], t.toJson()['matches']);
+  });
+
+  testWidgets('Tournoi à la maison : JOUER, partie sur la cible, TABLEAU',
+      (tester) async {
+    await phone(tester);
+    final quick = X01Game(
+        const X01Settings(startScore: 101, outRule: OutRule.open), const [
+      X01Player(id: '1', name: 'A'),
+      X01Player(id: '0', name: 'B', team: 1),
+    ]).toJson();
+    final lt = LocalTournament.create(
+        name: 'Salon',
+        label: '101',
+        game: quick,
+        players: [
+          X01Player(id: ps[0].key, name: ps[0].name),
+          const X01Player(id: 'guest-1', name: 'Invité 1'),
+        ]);
+    await tester.runAsync(() => LocalTournamentStore.instance.add(lt));
+    await tester.pumpWidget(
+        MaterialApp(theme: Tv.theme(), home: LocalTournamentPage(uid: lt.uid)));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('FINALE'), findsOneWidget);
+    expect(find.textContaining('PROCHAIN MATCH'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tn-play')));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    for (final f in [
+      GranBoardDecoder.frameFor(20, Ring.triple)!,
+      GranBoardDecoder.frameFor(20, Ring.double)!,
+      GranBoardDecoder.frameFor(1, Ring.singleOuter)!,
+    ]) {
+      BoardService.instance.injectFrame(f.codeUnits);
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    await tester.pump(const Duration(seconds: 3));
+    expect(find.text('TABLEAU'), findsOneWidget);
+    await tester.tap(find.text('TABLEAU'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(lt.winner, isNotNull, reason: 'celui qui a commencé gagne');
+    expect(find.textContaining('REMPORTE LE TOURNOI'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Écran TV : tableau de 16 joueurs qui tient à l\'écran',
+      (tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 2; // 960 × 540
+    addTearDown(tester.view.reset);
+    final lt = LocalTournament.create(
+        name: 'Grand tournoi',
+        label: '501',
+        game: game,
+        players: [
+          for (var i = 1; i <= 16; i++)
+            X01Player(id: 'guest-$i', name: 'Joueur $i')
+        ]);
+    lt.advance(1, 0, lt.view().round(1).first.a!);
+    await tester.pumpWidget(MaterialApp(
+        theme: Tv.theme(),
+        home: Scaffold(
+            body: TvTournamentView(
+                tournament: Tournament.fromJson(lt.view().toJson())))));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('HUITIÈMES'), findsOneWidget);
+    expect(find.textContaining('PROCHAIN MATCH'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Écran TV : le téléphone envoie le tableau, la TV l\'affiche',
+      (tester) async {
+    tester.view.physicalSize = const Size(1920, 1080);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    final tv = TvClient(realtime: false);
+    addTearDown(tv.dispose);
+    final lt = LocalTournament.create(
+        name: 'Salon TV',
+        label: 'Cricket',
+        game: game,
+        players: [
+          for (var i = 1; i <= 5; i++)
+            X01Player(id: 'guest-$i', name: 'Joueur $i')
+        ]);
+    tv.debugSetState('AB10', {
+      'screen': 'tournament',
+      'host': 'Foc',
+      'tournament': lt.view().toJson(),
+    });
+    await tester.pumpWidget(MaterialApp(
+        theme: Tv.theme(), home: TvHome(client: tv, onPhoneMode: () {})));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('SALON TV'), findsOneWidget);
+    expect(find.text('QUARTS'), findsOneWidget);
+    expect(find.text('EXEMPT'), findsNWidgets(3));
+    expect(tester.takeException(), isNull);
   });
 }
