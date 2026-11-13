@@ -905,6 +905,7 @@ class _MiniBoard extends StatelessWidget {
         litNumbers: lit,
         aimNumbers: aim,
         dartColor: color,
+        skin: PlayerBoards.instance.of(g.currentPlayer.id),
         win: g.finished,
       ),
     );

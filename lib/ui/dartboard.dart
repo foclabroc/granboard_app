@@ -192,6 +192,75 @@ class BoardSkin {
   }
 }
 
+/// Cible choisie par chaque joueur (fiche du joueur) : elle remplace le
+/// style général pendant son tour, et celle du profil principal s'affiche
+/// sur l'écran TV en attente. Gardée sur le téléphone, envoyée à la TV.
+class PlayerBoards extends ChangeNotifier {
+  static final instance = PlayerBoards._();
+  PlayerBoards._();
+  static const _pref = 'player_boards_v1';
+
+  final Map<String, String> _mine = {};
+
+  /// Reçues du téléphone (écran TV).
+  final Map<String, String> _remote = {};
+  String? _idle;
+
+  Map<String, String> get all => Map.of(_mine);
+
+  /// Cible du joueur, null = style général.
+  BoardSkin? of(String? id) {
+    if (id == null) return null;
+    final s = _remote[id] ?? _mine[id];
+    return s == null ? null : BoardSkin.byId(s);
+  }
+
+  /// Cible de l'écran TV en attente (null = style général).
+  BoardSkin? get idle => _idle == null ? null : BoardSkin.byId(_idle);
+
+  Future<void> load() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getStringList(_pref) ?? const [];
+      _mine.clear();
+      for (final e in raw) {
+        final i = e.indexOf('=');
+        if (i > 0) _mine[e.substring(0, i)] = e.substring(i + 1);
+      }
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> set(String id, BoardSkin? skin) async {
+    if (skin == null) {
+      _mine.remove(id);
+    } else {
+      _mine[id] = skin.id;
+    }
+    notifyListeners();
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setStringList(
+          _pref, [for (final e in _mine.entries) '${e.key}=${e.value}']);
+    } catch (_) {}
+  }
+
+  /// Écran TV : cibles envoyées par le téléphone.
+  void applyRemote(Map boards, String? idle) {
+    final m = {for (final e in boards.entries) '${e.key}': '${e.value}'};
+    if (_idle == idle &&
+        m.length == _remote.length &&
+        m.entries.every((e) => _remote[e.key] == e.value)) {
+      return;
+    }
+    _remote
+      ..clear()
+      ..addAll(m);
+    _idle = idle;
+    notifyListeners();
+  }
+}
+
 /// Ordre des numéros dans le sens des aiguilles, en partant du haut.
 const kBoardOrder = [
   20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5 //
@@ -202,21 +271,25 @@ class Dartboard extends StatelessWidget {
   final double size;
   final List<DartHit> highlights;
   final bool showNumbers;
+
+  /// Style imposé (sinon le style général).
+  final BoardSkin? skin;
   const Dartboard({
     super.key,
     required this.size,
     this.highlights = const [],
     this.showNumbers = true,
+    this.skin,
   });
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<BoardSkin>(
       valueListenable: BoardSkin.current,
-      builder: (context, skin, _) => SizedBox.square(
+      builder: (context, cur, _) => SizedBox.square(
         dimension: size,
         child: CustomPaint(
-          painter: _BoardPainter(highlights, showNumbers, skin: skin),
+          painter: _BoardPainter(highlights, showNumbers, skin: skin ?? cur),
         ),
       ),
     );
@@ -673,6 +746,9 @@ class AnimatedDartboard extends StatefulWidget {
   /// numéros qui clignotent (Cricket : encore à fermer), sur l'anneau.
   final Set<int> litNumbers;
   final Set<int> aimNumbers;
+
+  /// Style imposé (cible du joueur en cours), sinon le style général.
+  final BoardSkin? skin;
   const AnimatedDartboard({
     super.key,
     required this.size,
@@ -683,6 +759,7 @@ class AnimatedDartboard extends StatefulWidget {
     this.bust = false,
     this.win = false,
     this.dartColor,
+    this.skin,
   });
 
   @override
@@ -734,9 +811,10 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
               child: RepaintBoundary(
                 child: ValueListenableBuilder<BoardSkin>(
                   valueListenable: BoardSkin.current,
-                  builder: (context, skin, _) => CustomPaint(
+                  builder: (context, cur, _) => CustomPaint(
                     isComplex: true,
-                    painter: _BoardPainter(const [], true, skin: skin),
+                    painter:
+                        _BoardPainter(const [], true, skin: widget.skin ?? cur),
                   ),
                 ),
               ),
@@ -744,27 +822,30 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
             Positioned.fill(
               child: ValueListenableBuilder<BoardSkin>(
                 valueListenable: BoardSkin.current,
-                builder: (context, skin, _) => AnimatedBuilder(
-                  animation: Listenable.merge(
-                      [_impact, _pulse, _flash, if (skin.realistic) _spin]),
-                  builder: (context, _) => CustomPaint(
-                    painter: _HitsPainter(
-                      hits: widget.hits,
-                      targets: widget.targets,
-                      litNumbers: widget.litNumbers,
-                      aimNumbers: widget.aimNumbers,
-                      impact: _impact.value,
-                      pulse: _pulse.value,
-                      flash: _flash.value,
-                      flashColor: widget.win ? Tv.gold : Tv.red,
-                      dartColor: widget.dartColor ?? Tv.gold,
-                      realistic: skin.realistic,
-                      spin: _spin.value,
-                      bust: widget.bust,
-                      win: widget.win,
+                builder: (context, cur, _) {
+                  final skin = widget.skin ?? cur;
+                  return AnimatedBuilder(
+                    animation: Listenable.merge(
+                        [_impact, _pulse, _flash, if (skin.realistic) _spin]),
+                    builder: (context, _) => CustomPaint(
+                      painter: _HitsPainter(
+                        hits: widget.hits,
+                        targets: widget.targets,
+                        litNumbers: widget.litNumbers,
+                        aimNumbers: widget.aimNumbers,
+                        impact: _impact.value,
+                        pulse: _pulse.value,
+                        flash: _flash.value,
+                        flashColor: widget.win ? Tv.gold : Tv.red,
+                        dartColor: widget.dartColor ?? Tv.gold,
+                        realistic: skin.realistic,
+                        spin: _spin.value,
+                        bust: widget.bust,
+                        win: widget.win,
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ],

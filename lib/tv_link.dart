@@ -12,7 +12,7 @@ import 'server.dart';
 import 'ui/theme.dart';
 import 'ui/wallpaper.dart';
 import 'ui/cricket_view.dart' show CricketStyle;
-import 'ui/dartboard.dart' show BoardSkin;
+import 'ui/dartboard.dart' show BoardSkin, PlayerBoards;
 
 /// Un écran relié (TV, tablette…), un salon par écran sur le serveur.
 class TvScreen {
@@ -238,6 +238,9 @@ class TvLink extends ChangeNotifier {
         'tournament': tournament,
       });
 
+  /// Renvoie le dernier état (réglage changé).
+  void refresh() => _resend();
+
   void _resend() {
     final last = _last;
     if (last != null) _push(last);
@@ -254,6 +257,10 @@ class TvLink extends ChangeNotifier {
         'at': at,
         'sound': soundOn.contains(s.code),
         'skin': BoardSkin.current.value.id,
+        'boards': PlayerBoards.instance.all,
+        if (PlayerBoards.instance.of(PlayerStore.instance.owner?.key)
+            case final b?)
+          'idleBoard': b.id,
         'cricket': CricketStyle.current.value,
         'theme': Tv.skin.value.id,
         'calls': AudioService.instance.dartCalls,

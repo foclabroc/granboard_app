@@ -5,7 +5,9 @@ import '../audio.dart';
 import '../game/practice.dart';
 import '../media.dart';
 import '../players.dart';
+import '../tv_link.dart';
 import 'account_page.dart';
+import 'dartboard.dart';
 import 'media_editor.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -350,6 +352,18 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                       const SizedBox(height: 6),
                     ],
                     ListenableBuilder(
+                      listenable: PlayerBoards.instance,
+                      builder: (context, _) => OutlinedButton.icon(
+                        key: const ValueKey('player-board'),
+                        onPressed: () => showPlayerBoardSheet(context, p),
+                        icon: const Icon(Icons.adjust),
+                        label: Text(
+                            'CIBLE : ${PlayerBoards.instance.of(p.key)?.name.toUpperCase() ?? 'PAR DÉFAUT'}',
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    ListenableBuilder(
                       listenable: AudioService.instance,
                       builder: (context, _) => OutlinedButton.icon(
                         key: const ValueKey('pronunciation'),
@@ -480,3 +494,75 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
     return '${two(d.day)}/${two(d.month)}/${d.year} ${two(d.hour)}:${two(d.minute)}';
   }
 }
+
+/// Cible du joueur : affichée pendant son tour (et sur la TV en attente
+/// pour le profil principal). « Par défaut » = style général des options.
+Future<void> showPlayerBoardSheet(BuildContext context, PlayerProfile p) =>
+    showAppSheet(
+      context,
+      builder: (ctx) => ListenableBuilder(
+        listenable: PlayerBoards.instance,
+        builder: (ctx, _) {
+          final cur = PlayerBoards.instance.of(p.key);
+          Widget card(BoardSkin? sk) {
+            final on = cur == sk;
+            return InkWell(
+              key: ValueKey('pboard-${sk?.id ?? 'default'}'),
+              borderRadius: BorderRadius.circular(14),
+              onTap: () async {
+                await PlayerBoards.instance.set(p.key, sk);
+                TvLink.instance.refresh();
+              },
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                      color: on ? Tv.gold : Tv.line, width: on ? 2.5 : 1),
+                ),
+                child: Column(
+                  children: [
+                    sk == null
+                        ? ValueListenableBuilder<BoardSkin>(
+                            valueListenable: BoardSkin.current,
+                            builder: (_, g, __) => Opacity(
+                                opacity: 0.55,
+                                child: DartboardPreview(skin: g, size: 104)),
+                          )
+                        : DartboardPreview(skin: sk, size: 104),
+                    const SizedBox(height: 6),
+                    Text(sk == null ? 'PAR DÉFAUT' : sk.name.toUpperCase(),
+                        style:
+                            Tv.title(18, color: on ? Tv.goldLight : Tv.text)),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TvSection('Cible de ${p.name}',
+                    padding: const EdgeInsets.only(bottom: 10)),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 12,
+                  children: [
+                    card(null),
+                    for (final sk in BoardSkin.all) card(sk),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                    'Affichée pendant son tour, téléphone et TV. Celle du profil principal reste sur l\'écran TV en attente. « Par défaut » = style choisi dans les options.',
+                    style: Tv.label(12)),
+              ],
+            ),
+          );
+        },
+      ),
+    );

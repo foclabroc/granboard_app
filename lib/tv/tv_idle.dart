@@ -84,7 +84,12 @@ class _FloatingBoardState extends State<FloatingBoard>
                   spreadRadius: 4)
             ],
           ),
-          child: Dartboard(size: s),
+          // cible du profil principal du téléphone
+          child: ListenableBuilder(
+            listenable: PlayerBoards.instance,
+            builder: (context, _) =>
+                Dartboard(size: s, skin: PlayerBoards.instance.idle),
+          ),
         ),
       ),
     );
@@ -273,8 +278,8 @@ class _TvTopPanelState extends State<TvTopPanel> {
           ),
           if (kind == 'rating')
             FittedBox(
-                child: RatingBadge(
-                    rating: (r['value'] as num? ?? 0).toDouble()))
+                child:
+                    RatingBadge(rating: (r['value'] as num? ?? 0).toDouble()))
           else
             Text(_value(kind, r['value'] as num? ?? 0),
                 style: Tv.title(fs, color: i == 0 ? Tv.goldLight : Tv.text)),

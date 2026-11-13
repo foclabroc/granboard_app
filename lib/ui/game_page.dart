@@ -762,6 +762,7 @@ class GameLayout extends StatelessWidget {
                     bust: turn.isBust,
                     win: game.finished && game.endReason == EndReason.checkout,
                     dartColor: _colorOf(game.currentPlayer),
+                    skin: PlayerBoards.instance.of(game.currentPlayer.id),
                     targets: game.checkoutOptions.isEmpty
                         ? const []
                         : targetHits(game.checkoutOptions.first.first),

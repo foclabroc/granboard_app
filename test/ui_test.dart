@@ -10,6 +10,7 @@ import 'package:granboard_proto/media.dart';
 import 'package:granboard_proto/players.dart';
 import 'package:granboard_proto/ui/calibration_page.dart';
 import 'package:granboard_proto/ui/cricket_view.dart';
+import 'package:granboard_proto/ui/dartboard.dart';
 import 'package:granboard_proto/ui/game_page.dart';
 import 'package:granboard_proto/ui/players_page.dart';
 import 'package:granboard_proto/ui/rules.dart';
@@ -247,6 +248,38 @@ void main() {
     }
     await tester.pumpAndSettle();
     expect(PlayerStore.instance.byId('4')?.name, 'Marc');
+  });
+
+  testWidgets('Joueur : cible choisie, utilisée pendant son tour',
+      (tester) async {
+    await phone(tester);
+    final p = PlayerStore.instance.players.first;
+    await tester.pumpWidget(app(PlayerDetailPage(player: p)));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('CIBLE : PAR DÉFAUT'), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('player-board')));
+    await tester.tap(find.byKey(const ValueKey('player-board')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('pboard-neon')));
+    await tester.tap(find.byKey(const ValueKey('pboard-neon')));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(PlayerBoards.instance.of(p.key), BoardSkin.neon);
+    await tester.tap(find.byKey(const ValueKey('sheet-close')));
+    await tester.pumpAndSettle();
+    expect(find.text('CIBLE : NÉON'), findsOneWidget);
+
+    await tester.pumpWidget(app(GamePage(
+      settings: const X01Settings(startScore: 301),
+      players: four.sublist(0, 2),
+    )));
+    await tester.pump(const Duration(seconds: 2));
+    AnimatedDartboard board() =>
+        tester.widget<AnimatedDartboard>(find.byType(AnimatedDartboard));
+    expect(board().skin, BoardSkin.neon);
+    await tester.tap(find.text('SUIVANT'));
+    await tester.pump(const Duration(seconds: 2));
+    expect(board().skin, isNull); // Sophie : style général
+    await PlayerBoards.instance.set(p.key, null);
   });
 
   testWidgets('Joueur : choix de la couleur et d\'un avatar', (tester) async {

@@ -53,6 +53,8 @@ class PracticeLayout extends StatelessWidget {
                         targets: game.finished ? const [] : game.targetZones,
                         win: game.finished,
                         dartColor: _colorOf(game, game.current),
+                        skin: PlayerBoards.instance
+                            .of(game.players[game.current].id),
                       ),
               ),
             ),

@@ -79,6 +79,11 @@ class _TvHomeState extends State<TvHome> {
     if (s?['skin'] is String) {
       BoardSkin.current.value = BoardSkin.byId(s!['skin']);
     }
+    // … la cible de chaque joueur (et celle de l'écran en attente)
+    if (s?['boards'] is Map) {
+      PlayerBoards.instance
+          .applyRemote(s!['boards'], s['idleBoard'] as String?);
+    }
     // … et la mise en page du Cricket
     if (s?['cricket'] is String) {
       CricketStyle.current.value = CricketStyle.fix(s!['cricket']);
