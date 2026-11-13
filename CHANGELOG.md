@@ -2,6 +2,7 @@
 
 ## v0.6.6
 
+- **Écran TV « Ensuite »** : en haut de l'écran de partie, le joueur qui lancera après celui en cours (photo, nom) et ce qu'il lui reste en 01 (ou son score)
 - **Double en ligne (2 contre 2)** : DÉFIER propose 1 CONTRE 1 ou 2 CONTRE 2 ; chaque équipe joue chez elle sur sa cible (un appareil par maison), l'équipier est un compte du téléphone ou un invité, l'adversaire choisit le sien en acceptant ; 01 en **double** (score commun à l'équipe) ou Team Cricket ; SQL `2026-11-13_double.sql`
 - **Barre du haut de l'accueil allégée** : la cible à gauche (pastille plus étroite), puis des boutons encadrés : joueurs (icône + nombre), STATS, TV, SON et PROFIL (photo + rang), avec leur nom sous l'icône ; le reste est dans la tuile OPTIONS
 - **Tuile OPTIONS** dans l'accueil (4 + 4 tuiles) : une page avec les joueurs du téléphone à gauche (fiche, ajout, gestion) et tous les réglages à droite (thème, style de la cible, sons, écran TV, cible Bluetooth, calibration, lumières, diagnostic, partage, mises à jour)

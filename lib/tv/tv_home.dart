@@ -17,6 +17,7 @@ import '../ui/theme.dart';
 import '../ui/wallpaper.dart';
 import '../ui/tournament_page.dart' show TvTournamentView;
 import 'tv_client.dart';
+import 'next_up.dart';
 import 'tv_idle.dart';
 
 /// Écran TV : affiche le code du salon, puis ce que le téléphone envoie
@@ -414,11 +415,14 @@ class _TvGameState extends State<_TvGame> {
               Text(g.title.toUpperCase(), style: Tv.title(30, color: Tv.gold)),
               const SizedBox(width: 14),
               Expanded(
+                flex: 2,
                 child: Text(g.rulesLabel.toUpperCase(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Tv.label(14)),
               ),
+              Flexible(flex: 3, child: NextUpChip(game: g, scale: 1.2)),
+              const SizedBox(width: 12),
               if (widget.state['next'] is String && !g.finished) ...[
                 NextMatchChip(text: widget.state['next'] as String, scale: 1.3),
                 const SizedBox(width: 16),
