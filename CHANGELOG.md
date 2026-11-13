@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.9
+
+- Check-up avant soirée (tous les jeux passés en revue sur téléphone et écran TV, du début aux résultats, à 1, 2, 4, 8 et 10 joueurs) :
+  - écran TV : la barre du haut ne déborde plus avec les noms de jeu longs (Cut Throat caché, Match, Contre la montre, Le Chat et la Souris) : le nom rétrécit
+  - écran TV : les effets (son, vidéo, annonce) portent toujours sur la dernière fléchette, même quand le temps du tour (Contre la montre) ou un changement de cible arrive juste après
+  - écran TV : un 2e téléphone dont l'horloge retarde n'est plus ignoré ; 2 envois dans la même milliseconde ne se perdent plus
+
 ## v0.6.8
 
 - **Écrans TV / tablette : bandeau du tour, vidéos et annonces de nouveau là** : chaque envoi du téléphone arrive 2 fois (serveur et Wi-Fi) avec les champs dans un ordre différent ; l'écran croyait à une nouvelle partie et la reconstruisait sans effets. Doublons ignorés, comparaison indépendante de l'ordre

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -340,15 +341,26 @@ class TvLink extends ChangeNotifier {
     if (last != null) _push(last);
   }
 
+  int _lastAt = 0;
+
+  /// Identifiant de ce téléphone (tiré au démarrage) : l'écran ne compare
+  /// les heures d'envoi qu'entre les envois d'un même téléphone (un autre
+  /// téléphone dont l'horloge retarde n'est pas ignoré).
+  final String _src = '${math.Random().nextInt(1 << 32)}';
+
   void _push(Map<String, dynamic> state) {
     _last = state;
-    // heure d'envoi : l'écran garde le plus récent (serveur ou Wi-Fi)
-    final at = DateTime.now().millisecondsSinceEpoch;
+    // heure d'envoi : l'écran garde le plus récent (serveur ou Wi-Fi) et
+    // ignore un doublon (même heure) → toujours croissante, même pour 2
+    // envois dans la même milliseconde
+    final at = math.max(DateTime.now().millisecondsSinceEpoch, _lastAt + 1);
+    _lastAt = at;
     for (final s in screens) {
       // Chaque écran sait s'il doit jouer le son
       final st = {
         ...state,
         'at': at,
+        'src': _src,
         'sound': soundOn.contains(s.code),
         'skin': BoardSkin.current.value.id,
         'boards': PlayerBoards.instance.all,

@@ -456,9 +456,15 @@ class _TvGameState extends State<_TvGame> {
       _game = gameFromJson(j); // annulation côté téléphone : sans effet
       return;
     }
+    // Effets pour la dernière vraie action (fléchette ou suivant), pas pour
+    // un temps de tour « t:… » ou un changement de cible « c:… »
+    var fx = actions.length - 1;
+    while (fx >= old.length && parseLogEntry(actions[fx]) == null) {
+      fx--;
+    }
     for (var i = old.length; i < actions.length; i++) {
       final a = actions[i];
-      if (!g.applyLogEntry(a) || i != actions.length - 1 || first) continue;
+      if (!g.applyLogEntry(a) || i != fx || first) continue;
       // Après l'image en cours : _update tourne pendant la construction de
       // l'écran, où ni la vidéo (Overlay) ni les annonces ne peuvent
       // s'afficher
@@ -478,7 +484,17 @@ class _TvGameState extends State<_TvGame> {
           padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
           child: Row(
             children: [
-              Text(g.title.toUpperCase(), style: Tv.title(30, color: Tv.gold)),
+              // Nom du jeu : rétréci s'il est long (Cut Throat caché, Le
+              // Chat et la Souris…), jamais coupé
+              Flexible(
+                flex: 3,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(g.title.toUpperCase(),
+                      maxLines: 1, style: Tv.title(30, color: Tv.gold)),
+                ),
+              ),
               const SizedBox(width: 14),
               Expanded(
                 flex: 2,

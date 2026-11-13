@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:granboard_proto/board_service.dart';
+import 'package:granboard_proto/game/cricket.dart';
+import 'package:granboard_proto/game/practice.dart';
 import 'package:granboard_proto/players.dart';
 import 'package:granboard_proto/ui/setup_page.dart';
 import 'package:granboard_proto/ui/setup_widgets.dart';
@@ -76,5 +78,36 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Nom du tournoi'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Chaque jeu : ses réglages s\'affichent sans débordement',
+      (tester) async {
+    final errors = <String>[];
+    Future<void> each(String tile, Iterable<String> keys) async {
+      await open(tester, tile);
+      for (final k in keys) {
+        final f = find.byKey(ValueKey('game-$k'));
+        if (f.evaluate().isEmpty) {
+          errors.add('$tile : $k absent');
+          continue;
+        }
+        await tester.ensureVisible(f);
+        await tester.tap(f);
+        await tester.pump(const Duration(milliseconds: 300));
+        final e = tester.takeException();
+        if (e != null) errors.add('$tile/$k : ${'$e'.split('\n').first}');
+      }
+    }
+
+    await each('cricket', CricketVariant.values.map((v) => v.name));
+    await each('practice', [
+      for (final k in PracticeKind.values)
+        if (!kPracticeInfo[k]!.party) k.name
+    ]);
+    await each('party', [
+      for (final k in PracticeKind.values)
+        if (kPracticeInfo[k]!.party) k.name
+    ]);
+    expect(errors, isEmpty, reason: errors.join('\n'));
   });
 }

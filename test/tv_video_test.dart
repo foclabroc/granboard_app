@@ -123,5 +123,11 @@ void main() {
     tv.debugApplyState({'screen': 'game', 'at': 101});
     expect(n, 2);
     expect(tv.state!['screen'], 'game');
+    // Un autre téléphone dont l'horloge retarde : pas ignoré
+    tv.debugApplyState({'screen': 'lobby', 'at': 50, 'src': 'ami'});
+    expect(n, 3);
+    expect(tv.state!['screen'], 'lobby');
+    tv.debugApplyState({'screen': 'lobby', 'at': 50, 'src': 'ami'});
+    expect(n, 3); // son doublon, si
   });
 }

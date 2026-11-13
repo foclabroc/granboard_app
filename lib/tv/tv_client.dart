@@ -66,6 +66,7 @@ class TvClient extends ChangeNotifier implements CamPort {
   }
 
   int _lastAt = 0;
+  String? _lastSrc;
 
   /// Nouvel état (serveur ou Wi-Fi) : le plus récent gagne (`at` = heure
   /// d'envoi du téléphone). Le même envoi arrive souvent 2 fois (serveur
@@ -73,6 +74,12 @@ class TvClient extends ChangeNotifier implements CamPort {
   /// effets : ni bandeau, ni vidéo).
   void _applyState(Map<String, dynamic> s) {
     final at = (s['at'] as num?)?.toInt() ?? 0;
+    // Autre téléphone (ou téléphone redémarré) : son horloge peut retarder
+    final src = s['src'] as String?;
+    if (src != null && src != _lastSrc) {
+      _lastSrc = src;
+      _lastAt = 0;
+    }
     if (at != 0 && at <= _lastAt) return;
     if (at != 0) _lastAt = at;
     state = s;
@@ -148,6 +155,7 @@ class TvClient extends ChangeNotifier implements CamPort {
 
   /// Simule un état reçu (tests, captures).
   @visibleForTesting
+
   /// Tests : état reçu comme par le serveur ou le Wi-Fi.
   void debugApplyState(Map<String, dynamic> s) => _applyState(s);
 
