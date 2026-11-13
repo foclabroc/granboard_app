@@ -125,33 +125,18 @@ class _PlayersPanel extends StatelessWidget {
             : Column(
                 children: [
                   Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: GridView.extent(
+                      maxCrossAxisExtent: 104,
+                      childAspectRatio: 0.78,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      padding: const EdgeInsets.all(10),
                       children: [
                         for (final p in store.players)
-                          ListTile(
+                          _PlayerCard(
                             key: ValueKey('opt-player-${p.id}'),
-                            dense: true,
-                            leading: PlayerAvatar.of(p, size: 34),
-                            title: Row(
-                              children: [
-                                Flexible(
-                                  child: Text(p.name.toUpperCase(),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Tv.title(18)),
-                                ),
-                                if (store.isOwner(p)) ...[
-                                  const SizedBox(width: 6),
-                                  Icon(Icons.star, size: 16, color: Tv.gold),
-                                ],
-                              ],
-                            ),
-                            subtitle: p.expired
-                                ? Text('À RECONNECTER',
-                                    style: Tv.label(11, color: Tv.red))
-                                : RankChip(p.key),
-                            trailing: const Icon(Icons.chevron_right),
+                            player: p,
+                            owner: store.isOwner(p),
                             onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -175,6 +160,75 @@ class _PlayersPanel extends StatelessWidget {
                   ),
                 ],
               ),
+      ),
+    );
+  }
+}
+
+/// Carte d'un joueur dans la grille : photo, nom, rang.
+class _PlayerCard extends StatelessWidget {
+  final PlayerProfile player;
+  final bool owner;
+  final VoidCallback onTap;
+  const _PlayerCard(
+      {super.key,
+      required this.player,
+      required this.owner,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = player;
+    final color = PlayerStore.instance.colorOf(p.key);
+    return Material(
+      color: Tv.panel2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+            color: owner ? Tv.gold : color.withValues(alpha: 0.5),
+            width: owner ? 1.5 : 1),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(6, 8, 6, 6),
+          child: Column(
+            children: [
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, c) => Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      PlayerAvatar.of(p,
+                          size: c.maxHeight.clamp(24.0, 64.0).toDouble()),
+                      if (owner)
+                        Positioned(
+                          right: -4,
+                          top: -4,
+                          child: Icon(Icons.star, size: 18, color: Tv.gold),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(p.name.toUpperCase(),
+                    maxLines: 1, style: Tv.title(16)),
+              ),
+              SizedBox(
+                height: 18,
+                child: p.expired
+                    ? FittedBox(
+                        child: Text('À RECONNECTER',
+                            style: Tv.label(10, color: Tv.red)))
+                    : FittedBox(child: RankChip(p.key, size: 11)),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
