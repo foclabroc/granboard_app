@@ -5,7 +5,19 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../ui/theme.dart';
-import 'tv_client.dart';
+
+/// Ce dont la caméra a besoin pour parler à l'autre appareil : un écran
+/// ([TvClient]) ou l'appareil qui pilote ([HostCamPort] dans tv_link.dart).
+abstract class CamPort {
+  /// Identifiant de cet appareil dans l'état « cam » (code d'écran, ou
+  /// 'phone' pour l'appareil qui pilote).
+  String? get camId;
+  Stream<Map<String, dynamic>> get signals;
+  Future<bool> signal(String to, Map<String, dynamic> msg);
+  Future<void> fetchSignals();
+  List<dynamic> get ice;
+  set signalsWanted(bool v);
+}
 
 /// Caméra d'un écran (tablette) affichée sur un autre écran (TV), à la
 /// demande du téléphone qui pilote (état « cam » : {from, to, sid, front,
@@ -19,7 +31,7 @@ import 'tv_client.dart';
 /// d'une ancienne session sont ignorés. Image seulement, pas de son.
 class ScreenCam extends ChangeNotifier {
   ScreenCam(this.client);
-  final TvClient client;
+  final CamPort client;
 
   /// Faux en test (pas de WebRTC) : seul l'emplacement est affiché.
   static bool enabled = true;
@@ -49,7 +61,7 @@ class ScreenCam extends ChangeNotifier {
 
   /// Nouvel état du téléphone.
   void update(Map? c) {
-    final me = client.code;
+    final me = client.camId;
     String? r;
     if (c != null && me != null) {
       if (c['from'] == me) {
@@ -300,7 +312,10 @@ class ScreenCam extends ChangeNotifier {
 /// au-dessus de tout dans un Stack.
 class ScreenCamLayer extends StatelessWidget {
   final ScreenCam cam;
-  const ScreenCamLayer({super.key, required this.cam});
+
+  /// Appareil qui pilote (aperçu en haut, plus petit).
+  final bool host;
+  const ScreenCamLayer({super.key, required this.cam, this.host = false});
 
   @override
   Widget build(BuildContext context) {
@@ -311,19 +326,23 @@ class ScreenCamLayer extends StatelessWidget {
         if (c == null || cam.role == null) return const SizedBox.shrink();
         return LayoutBuilder(builder: (context, box) {
           if (cam.role == 'send') {
-            final w = (box.maxWidth * 0.18).clamp(120.0, 220.0);
+            // appareil qui pilote : petit aperçu en haut au milieu (les
+            // boutons de la partie restent libres)
+            final w = host
+                ? (box.maxWidth * 0.14).clamp(96.0, 150.0)
+                : (box.maxWidth * 0.18).clamp(120.0, 220.0);
+            final frame = _Frame(
+              key: const ValueKey('cam-preview'),
+              width: w,
+              cam: cam,
+              label: 'EN DIRECT',
+              live: true,
+            );
             return Stack(children: [
-              Positioned(
-                right: 12,
-                bottom: 12,
-                child: _Frame(
-                  key: const ValueKey('cam-preview'),
-                  width: w,
-                  cam: cam,
-                  label: 'EN DIRECT',
-                  live: true,
-                ),
-              ),
+              host
+                  ? Positioned(
+                      top: 4, left: (box.maxWidth - w) / 2, child: frame)
+                  : Positioned(right: 12, bottom: 12, child: frame),
             ]);
           }
           final pos = '${c['pos'] ?? 'tr'}';
@@ -347,7 +366,7 @@ class ScreenCamLayer extends StatelessWidget {
                 key: const ValueKey('cam-view'),
                 width: w,
                 cam: cam,
-                label: 'CAMÉRA ${'${c['name'] ?? ''}'.toUpperCase()}',
+                label: 'CAMÉRA ${'${c['name'] ?? ''}'.toUpperCase()}'.trim(),
               ),
             ),
           ]);

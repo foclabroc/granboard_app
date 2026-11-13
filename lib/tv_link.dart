@@ -9,6 +9,7 @@ import 'game/darts_game.dart';
 import 'lan.dart';
 import 'players.dart';
 import 'server.dart';
+import 'tv/screen_cam.dart';
 import 'ui/theme.dart';
 import 'ui/wallpaper.dart';
 import 'ui/cricket_view.dart' show CricketStyle;
@@ -179,7 +180,10 @@ class TvLink extends ChangeNotifier {
 
   Future<void> unlink(String code) async {
     screens.removeWhere((s) => s.code == code);
-    if (cam?['from'] == code || cam?['to'] == code) cam = null;
+    if (cam?['from'] == code || cam?['to'] == code) {
+      cam = null;
+      _syncHostCam();
+    }
     _pending.remove(code);
     await _save();
     _resend(); // le son a pu changer d'écran
@@ -188,6 +192,7 @@ class TvLink extends ChangeNotifier {
   Future<void> unlinkAll() async {
     screens.clear();
     cam = null;
+    _syncHostCam();
     _pending.clear();
     await _save();
   }
@@ -227,7 +232,35 @@ class TvLink extends ChangeNotifier {
   static const camPositions = ['tr', 'tl', 'br', 'bl', 'full'];
   static const camSizes = ['s', 'm', 'l'];
 
-  /// Lance la caméra de [from] sur [to] (caméra arrière par défaut).
+  /// Caméra de cet appareil (il filme pour un écran) : `cam.from` = [phone].
+  ScreenCam? hostCam;
+
+  void _syncHostCam() {
+    final c = cam;
+    final to = c?['from'] == phone
+        ? screens.where((s) => s.code == c!['to'] && !s.wifiOnly).firstOrNull
+        : null;
+    final cur = hostCam;
+    if (to == null) {
+      if (cur != null) {
+        hostCam = null;
+        cur.dispose();
+        (cur.client as HostCamPort).close();
+      }
+      return;
+    }
+    if (cur == null || (cur.client as HostCamPort).screen.code != to.code) {
+      if (cur != null) {
+        cur.dispose();
+        (cur.client as HostCamPort).close();
+      }
+      hostCam = ScreenCam(HostCamPort(to));
+    }
+    hostCam!.update(c);
+  }
+
+  /// Lance la caméra de [from] ([phone] = cet appareil) sur [to] (caméra
+  /// arrière par défaut).
   void startCam(String from, String to) {
     if (from == to) return;
     final src = screens.where((s) => s.code == from).firstOrNull;
@@ -238,8 +271,9 @@ class TvLink extends ChangeNotifier {
       'front': cam?['front'] ?? false,
       'pos': cam?['pos'] ?? 'tr',
       'size': cam?['size'] ?? 'm',
-      'name': src?.name ?? 'Écran',
+      'name': src?.name ?? '',
     };
+    _syncHostCam();
     notifyListeners();
     _resendOrLobby();
   }
@@ -247,6 +281,7 @@ class TvLink extends ChangeNotifier {
   void stopCam() {
     if (cam == null) return;
     cam = null;
+    _syncHostCam();
     notifyListeners();
     _resendOrLobby();
   }
@@ -261,6 +296,7 @@ class TvLink extends ChangeNotifier {
       if (pos != null) 'pos': pos,
       if (size != null) 'size': size,
     };
+    _syncHostCam();
     notifyListeners();
     _resendOrLobby();
   }
@@ -430,5 +466,85 @@ class TvLink extends ChangeNotifier {
     } finally {
       _sending.remove(s.code);
     }
+  }
+}
+
+/// L'appareil qui pilote filme pour l'écran [screen] : il parle à l'écran
+/// avec sa clé de liaison (`gb_tv_host_signal` / `gb_tv_host_signals`),
+/// messages relus toutes les 1,5 s pendant la caméra.
+class HostCamPort implements CamPort {
+  HostCamPort(this.screen);
+  final TvScreen screen;
+
+  final _ctrl = StreamController<Map<String, dynamic>>.broadcast();
+  Timer? _poll;
+  int _since = 0;
+  bool _busy = false;
+  bool _closed = false;
+
+  @override
+  String? get camId => TvLink.phone;
+
+  @override
+  Stream<Map<String, dynamic>> get signals => _ctrl.stream;
+
+  @override
+  List<dynamic> ice = const [];
+
+  @override
+  set signalsWanted(bool v) {
+    _poll?.cancel();
+    _poll = v && !_closed
+        ? Timer.periodic(
+            const Duration(milliseconds: 1500), (_) => fetchSignals())
+        : null;
+  }
+
+  @override
+  Future<void> fetchSignals() async {
+    if (_busy || _closed) return;
+    _busy = true;
+    try {
+      final r = Map<String, dynamic>.from(await GbServer.rpc(
+          'gb_tv_host_signals', {
+        'p_code': screen.code,
+        'p_host_key': screen.hostKey,
+        'p_since': _since
+      }) as Map);
+      if (r['ice'] is List) ice = r['ice'] as List;
+      for (final e in (r['signals'] as List? ?? const [])) {
+        final m = Map<String, dynamic>.from(e as Map);
+        _since = m['id'] is num && (m['id'] as num) > _since
+            ? (m['id'] as num).toInt()
+            : _since;
+        if (!_closed) {
+          _ctrl.add({
+            ...Map<String, dynamic>.from(m['msg'] as Map),
+            'from': m['from']
+          });
+        }
+      }
+    } catch (_) {
+    } finally {
+      _busy = false;
+    }
+  }
+
+  @override
+  Future<bool> signal(String to, Map<String, dynamic> msg) async {
+    if (_closed) return false;
+    try {
+      await GbServer.rpc('gb_tv_host_signal',
+          {'p_code': screen.code, 'p_host_key': screen.hostKey, 'p_msg': msg});
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void close() {
+    _closed = true;
+    _poll?.cancel();
+    _ctrl.close();
   }
 }

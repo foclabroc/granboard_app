@@ -1,4 +1,5 @@
--- Foclaboard : caméra d'un écran (tablette) affichée sur un autre écran (TV).
+-- Foclaboard : caméra d'un écran (tablette) affichée sur un autre écran (TV),
+-- ou caméra de l'appareil qui pilote (tablette fixe reliée à la cible) sur un écran.
 --   • le téléphone qui pilote demande aux 2 écrans de se connecter (état TV
 --     « cam ») ; les écrans s'échangent les messages de mise en relation de
 --     la vidéo (WebRTC) ici, puis l'image passe en direct par le Wi-Fi,
@@ -38,6 +39,19 @@ begin
    where code = upper(p_code) and tv_key_hash = gb__sha(coalesce(p_key, ''));
   if v_me.code is null then
     raise exception 'tv_gone';
+  end if;
+  -- vers l'appareil qui pilote (il filme : état « cam » {from: 'phone', to: moi})
+  if upper(p_to) = 'PHONE' then
+    if coalesce(v_me.state->'cam'->>'from', '') <> 'phone'
+       or coalesce(v_me.state->'cam'->>'to', '') <> v_me.code then
+      raise exception 'tv_peer';
+    end if;
+    if octet_length(p_msg::text) > 16384 then
+      raise exception 'too_big';
+    end if;
+    insert into gb_tv_signals (to_code, from_code, msg)
+    values ('h:' || v_me.code, v_me.code, p_msg) returning id into v_id;
+    return v_id;
   end if;
   select * into v_to from gb_tv where code = upper(p_to);
   -- le téléphone qui pilote a demandé la caméra entre ces 2 écrans
@@ -84,6 +98,60 @@ begin
     'signals', v_list);
 end $$;
 
+-- L'appareil qui pilote (clé de liaison de l'écran) filme et parle à l'écran
+create or replace function public.gb_tv_host_signal(p_code text, p_host_key text, p_msg jsonb)
+ returns bigint
+ language plpgsql security definer
+ set search_path to 'public'
+as $$
+declare
+  v gb_tv;
+  v_id bigint;
+begin
+  select * into v from gb_tv
+   where code = upper(p_code) and host_key_hash = gb__sha(coalesce(p_host_key, ''));
+  if v.code is null then
+    raise exception 'tv_host';
+  end if;
+  if octet_length(p_msg::text) > 16384 then
+    raise exception 'too_big';
+  end if;
+  delete from gb_tv_signals where created_at < now() - interval '5 minutes';
+  insert into gb_tv_signals (to_code, from_code, msg)
+  values (v.code, 'phone', p_msg) returning id into v_id;
+  perform rc__rt_safe(gb__tv_topic(v.code), 'gb', jsonb_build_object('sig', v_id));
+  return v_id;
+end $$;
+
+-- Messages de l'écran pour l'appareil qui pilote : {ice, signals: [{id, from, msg}]}
+create or replace function public.gb_tv_host_signals(p_code text, p_host_key text, p_since bigint default 0)
+ returns jsonb
+ language plpgsql security definer
+ set search_path to 'public'
+as $$
+declare
+  v_code text;
+  v_list jsonb;
+begin
+  select code into v_code from gb_tv
+   where code = upper(p_code) and host_key_hash = gb__sha(coalesce(p_host_key, ''));
+  if v_code is null then
+    return jsonb_build_object('error', 'tv_host');
+  end if;
+  select coalesce(jsonb_agg(jsonb_build_object('id', id, 'from', from_code, 'msg', msg) order by id), '[]')
+    into v_list
+    from gb_tv_signals
+   where to_code = 'h:' || v_code and id > coalesce(p_since, 0)
+     and created_at > now() - interval '5 minutes';
+  return jsonb_build_object(
+    'ice', coalesce((select value from gb_config where key = 'ice'), '[]'::jsonb),
+    'signals', v_list);
+end $$;
+
+alter function public.gb_tv_host_signal(text, text, jsonb) owner to rc_owner;
+alter function public.gb_tv_host_signals(text, text, bigint) owner to rc_owner;
+grant execute on function public.gb_tv_host_signal(text, text, jsonb) to anon;
+grant execute on function public.gb_tv_host_signals(text, text, bigint) to anon;
 alter function public.gb_tv_signal(text, text, text, jsonb) owner to rc_owner;
 alter function public.gb_tv_signals(text, text, bigint) owner to rc_owner;
 grant execute on function public.gb_tv_signal(text, text, text, jsonb) to anon;

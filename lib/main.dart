@@ -9,6 +9,7 @@ import 'board_service.dart';
 import 'media.dart';
 import 'online/online.dart';
 import 'players.dart';
+import 'tv/screen_cam.dart';
 import 'tv/tv_home.dart';
 import 'tv_link.dart';
 import 'ui/cricket_view.dart' show CricketStyle;
@@ -115,7 +116,18 @@ class GranBoardAppState extends State<GranBoardApp> {
       title: 'Foclaboard',
       debugShowCheckedModeBanner: false,
       theme: Tv.theme(),
-      builder: Tv.appBuilder,
+      builder: (context, child) => Tv.appBuilder(
+          context,
+          // caméra de cet appareil envoyée à la TV : petit aperçu par-dessus
+          Stack(fit: StackFit.expand, children: [
+            child ?? const SizedBox.shrink(),
+            ListenableBuilder(
+              listenable: TvLink.instance,
+              builder: (context, _) => TvLink.instance.hostCam == null
+                  ? const SizedBox.shrink()
+                  : ScreenCamLayer(cam: TvLink.instance.hostCam!, host: true),
+            ),
+          ])),
       home: UpdateGate(
         key: updateGateKey,
         child: tv

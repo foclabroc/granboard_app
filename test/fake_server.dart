@@ -222,6 +222,19 @@ class FakeServer {
         if (me == null || me['key'] != b['p_key']) {
           throw const ApiError('tv_gone');
         }
+        if (b['p_to'] == 'phone') {
+          final c = (me['state'] as Map?)?['cam'];
+          if (c is! Map || c['from'] != 'phone' || c['to'] != b['p_code']) {
+            throw const ApiError('tv_peer');
+          }
+          tvSignals.add({
+            'id': tvSignals.length + 1,
+            'to': 'h:${b['p_code']}',
+            'from': b['p_code'],
+            'msg': b['p_msg'],
+          });
+          return tvSignals.length;
+        }
         bool asked(Map? st) {
           final c = st?['cam'];
           return c is Map &&
@@ -239,6 +252,32 @@ class FakeServer {
           'msg': b['p_msg'],
         });
         return tvSignals.length;
+      case 'gb_tv_host_signal':
+        final r = tvRooms[b['p_code']];
+        if (r == null || r['host'] != b['p_host_key']) {
+          throw const ApiError('tv_host');
+        }
+        tvSignals.add({
+          'id': tvSignals.length + 1,
+          'to': b['p_code'],
+          'from': 'phone',
+          'msg': b['p_msg'],
+        });
+        return tvSignals.length;
+      case 'gb_tv_host_signals':
+        final r = tvRooms[b['p_code']];
+        if (r == null || r['host'] != b['p_host_key']) {
+          return {'error': 'tv_host'};
+        }
+        return {
+          'ice': const [],
+          'signals': [
+            for (final m in tvSignals)
+              if (m['to'] == 'h:${b['p_code']}' &&
+                  (m['id'] as int) > (b['p_since'] as int))
+                {'id': m['id'], 'from': m['from'], 'msg': m['msg']}
+          ],
+        };
       case 'gb_tv_signals':
         final r = tvRooms[b['p_code']];
         if (r == null || r['key'] != b['p_key']) return {'error': 'tv_gone'};

@@ -2,7 +2,7 @@
 
 ## v0.6.6
 
-- **Caméra de la tablette sur la TV** : dans la fenêtre TV du téléphone, choisir l'écran qui filme et celui qui affiche, ALLUMER LA CAMÉRA ; caméra avant / arrière, position (4 coins ou plein écran) et taille ; l'image passe directement d'un écran à l'autre par le Wi-Fi (sans le son), l'écran qui filme montre un petit aperçu « EN DIRECT »
+- **Caméra de la tablette sur la TV** : dans la fenêtre TV du téléphone, choisir l'écran qui filme et celui qui affiche, ALLUMER LA CAMÉRA ; caméra avant / arrière, position (4 coins ou plein écran) et taille ; l'image passe directement d'un écran à l'autre par le Wi-Fi (sans le son), l'écran qui filme montre un petit aperçu « EN DIRECT » ; l'appareil qui pilote (tablette fixe reliée à la cible, téléphone) peut aussi filmer lui-même pour la TV (« Cet appareil », aperçu en haut au milieu)
 - **Le Chat et la Souris** (fête, 2 joueurs) : la souris part avec 3, 5 ou 7 cases d'avance sur le tour 1 → 20 → bull, le chat doit la rattraper (simple 1 case, double 2, triple 3) ; la souris gagne au bull ou après 20 manches
 - **Contre la montre** (entraînement) : finir 301 / 501 / 701 (Double ou Single Out) le plus vite possible ; chrono de chaque joueur pendant ses tours (de « suivant » à sa dernière fléchette), fin conseillée allumée, meilleur temps gardé et classé
 - **Cible de chaque joueur** : bouton CIBLE dans la fiche du joueur (« Par défaut » = style des options, ou l'un des 9 styles) ; pendant son tour, la cible affichée (téléphone et TV) est la sienne ; celle du profil principal s'affiche sur l'écran TV en attente ; gardée sur le serveur avec le compte : le joueur la retrouve chez un ami, sur la TV et en ligne

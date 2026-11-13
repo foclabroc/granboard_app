@@ -8,10 +8,11 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../lan.dart';
 import '../server.dart';
+import 'screen_cam.dart' show CamPort;
 
 /// Côté TV : ouvre un salon (code à afficher), écoute le relais temps réel
 /// du serveur et relit l'état envoyé par le téléphone.
-class TvClient extends ChangeNotifier {
+class TvClient extends ChangeNotifier implements CamPort {
   TvClient(
       {this.realtime = true,
       this.deviceName = 'TV',
@@ -198,17 +199,24 @@ class TvClient extends ChangeNotifier {
 
   final _signals = StreamController<Map<String, dynamic>>.broadcast();
 
+  @override
+  String? get camId => code;
+
   /// Messages reçus d'un autre écran : {from, …message}.
+  @override
   Stream<Map<String, dynamic>> get signals => _signals.stream;
 
   /// Vrai pendant une liaison caméra : les messages sont relus.
+  @override
   bool signalsWanted = false;
 
   /// Serveurs STUN/TURN (gb_config).
+  @override
   List<dynamic> ice = const [];
   int _sigSince = 0;
   bool _sigFetching = false;
 
+  @override
   Future<void> fetchSignals() async {
     final c = code, k = _key;
     if (c == null || k == null || _sigFetching) return;
@@ -230,7 +238,9 @@ class TvClient extends ChangeNotifier {
     }
   }
 
-  /// Envoie un message à l'écran [to] (relié au même téléphone).
+  /// Envoie un message à l'écran [to] (relié au même téléphone), ou à
+  /// l'appareil qui pilote ([to] = 'phone').
+  @override
   Future<bool> signal(String to, Map<String, dynamic> msg) async {
     final c = code, k = _key;
     if (c == null || k == null) return false;

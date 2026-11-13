@@ -93,6 +93,46 @@ void main() {
     camTab.dispose();
   });
 
+  test('Caméra de l\'appareil qui pilote → TV', () async {
+    final link = TvLink.instance;
+    link.startCam(TvLink.phone, tv.code!);
+    expect(link.hostCam, isNotNull);
+    expect(link.hostCam!.role, 'send');
+    await settle();
+    await tv.fetch();
+    final c = tv.state!['cam'] as Map;
+    expect(c['from'], TvLink.phone);
+    final camTv = ScreenCam(tv)..update(c);
+    expect(camTv.role, 'recv');
+
+    // l'appareil qui pilote → la TV
+    final port = link.hostCam!.client as HostCamPort;
+    final got = <Map>[];
+    tv.signals.listen(got.add);
+    expect(
+        await port.signal(tv.code!, {'t': 'offer', 'sid': c['sid']}), isTrue);
+    await tv.fetchSignals();
+    await settle();
+    expect(got.single['from'], 'phone');
+
+    // la TV → l'appareil qui pilote
+    final back = <Map>[];
+    port.signals.listen(back.add);
+    expect(await tv.signal('phone', {'t': 'answer', 'sid': c['sid']}), isTrue);
+    await port.fetchSignals();
+    await settle();
+    expect(back.single['t'], 'answer');
+    expect(back.single['from'], tv.code);
+
+    // l'écran ne parle pas à l'appareil qui pilote sans demande
+    link.stopCam();
+    expect(link.hostCam, isNull);
+    await settle();
+    await tv.fetch();
+    expect(await tv.signal('phone', {'t': 'hello'}), isFalse);
+    camTv.dispose();
+  });
+
   testWidgets('Écran TV : image de la tablette dans le coin, plein écran',
       (tester) async {
     tester.view.physicalSize = const Size(960, 540);
@@ -147,7 +187,9 @@ void main() {
         theme: Tv.theme(),
         home: const Scaffold(body: SingleChildScrollView(child: CamPanel()))));
     await tester.pump();
-    // par défaut : la tablette filme, la TV affiche
+    // par défaut : la tablette (écran) filme, la TV affiche ; cet
+    // appareil peut aussi filmer
+    expect(find.byKey(const ValueKey('cam-from-phone')), findsOneWidget);
     expect(
         tester
             .widget<ChoiceChip>(find.byKey(ValueKey('cam-from-${tab.code}')))

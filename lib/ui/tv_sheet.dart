@@ -201,7 +201,7 @@ class _TvSheetState extends State<_TvSheet> {
               const TvSection('Le son sort sur (un ou plusieurs)',
                   padding: EdgeInsets.only(top: 16, bottom: 8)),
               const SoundTargetPicker(),
-              if (link.camScreens.length >= 2) const CamPanel(),
+              if (link.camScreens.isNotEmpty) const CamPanel(),
             ] else ...[
               const SizedBox(height: 12),
               TextButton.icon(
@@ -251,12 +251,23 @@ class _CamPanelState extends State<CamPanel> {
       builder: (context, _) {
         final list = link.camScreens;
         final cam = link.cam;
+        // sources : cet appareil + les écrans ; cibles : les écrans
+        final sources = <(String, String, IconData)>[
+          (TvLink.phone, 'Cet appareil', Icons.phone_android),
+          for (final s in list)
+            (s.code, s.label, s.name == 'TV' ? Icons.tv : Icons.tablet),
+        ];
         final codes = list.map((s) => s.code).toList();
-        // par défaut : la tablette filme, la TV affiche
+        // par défaut : la tablette (écran) filme si 2 écrans, sinon cet
+        // appareil ; la TV affiche
         var from = cam?['from'] as String? ?? _from;
-        if (from == null || !codes.contains(from)) {
-          from = (list.where((s) => s.name != 'TV').firstOrNull ?? list.first)
-              .code;
+        if (from == null ||
+            (from != TvLink.phone && !codes.contains(from)) ||
+            (from != TvLink.phone && list.length < 2)) {
+          from = list.length >= 2
+              ? (list.where((s) => s.name != 'TV').firstOrNull?.code ??
+                  TvLink.phone)
+              : TvLink.phone;
         }
         var to = cam?['to'] as String? ?? _to;
         if (to == null || to == from || !codes.contains(to)) {
@@ -267,19 +278,22 @@ class _CamPanelState extends State<CamPanel> {
               .code;
         }
         final on = cam != null;
+        final targets = [
+          for (final x in sources)
+            if (x.$1 != TvLink.phone && x.$1 != from) x
+        ];
 
-        Widget chips(String sel, Iterable<TvScreen> items, String key,
-                void Function(String) pick) =>
+        Widget chips(String sel, Iterable<(String, String, IconData)> items,
+                String key, void Function(String) pick) =>
             Wrap(spacing: 6, runSpacing: 4, children: [
               for (final s in items)
                 ChoiceChip(
-                  key: ValueKey('$key-${s.code}'),
+                  key: ValueKey('$key-${s.$1}'),
                   showCheckmark: false,
-                  avatar:
-                      Icon(s.name == 'TV' ? Icons.tv : Icons.tablet, size: 18),
-                  label: Text(s.label),
-                  selected: s.code == sel,
-                  onSelected: (_) => pick(s.code),
+                  avatar: Icon(s.$3, size: 18),
+                  label: Text(s.$2),
+                  selected: s.$1 == sel,
+                  onSelected: (_) => pick(s.$1),
                 ),
             ]);
 
@@ -294,7 +308,7 @@ class _CamPanelState extends State<CamPanel> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const TvSection('Caméra d\'un écran sur un autre',
+            const TvSection('Caméra sur un écran',
                 padding: EdgeInsets.only(top: 16, bottom: 8)),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -305,7 +319,14 @@ class _CamPanelState extends State<CamPanel> {
                     children: [
                       Text('FILMER AVEC', style: Tv.label(12)),
                       const SizedBox(height: 4),
-                      chips(from, list, 'cam-from', (c) {
+                      chips(
+                          from,
+                          [
+                            for (final x in sources)
+                              // un écran ne filme que s'il en reste un pour afficher
+                              if (x.$1 == TvLink.phone || list.length >= 2) x
+                          ],
+                          'cam-from', (c) {
                         final t = c == to
                             ? list.firstWhere((s) => s.code != c).code
                             : to!;
@@ -321,8 +342,7 @@ class _CamPanelState extends State<CamPanel> {
                     children: [
                       Text('AFFICHER SUR', style: Tv.label(12)),
                       const SizedBox(height: 4),
-                      chips(to, list.where((s) => s.code != from), 'cam-to',
-                          (c) => restart(from!, c)),
+                      chips(to, targets, 'cam-to', (c) => restart(from!, c)),
                     ],
                   ),
                 ),
@@ -382,8 +402,8 @@ class _CamPanelState extends State<CamPanel> {
             ],
             const SizedBox(height: 6),
             Text(
-                'L\'image passe directement d\'un écran à l\'autre par le Wi-Fi (sans le son). '
-                'La première fois, l\'écran qui filme demande l\'autorisation caméra.',
+                'L\'image passe directement d\'un appareil à l\'autre par le Wi-Fi (sans le son). '
+                'La première fois, l\'appareil qui filme demande l\'autorisation caméra.',
                 style: Tv.label(12)),
           ],
         );
