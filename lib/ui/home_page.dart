@@ -230,6 +230,15 @@ class _HomePageState extends State<HomePage>
                           ],
                         ),
                       ),
+                      ListenableBuilder(
+                        listenable: PlayerStore.instance,
+                        builder: (context, _) => _BarButton(
+                          key: const ValueKey('bar-players'),
+                          icon: const Icon(Icons.group_add, size: 24),
+                          label: '${PlayerStore.instance.players.length}',
+                          onTap: () => _open(const PlayersPage()),
+                        ),
+                      ),
                       _BarButton(
                         key: const ValueKey('bar-stats'),
                         icon: const Icon(Icons.leaderboard, size: 24),
