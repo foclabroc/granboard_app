@@ -302,7 +302,10 @@ class GameFx {
   static int? _practiceLeft(PracticeGame g) {
     final st = g.stateOf(g.current);
     return switch (g.settings.kind) {
-      PracticeKind.checkout121 || PracticeKind.spider => st.v['rem'],
+      PracticeKind.checkout121 ||
+      PracticeKind.spider ||
+      PracticeKind.timeAttack =>
+        st.v['rem'],
       PracticeKind.kickDown => g.settings.goalOrDefault - st.score,
       _ => null,
     };

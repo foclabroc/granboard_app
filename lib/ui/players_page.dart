@@ -444,7 +444,7 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
                             Chip(
                               label: Text(
                                   '${kPracticeInfo[PracticeKind.values.where((k) => k.name == e.key).firstOrNull]?.name ?? e.key} : '
-                                  '${(e.value as Map)['best']}',
+                                  '${practiceScoreText('${e.key}', (e.value as Map)['best'] as num? ?? 0)}',
                                   style: Tv.title(15)),
                             ),
                         ],

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../audio.dart';
@@ -283,10 +285,15 @@ class _Panel extends StatelessWidget {
               ],
             ),
           ),
-          Text(status,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Tv.title(16, color: statusColor)),
+          // Contre la montre : le chrono défile
+          g.clockRunning && t.note == null && !g.turnOver
+              ? _Ticking(
+                  text: () => g.infoOf(g.current),
+                  style: Tv.title(16, color: statusColor))
+              : Text(status,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Tv.title(16, color: statusColor)),
           const SizedBox(height: 6),
           Row(
             children: [
@@ -559,4 +566,35 @@ class _PracticeResultsPageState extends State<PracticeResultsPage> {
             ),
     );
   }
+}
+
+/// Texte relu 4 fois par seconde (chrono).
+class _Ticking extends StatefulWidget {
+  final String Function() text;
+  final TextStyle style;
+  const _Ticking({required this.text, required this.style});
+
+  @override
+  State<_Ticking> createState() => _TickingState();
+}
+
+class _TickingState extends State<_Ticking> {
+  late final Timer _t =
+      Timer.periodic(const Duration(milliseconds: 250), (_) => setState(() {}));
+
+  @override
+  void initState() {
+    super.initState();
+    _t;
+  }
+
+  @override
+  void dispose() {
+    _t.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Text(widget.text(),
+      maxLines: 1, overflow: TextOverflow.ellipsis, style: widget.style);
 }

@@ -704,6 +704,46 @@ String practiceRules(PracticeSettings s) {
             'une vie en moins, et une nouvelle bombe part chez le suivant.',
         '- 3 vies chacun, à 0 tu es éliminé.',
       ],
+    PracticeKind.catMouse => [
+        '# BUT',
+        'Souris : t\'échapper en arrivant au bull. Chat : rattraper la souris.',
+        '# RÔLES',
+        '- Le 1er joueur est la SOURIS, le 2e le CHAT.',
+        '- La souris part avec ${s.goalOrDefault} cases d\'avance (elle vise '
+            'directement le ${s.goalOrDefault + 1}), le chat part du 1.',
+        '# AVANCER',
+        '- Chacun vise sa case : le 1, puis le 2… jusqu\'au 20, puis le bull.',
+        '- Simple = 1 case, double = 2 cases, triple = 3 cases (sans dépasser '
+            'le 20 : le bull est obligatoire). On peut avancer plusieurs fois '
+            'dans le même tour.',
+        '# FIN',
+        '- Le chat arrive sur la case de la souris (ou la dépasse) : ATTRAPÉE, '
+            'le chat gagne tout de suite.',
+        '- La souris touche le bull : elle s\'échappe et gagne.',
+        '- Après 20 manches, la souris gagne si elle court toujours.',
+      ],
+    PracticeKind.timeAttack => [
+        '# BUT',
+        'Finir ${s.goalOrDefault} le plus vite possible.',
+        '# CHRONO',
+        '- Ton chrono tourne pendant tes tours : de ton « suivant » (ou ta 1re '
+            'fléchette au tout début) jusqu\'à ta dernière fléchette du tour.',
+        '- Le temps pour aller chercher tes fléchettes ne compte pas : appuie '
+            'sur « suivant » quand tu es prêt.',
+        '# RÈGLES',
+        s.has('single')
+            ? '- Single Out : n\'importe quelle fléchette peut finir.'
+            : '- Double Out : il faut finir sur un double (ou le centre du bull).',
+        '- Bust (dépasser, ${s.has('single') ? '' : 'rester à 1, '}finir sur une '
+            'mauvaise fléchette) : retour au score du début de la manche, et le '
+            'tour s\'arrête.',
+        '- La fin conseillée s\'affiche et s\'allume sur la cible.',
+        '- À plusieurs : chacun son chrono, le meilleur temps gagne. 60 manches '
+            'au plus.',
+        '# STATS',
+        '- Ton meilleur temps est gardé et classé (onglet entraînement des '
+            'classements).',
+      ],
   };
   return [
     ...body,

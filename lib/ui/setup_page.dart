@@ -950,7 +950,7 @@ class _SetupPageState extends State<SetupPage> {
       return [
         if (i.goals != null)
           SetupPick<int>(
-              label: 'Objectif',
+              label: i.goalLabel,
               value: _pGoal ?? i.defaultGoal!,
               values: i.goals!,
               text: (n) => n == 0 ? 'En 10 manches' : '$n',
@@ -1519,7 +1519,7 @@ class _SetupPageState extends State<SetupPage> {
       ),
       if (info.goals != null)
         ListTile(
-          title: Text('Objectif', style: Tv.title(17)),
+          title: Text(info.goalLabel, style: Tv.title(17)),
           trailing: DropdownButton<int>(
             value: goal,
             items: [

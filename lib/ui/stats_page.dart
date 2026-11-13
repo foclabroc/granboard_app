@@ -325,6 +325,7 @@ class _PlayerStatsPageState extends State<PlayerStatsPage> {
                     width: w,
                     child: _PracticeCard(
                       name: kPracticeInfo[kinds[i]]!.name,
+                      kind: kinds[i].name,
                       data: Map<String, dynamic>.from(p[kinds[i].name] as Map),
                       color: colors[i % colors.length],
                     ),
@@ -506,8 +507,12 @@ class _PracticeCard extends StatelessWidget {
   final String name;
   final Map<String, dynamic> data;
   final Color color;
+  final String kind;
   const _PracticeCard(
-      {required this.name, required this.data, required this.color});
+      {required this.name,
+      required this.data,
+      required this.color,
+      required this.kind});
 
   @override
   Widget build(BuildContext context) {
@@ -544,7 +549,10 @@ class _PracticeCard extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: Row(children: [
                           Text('MOYENNE ', style: Tv.label(11)),
-                          Text(avg?.fr(2) ?? '–',
+                          Text(
+                              avg == null || kind == 'timeAttack'
+                                  ? '–'
+                                  : avg.fr(2),
                               style: Tv.title(20, color: color)),
                         ]),
                       ),
@@ -556,7 +564,10 @@ class _PracticeCard extends StatelessWidget {
                         alignment: Alignment.centerRight,
                         child: Row(children: [
                           Text('MEILLEUR ', style: Tv.label(11)),
-                          Text('${best ?? '–'}',
+                          Text(
+                              best == null
+                                  ? '–'
+                                  : practiceScoreText(kind, best),
                               style: Tv.title(20, color: color)),
                         ]),
                       ),

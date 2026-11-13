@@ -12,7 +12,7 @@ import 'dart:math';
 
 import '../granboard.dart';
 import 'darts_game.dart';
-import 'x01.dart' show BullMode, X01Player;
+import 'x01.dart' show BullMode, OutRule, X01Player, checkoutRoutes;
 import '../format.dart';
 
 enum PracticeKind {
@@ -33,6 +33,7 @@ enum PracticeKind {
   checkout121,
   spider,
   pirates,
+  timeAttack,
   // Fête
   funMission,
   allFives,
@@ -50,6 +51,7 @@ enum PracticeKind {
   scram,
   football,
   hotPotato,
+  catMouse,
 }
 
 /// Réglages proposés pour chaque jeu.
@@ -76,8 +78,12 @@ class PracticeInfo {
   final bool party;
   final int minPlayers;
   final int maxPlayers;
+
+  /// Nom du réglage « objectif » (Départ, Avance…).
+  final String goalLabel;
   const PracticeInfo(this.name, this.help,
-      {this.rounds,
+      {this.goalLabel = 'Objectif',
+      this.rounds,
       this.defaultRounds,
       this.goals,
       this.defaultGoal,
@@ -240,7 +246,39 @@ const kPracticeInfo = <PracticeKind, PracticeInfo>{
   PracticeKind.hotPotato: PracticeInfo('Patate chaude',
       'Une bombe sur un numéro, avec une mèche de 3 à 6 fléchettes. Touche son numéro pour la passer au suivant. Si la mèche s\'éteint dans tes mains : une vie en moins (3 vies). Le dernier survivant gagne.',
       party: true, minPlayers: 2),
+  PracticeKind.catMouse: PracticeInfo('Le Chat et la Souris',
+      'Le 1er joueur est la souris, le 2e le chat. Chacun fait le tour 1, 2… 20 puis le bull, la souris avec quelques cases d\'avance. Simple = 1 case, double = 2, triple = 3. Le chat gagne s\'il rattrape la souris, la souris gagne si elle touche le bull (ou tient 20 manches).',
+      goalLabel: 'Avance de la souris',
+      goals: [3, 5, 7],
+      defaultGoal: 5,
+      party: true,
+      minPlayers: 2,
+      maxPlayers: 2),
+  PracticeKind.timeAttack: PracticeInfo('Contre la montre',
+      'Finis ton 01 le plus vite possible : le chrono tourne pendant tes tours (de « suivant » à ta dernière fléchette). Bust = retour au score de début de manche. Le meilleur temps gagne.',
+      goalLabel: 'Départ',
+      goals: [301, 501, 701],
+      defaultGoal: 501,
+      options: {'single': 'Single Out (sinon Double Out)'}),
 };
+
+/// Score d'entraînement à afficher (temps pour Contre la montre).
+String practiceScoreText(String? kind, num v) {
+  if (kind == PracticeKind.timeAttack.name) {
+    return v <= -100000 ? '—' : formatChrono(-v * 1000);
+  }
+  return '${v.toInt()}';
+}
+
+/// « 1:23 » (ou « 1:05:09 »), [tenths] = dixièmes.
+String formatChrono(num ms, {bool tenths = false}) {
+  final total = ms.round();
+  final sec = total ~/ 1000;
+  final h = sec ~/ 3600, m = (sec ~/ 60) % 60, ss = sec % 60;
+  final two = ss.toString().padLeft(2, '0');
+  final base = h > 0 ? '$h:${m.toString().padLeft(2, '0')}:$two' : '$m:$two';
+  return tenths ? '$base,${(total % 1000) ~/ 100}' : base;
+}
 
 class PracticeSettings {
   final PracticeKind kind;
@@ -314,6 +352,9 @@ class PracticeTurn {
 
   /// Effet de fin de manche (« ÷ 2 », « -10 », « VALIDÉ »…).
   String? note;
+
+  /// Durée du tour (jeux chronométrés).
+  int? ms;
   PracticeTurn(this.player, this.round, this.target, this.scoreBefore);
 
   int get points => darts.fold(0, (s, d) => s + d.points);
@@ -341,6 +382,15 @@ class PracticeGame implements DartsGame {
   @override
   final List<X01Player> players;
   late final PracticeRules rules = PracticeRules.of(settings);
+
+  /// Horloge (tests).
+  static DateTime Function() clock = DateTime.now;
+
+  /// Début du tour en cours (jeux chronométrés).
+  DateTime? _turnStart;
+
+  /// Actions rejouées (TV, annulation, en ligne) : pas de nouveau chrono.
+  bool _replay = false;
 
   final List<String> _log = [];
   late List<PracticePlayer> _st;
@@ -453,9 +503,63 @@ class PracticeGame implements DartsGame {
       final n = int.tryParse(a.substring(2));
       return n != null && changeTarget(n);
     }
+    if (a.startsWith('t:')) {
+      final ms = int.tryParse(a.substring(2));
+      return ms != null && _applyTime(ms, log: true);
+    }
     final e = parseLogEntry(a);
     if (e == null) return false;
-    return e.$1 ? next() : throwDart(e.$2);
+    final was = _replay;
+    _replay = true;
+    try {
+      return e.$1 ? next() : throwDart(e.$2);
+    } finally {
+      _replay = was;
+    }
+  }
+
+  /// Temps du joueur (ms), tour en cours compris.
+  int timeOf(int p) {
+    var ms = _st[p].v['ms'] ?? 0;
+    final start = _turnStart;
+    if (p == _current &&
+        !finished &&
+        start != null &&
+        currentTurn.ms == null &&
+        rules.timed) {
+      ms += clock().difference(start).inMilliseconds;
+    }
+    return ms;
+  }
+
+  /// Le chrono du joueur en cours tourne-t-il ?
+  bool get clockRunning =>
+      rules.timed &&
+      !finished &&
+      _turnStart != null &&
+      currentTurn.ms == null &&
+      !_st[_current].done;
+
+  /// Fin du tour chronométré : temps écrit dans le journal (« t:<ms> »).
+  void _stamp() {
+    if (!rules.timed || _replay || currentTurn.ms != null) return;
+    if (currentTurn.darts.isEmpty) return;
+    final start = _turnStart ?? clock();
+    final ms = max(0, clock().difference(start).inMilliseconds);
+    _applyTime(ms, log: true);
+  }
+
+  bool _applyTime(int ms, {required bool log}) {
+    final t = currentTurn;
+    if (!rules.timed || t.ms != null) return false;
+    t.ms = ms;
+    final st = _st[_current];
+    st.v['ms'] = (st.v['ms'] ?? 0) + ms;
+    rules.onTime(this, _current, t);
+    if (log) _log.add('t:$ms');
+    final e = _end;
+    if (e != null) _finish(e);
+    return true;
   }
 
   /// Choix de cible : nouvelle cible (1-20 ou 25), avant la 1re fléchette.
@@ -479,6 +583,7 @@ class PracticeGame implements DartsGame {
     if (turnOver) return false;
     final t = currentTurn;
     final s = _st[_current];
+    if (t.darts.isEmpty) _turnStart ??= clock();
     final d = PracticeDart(hit);
     t.darts.add(d);
     s.darts++;
@@ -486,6 +591,7 @@ class PracticeGame implements DartsGame {
     if (d.ok) s.good++;
     _log.add(logEntryOf(false, hit));
     _checkEnd(afterDart: true);
+    if (turnOver) _stamp();
     return true;
   }
 
@@ -494,6 +600,7 @@ class PracticeGame implements DartsGame {
     if (finished) return false;
     final t = currentTurn;
     final s = _st[_current];
+    _stamp();
     // Fléchettes non lancées = ratées (si le joueur joue encore)
     while (t.darts.length < t.maxDarts && !s.done && !s.out) {
       final d = PracticeDart(null);
@@ -524,18 +631,23 @@ class PracticeGame implements DartsGame {
     rules.onTurnStart(this, _current);
     _turns.add(PracticeTurn(
         _current, _round, rules.target(this, _current), _st[_current].score));
+    _turnStart = clock();
     return true;
   }
 
   @override
   bool undo() {
     if (_log.isEmpty) return false;
-    final log = [..._log]..removeLast();
+    final log = [..._log];
+    // le temps d'un tour part avec la fléchette qui l'a fini
+    if (log.removeLast().startsWith('t:') && log.isNotEmpty) log.removeLast();
+    final start = _turnStart;
     _log.clear();
     _reset();
     for (final a in log) {
       applyLogEntry(a);
     }
+    if (start != null && _turns.last.darts.isNotEmpty) _turnStart = start;
     return true;
   }
 
@@ -552,6 +664,7 @@ class PracticeGame implements DartsGame {
     _winners = [];
     _end = null;
     _turns = [];
+    _turnStart = null;
     rules.onTurnStart(this, 0);
     _turns.add(PracticeTurn(0, 1, rules.target(this, 0), _st[0].score));
   }
@@ -644,10 +757,18 @@ abstract class PracticeRules {
         PracticeKind.scram => _Scram(s),
         PracticeKind.football => _Football(s),
         PracticeKind.hotPotato => _HotPotato(s),
+        PracticeKind.catMouse => _CatMouse(s),
+        PracticeKind.timeAttack => _TimeAttack(s),
       };
 
   void init(PracticeGame g, int p, PracticePlayer st) {}
   void onTurnStart(PracticeGame g, int p) {}
+
+  /// Jeu chronométré : temps de chaque tour dans le journal (« t:<ms> »).
+  bool get timed => false;
+
+  /// Temps du tour connu (jeux chronométrés).
+  void onTime(PracticeGame g, int p, PracticeTurn t) {}
   void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d);
   void onTurnEnd(PracticeGame g, int p, PracticeTurn t) {}
   int? roundLimit(PracticeGame g);
@@ -2701,4 +2822,218 @@ class _HotPotato extends PracticeRules {
     if (oa != ob) return oa - ob;
     return g.stateOf(b).lives.compareTo(g.stateOf(a).lives);
   }
+}
+
+// ─── Le Chat et la Souris ───
+
+/// Joueur 0 = souris (avec [lead] cases d'avance), joueur 1 = chat. Suite
+/// 1 à 20 puis bull (21 cases) ; simple 1 case, double 2, triple 3.
+class _CatMouse extends PracticeRules {
+  _CatMouse(super.s);
+  static const _bullStep = 20;
+  static const _arrived = 21;
+
+  int get lead => s.goalOrDefault;
+  int _num(int step) => step < _bullStep ? step + 1 : 25;
+
+  @override
+  void init(PracticeGame g, int p, PracticePlayer st) {
+    st.step = p == 0 ? lead : 0;
+    st.score = st.step;
+  }
+
+  @override
+  int? roundLimit(PracticeGame g) => 20;
+  @override
+  String rulesLabel(PracticeGame g) => 'Souris +$lead · 20 manches';
+  @override
+  String target(PracticeGame g, int p) {
+    final st = g.stateOf(p);
+    return st.step >= _arrived ? 'ARRIVÉE' : _numLabel(_num(st.step));
+  }
+
+  @override
+  List<DartHit> zones(PracticeGame g, int p) {
+    final st = g.stateOf(p);
+    return st.step >= _arrived ? const [] : _numberZones(_num(st.step));
+  }
+
+  int gap(PracticeGame g) => g.stateOf(0).step - g.stateOf(1).step;
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final st = g.stateOf(p);
+    final h = d.hit;
+    if (h == null || st.step >= _arrived) return;
+    final n = _num(st.step);
+    if ((h.isBull ? 25 : h.number) != n) return;
+    d.ok = true;
+    if (n == 25) {
+      d.points = 1;
+      st.step = _arrived;
+    } else {
+      d.points = h.multiplier;
+      st.step = min(st.step + h.multiplier, _bullStep);
+    }
+    st.score = st.step;
+    if (p == 0 && st.step >= _arrived) {
+      g.shared['w'] = 0;
+      t.note = 'LA SOURIS S\'ÉCHAPPE';
+    } else if (p == 1 && st.step >= g.stateOf(0).step) {
+      g.shared['w'] = 1;
+      t.note = 'ATTRAPÉE !';
+    }
+    if (g.shared['w'] != null) t.maxDarts = t.darts.length;
+  }
+
+  @override
+  bool over(PracticeGame g) => g.shared['w'] != null;
+
+  @override
+  String info(PracticeGame g, int p) =>
+      '${p == 0 ? 'SOURIS' : 'CHAT'} · ÉCART ${gap(g)}';
+
+  @override
+  String scoreText(PracticeGame g, int p) => target(g, p);
+
+  @override
+  int compare(PracticeGame g, int a, int b) {
+    // le chat gagne s'il l'attrape, sinon la souris
+    final w = g.shared['w'] as int? ?? 0;
+    if (a == b) return 0;
+    return a == w ? -1 : (b == w ? 1 : 0);
+  }
+}
+
+// ─── Contre la montre ───
+
+/// 01 à finir le plus vite possible ; score = - secondes (meilleur = plus
+/// haut, comme les autres jeux), -100000 tant que pas fini.
+class _TimeAttack extends PracticeRules {
+  _TimeAttack(super.s);
+  static const notDone = -100000;
+
+  int get start => s.goalOrDefault;
+  bool get dbl => !s.has('single');
+
+  @override
+  bool get timed => true;
+
+  @override
+  void init(PracticeGame g, int p, PracticePlayer st) {
+    st.v['rem'] = start;
+    st.v['turnRem'] = start;
+    st.v['ms'] = 0;
+    st.score = notDone;
+  }
+
+  @override
+  void onTurnStart(PracticeGame g, int p) =>
+      g.stateOf(p).v['turnRem'] = g.stateOf(p).v['rem']!;
+
+  @override
+  int? roundLimit(PracticeGame g) => 60;
+  @override
+  String rulesLabel(PracticeGame g) =>
+      '$start · ${dbl ? 'Double Out' : 'Single Out'}';
+
+  List<String> _route(PracticeGame g, int p, PracticeTurn? t) {
+    final st = g.stateOf(p);
+    final left = t == null ? 3 : t.maxDarts - t.darts.length;
+    final r = checkoutRoutes(
+        st.v['rem']!, left, dbl ? OutRule.double : OutRule.open, s.bull,
+        max: 1);
+    return r.isEmpty ? const [] : r.first;
+  }
+
+  @override
+  String target(PracticeGame g, int p) {
+    final st = g.stateOf(p);
+    if (st.done) return 'FINI';
+    final r = _route(g, p, null);
+    return r.isEmpty ? 'T20' : 'FIN ${r.join(' ')}';
+  }
+
+  @override
+  List<DartHit> zones(PracticeGame g, int p) {
+    final st = g.stateOf(p);
+    if (st.done) return const [];
+    final t = g.current == p ? g.currentTurn : null;
+    final r = _route(g, p, t);
+    if (r.isEmpty) return const [DartHit(20, 3, Ring.triple)];
+    return _routeZones(r.first);
+  }
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final st = g.stateOf(p);
+    final h = d.hit;
+    final v = _value(h, s.bull);
+    final rem = st.v['rem']!;
+    final left = rem - v;
+    final isDouble = h != null &&
+        (h.ring == Ring.double ||
+            h.ring == Ring.innerBull ||
+            (h.isBull && s.bull == BullMode.fat));
+    if (h == null) return;
+    if (left == 0 && (!dbl || isDouble)) {
+      d.ok = true;
+      d.points = v;
+      st.v['rem'] = 0;
+      st.done = true;
+      t.note = 'FINI';
+      return;
+    }
+    if (left < 0 || (dbl && left < 2)) {
+      // bust : retour au score du début de la manche
+      st.v['rem'] = st.v['turnRem']!;
+      t.note = 'BUST';
+      t.maxDarts = t.darts.length;
+      for (final x in t.darts) {
+        x.points = 0;
+      }
+      return;
+    }
+    d.ok = true;
+    d.points = v;
+    st.v['rem'] = left;
+  }
+
+  @override
+  void onTime(PracticeGame g, int p, PracticeTurn t) {
+    final st = g.stateOf(p);
+    if (st.done) st.score = -((st.v['ms']! + 999) ~/ 1000);
+  }
+
+  @override
+  String scoreText(PracticeGame g, int p) {
+    final st = g.stateOf(p);
+    return st.done ? formatChrono(st.v['ms']!, tenths: true) : '${st.v['rem']}';
+  }
+
+  @override
+  String info(PracticeGame g, int p) {
+    final st = g.stateOf(p);
+    final avg = st.darts == 0 ? '' : ' · ${st.darts} FL.';
+    return 'CHRONO ${formatChrono(g.timeOf(p))}$avg';
+  }
+
+  @override
+  int compare(PracticeGame g, int a, int b) {
+    final x = g.stateOf(a), y = g.stateOf(b);
+    if (x.done != y.done) return x.done ? -1 : 1;
+    if (x.done) return x.v['ms']!.compareTo(y.v['ms']!);
+    return x.v['rem']!.compareTo(y.v['rem']!);
+  }
+}
+
+/// Zone d'une fléchette de fin (« T20 », « D16 », « 5 », « BULL », « 25 »).
+List<DartHit> _routeZones(String label) {
+  if (label == 'BULL') return const [DartHit(25, 2, Ring.innerBull)];
+  if (label == '25') return const [DartHit(25, 1, Ring.outerBull)];
+  final n = int.tryParse(label.replaceFirst(RegExp('^[DT]'), ''));
+  if (n == null) return const [];
+  if (label.startsWith('T')) return [DartHit(n, 3, Ring.triple)];
+  if (label.startsWith('D')) return [DartHit(n, 2, Ring.double)];
+  return [DartHit(n, 1, Ring.singleInner), DartHit(n, 1, Ring.singleOuter)];
 }

@@ -2,6 +2,8 @@
 
 ## v0.6.6
 
+- **Le Chat et la Souris** (fête, 2 joueurs) : la souris part avec 3, 5 ou 7 cases d'avance sur le tour 1 → 20 → bull, le chat doit la rattraper (simple 1 case, double 2, triple 3) ; la souris gagne au bull ou après 20 manches
+- **Contre la montre** (entraînement) : finir 301 / 501 / 701 (Double ou Single Out) le plus vite possible ; chrono de chaque joueur pendant ses tours (de « suivant » à sa dernière fléchette), fin conseillée allumée, meilleur temps gardé et classé
 - **Cible de chaque joueur** : bouton CIBLE dans la fiche du joueur (« Par défaut » = style des options, ou l'un des 9 styles) ; pendant son tour, la cible affichée (téléphone et TV) est la sienne ; celle du profil principal s'affiche sur l'écran TV en attente ; gardée sur le serveur avec le compte : le joueur la retrouve chez un ami, sur la TV et en ligne
 - **Cricket : petite cible** dans le panneau de droite (au-dessus des 3 fléchettes) : numéros fermés par le joueur allumés à sa couleur, numéros encore à fermer qui clignotent, fléchettes du tour plantées
 - **Jeux de lumière sur les numéros** de la cible dessinée : le numéro d'une zone touchée s'allume à la couleur du joueur et reste allumé pendant le tour (flash à l'impact), les numéros à viser clignotent en blanc, une lumière fait le tour en attendant la 1re fléchette, tout l'anneau brille sur un bull, passe au rouge sur un bust et en arc-en-ciel à la victoire

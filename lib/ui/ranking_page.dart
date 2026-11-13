@@ -178,7 +178,9 @@ class _TopListState extends State<_TopList> {
           ? v.fr(2)
           : widget.kind == 'avg'
               ? v.fr(1)
-              : '${v.toInt()}';
+              : widget.kind.startsWith('pr:')
+                  ? practiceScoreText(widget.kind.substring(3), v)
+                  : '${v.toInt()}';
 
   @override
   Widget build(BuildContext context) {
