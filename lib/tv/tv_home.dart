@@ -18,6 +18,7 @@ import '../ui/wallpaper.dart';
 import '../ui/tournament_page.dart' show TvTournamentView;
 import 'tv_client.dart';
 import 'next_up.dart';
+import 'screen_cam.dart';
 import 'tv_idle.dart';
 
 /// Écran TV : affiche le code du salon, puis ce que le téléphone envoie
@@ -36,6 +37,7 @@ class TvHome extends StatefulWidget {
 class _TvHomeState extends State<TvHome> {
   late final TvClient client =
       widget.client ?? TvClient(deviceName: widget.deviceName);
+  late final ScreenCam _cam = ScreenCam(client);
   String? _screen;
 
   @override
@@ -43,6 +45,7 @@ class _TvHomeState extends State<TvHome> {
     super.initState();
     WakelockPlus.enable().catchError((_) {});
     client.addListener(_onState);
+    _cam.update(client.state?['cam'] as Map?);
     if (widget.client == null) client.start();
     AudioService.instance.startMusic();
   }
@@ -50,6 +53,7 @@ class _TvHomeState extends State<TvHome> {
   @override
   void dispose() {
     client.removeListener(_onState);
+    _cam.dispose();
     if (widget.client == null) client.dispose();
     super.dispose();
   }
@@ -99,6 +103,8 @@ class _TvHomeState extends State<TvHome> {
         ..clear()
         ..addAll((s!['pron'] as Map).map((k, v) => MapEntry('$k', '$v')));
     }
+    // caméra de la tablette sur la TV (cet écran filme ou affiche)
+    _cam.update(s?['cam'] as Map?);
     final screen = s?['screen'] as String?;
     if (screen != _screen) {
       _screen = screen;
@@ -144,7 +150,14 @@ class _TvHomeState extends State<TvHome> {
           onPhoneMode: widget.onPhoneMode);
     }
     return Scaffold(
-      body: TvBackground(child: SafeArea(child: body)),
+      body: TvBackground(
+        child: SafeArea(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [body, ScreenCamLayer(cam: _cam)],
+          ),
+        ),
+      ),
     );
   }
 }

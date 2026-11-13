@@ -79,6 +79,7 @@ class TvClient extends ChangeNotifier {
   @override
   void dispose() {
     _closed = true;
+    _signals.close();
     _lan?.close();
     _poll?.cancel();
     _heartbeat?.cancel();
@@ -189,7 +190,57 @@ class TvClient extends ChangeNotifier {
     // Relecture de secours : rapide sans relais, lente avec
     _poll = Timer.periodic(const Duration(milliseconds: 1500), (t) {
       if (!live || t.tick % 8 == 0) fetch();
+      if (signalsWanted && (!live || t.tick % 4 == 0)) fetchSignals();
     });
+  }
+
+  // ─── Messages entre écrans (caméra de la tablette sur la TV) ───
+
+  final _signals = StreamController<Map<String, dynamic>>.broadcast();
+
+  /// Messages reçus d'un autre écran : {from, …message}.
+  Stream<Map<String, dynamic>> get signals => _signals.stream;
+
+  /// Vrai pendant une liaison caméra : les messages sont relus.
+  bool signalsWanted = false;
+
+  /// Serveurs STUN/TURN (gb_config).
+  List<dynamic> ice = const [];
+  int _sigSince = 0;
+  bool _sigFetching = false;
+
+  Future<void> fetchSignals() async {
+    final c = code, k = _key;
+    if (c == null || k == null || _sigFetching) return;
+    _sigFetching = true;
+    try {
+      final r = Map<String, dynamic>.from(await GbServer.rpc(
+              'gb_tv_signals', {'p_code': c, 'p_key': k, 'p_since': _sigSince})
+          as Map);
+      if (r['ice'] is List) ice = r['ice'] as List;
+      for (final e in (r['signals'] as List? ?? const [])) {
+        final m = Map<String, dynamic>.from(e as Map);
+        _sigSince = max(_sigSince, (m['id'] as num).toInt());
+        _signals.add(
+            {...Map<String, dynamic>.from(m['msg'] as Map), 'from': m['from']});
+      }
+    } catch (_) {
+    } finally {
+      _sigFetching = false;
+    }
+  }
+
+  /// Envoie un message à l'écran [to] (relié au même téléphone).
+  Future<bool> signal(String to, Map<String, dynamic> msg) async {
+    final c = code, k = _key;
+    if (c == null || k == null) return false;
+    try {
+      await GbServer.rpc(
+          'gb_tv_signal', {'p_code': c, 'p_key': k, 'p_to': to, 'p_msg': msg});
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   // ─── Relais temps réel (protocole Phoenix, comme Pixel Trade) ───
@@ -240,7 +291,12 @@ class TvClient extends ChangeNotifier {
       }
       fetch();
     } else if (m['event'] == 'broadcast') {
-      fetch();
+      final sig = jsonEncode(m['payload']).contains('"sig"');
+      if (sig) {
+        if (signalsWanted) fetchSignals();
+      } else {
+        fetch();
+      }
     }
   }
 

@@ -31,6 +31,7 @@ class FakeServer {
     next[sl.isEven ? 'a' : 'b'] = w;
   }
   bool offline = false;
+  final tvSignals = <Map<String, dynamic>>[];
   final tvRooms =
       <String, Map<String, dynamic>>{}; // code → {key, host, state, seq}
   int _next = 1;
@@ -215,6 +216,42 @@ class FakeServer {
           return {'seq': r['seq']};
         }
         return {'seq': r['seq'], 'state': r['state']};
+      case 'gb_tv_signal':
+        final me = tvRooms[b['p_code']];
+        final to = tvRooms[b['p_to']];
+        if (me == null || me['key'] != b['p_key']) {
+          throw const ApiError('tv_gone');
+        }
+        bool asked(Map? st) {
+          final c = st?['cam'];
+          return c is Map &&
+              {c['from'], c['to']}.containsAll({b['p_code'], b['p_to']});
+        }
+        if (to == null ||
+            !asked(me['state'] as Map?) ||
+            !asked(to['state'] as Map?)) {
+          throw const ApiError('tv_peer');
+        }
+        tvSignals.add({
+          'id': tvSignals.length + 1,
+          'to': b['p_to'],
+          'from': b['p_code'],
+          'msg': b['p_msg'],
+        });
+        return tvSignals.length;
+      case 'gb_tv_signals':
+        final r = tvRooms[b['p_code']];
+        if (r == null || r['key'] != b['p_key']) return {'error': 'tv_gone'};
+        final mine = tvSignals.where((m) => m['to'] == b['p_code']);
+        return {
+          'last': mine.isEmpty ? 0 : mine.last['id'],
+          'ice': const [],
+          'signals': [
+            for (final m in mine)
+              if ((m['id'] as int) > (b['p_since'] as int))
+                {'id': m['id'], 'from': m['from'], 'msg': m['msg']}
+          ],
+        };
       case 'gb_on_ping':
         final me = _auth(b['p_token']);
         online[me] = b['p_busy'] == true;

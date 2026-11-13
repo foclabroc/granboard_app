@@ -201,6 +201,7 @@ class _TvSheetState extends State<_TvSheet> {
               const TvSection('Le son sort sur (un ou plusieurs)',
                   padding: EdgeInsets.only(top: 16, bottom: 8)),
               const SoundTargetPicker(),
+              if (link.camScreens.length >= 2) const CamPanel(),
             ] else ...[
               const SizedBox(height: 12),
               TextButton.icon(
@@ -217,6 +218,176 @@ class _TvSheetState extends State<_TvSheet> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Caméra d'un écran (tablette) affichée sur un autre (TV) : choix des 2
+/// écrans, allumer / éteindre, caméra avant / arrière, position, taille.
+class CamPanel extends StatefulWidget {
+  const CamPanel({super.key});
+
+  @override
+  State<CamPanel> createState() => _CamPanelState();
+}
+
+class _CamPanelState extends State<CamPanel> {
+  final link = TvLink.instance;
+  String? _from, _to;
+
+  static const _posLabels = {
+    'tr': 'HAUT DROITE',
+    'tl': 'HAUT GAUCHE',
+    'br': 'BAS DROITE',
+    'bl': 'BAS GAUCHE',
+    'full': 'PLEIN ÉCRAN',
+  };
+  static const _sizeLabels = {'s': 'PETITE', 'm': 'MOYENNE', 'l': 'GRANDE'};
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: link,
+      builder: (context, _) {
+        final list = link.camScreens;
+        final cam = link.cam;
+        final codes = list.map((s) => s.code).toList();
+        // par défaut : la tablette filme, la TV affiche
+        var from = cam?['from'] as String? ?? _from;
+        if (from == null || !codes.contains(from)) {
+          from = (list.where((s) => s.name != 'TV').firstOrNull ?? list.first)
+              .code;
+        }
+        var to = cam?['to'] as String? ?? _to;
+        if (to == null || to == from || !codes.contains(to)) {
+          to = (list
+                      .where((s) => s.code != from && s.name == 'TV')
+                      .firstOrNull ??
+                  list.firstWhere((s) => s.code != from))
+              .code;
+        }
+        final on = cam != null;
+
+        Widget chips(String sel, Iterable<TvScreen> items, String key,
+                void Function(String) pick) =>
+            Wrap(spacing: 6, runSpacing: 4, children: [
+              for (final s in items)
+                ChoiceChip(
+                  key: ValueKey('$key-${s.code}'),
+                  showCheckmark: false,
+                  avatar:
+                      Icon(s.name == 'TV' ? Icons.tv : Icons.tablet, size: 18),
+                  label: Text(s.label),
+                  selected: s.code == sel,
+                  onSelected: (_) => pick(s.code),
+                ),
+            ]);
+
+        void restart(String f, String t) {
+          setState(() {
+            _from = f;
+            _to = t;
+          });
+          if (on) link.startCam(f, t);
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const TvSection('Caméra d\'un écran sur un autre',
+                padding: EdgeInsets.only(top: 16, bottom: 8)),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('FILMER AVEC', style: Tv.label(12)),
+                      const SizedBox(height: 4),
+                      chips(from, list, 'cam-from', (c) {
+                        final t = c == to
+                            ? list.firstWhere((s) => s.code != c).code
+                            : to!;
+                        restart(c, t);
+                      }),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('AFFICHER SUR', style: Tv.label(12)),
+                      const SizedBox(height: 4),
+                      chips(to, list.where((s) => s.code != from), 'cam-to',
+                          (c) => restart(from!, c)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(children: [
+              FilledButton.icon(
+                key: const ValueKey('cam-toggle'),
+                style:
+                    on ? FilledButton.styleFrom(backgroundColor: Tv.red) : null,
+                onPressed: () =>
+                    on ? link.stopCam() : link.startCam(from!, to!),
+                icon: Icon(on ? Icons.videocam_off : Icons.videocam),
+                label: Text(on ? 'COUPER LA CAMÉRA' : 'ALLUMER LA CAMÉRA'),
+              ),
+              if (on) ...[
+                const SizedBox(width: 10),
+                OutlinedButton.icon(
+                  key: const ValueKey('cam-front'),
+                  onPressed: () => link.setCam(front: cam['front'] != true),
+                  icon: const Icon(Icons.flip_camera_android),
+                  label: Text(
+                      cam['front'] == true ? 'CAMÉRA AVANT' : 'CAMÉRA ARRIÈRE'),
+                ),
+              ],
+            ]),
+            if (on) ...[
+              const SizedBox(height: 10),
+              Text('POSITION SUR L\'ÉCRAN', style: Tv.label(12)),
+              const SizedBox(height: 4),
+              Wrap(spacing: 6, runSpacing: 4, children: [
+                for (final p in TvLink.camPositions)
+                  ChoiceChip(
+                    key: ValueKey('cam-pos-$p'),
+                    showCheckmark: false,
+                    label: Text(_posLabels[p]!),
+                    selected: cam['pos'] == p,
+                    onSelected: (_) => link.setCam(pos: p),
+                  ),
+              ]),
+              if (cam['pos'] != 'full') ...[
+                const SizedBox(height: 8),
+                Text('TAILLE', style: Tv.label(12)),
+                const SizedBox(height: 4),
+                Wrap(spacing: 6, children: [
+                  for (final z in TvLink.camSizes)
+                    ChoiceChip(
+                      key: ValueKey('cam-size-$z'),
+                      showCheckmark: false,
+                      label: Text(_sizeLabels[z]!),
+                      selected: cam['size'] == z,
+                      onSelected: (_) => link.setCam(size: z),
+                    ),
+                ]),
+              ],
+            ],
+            const SizedBox(height: 6),
+            Text(
+                'L\'image passe directement d\'un écran à l\'autre par le Wi-Fi (sans le son). '
+                'La première fois, l\'écran qui filme demande l\'autorisation caméra.',
+                style: Tv.label(12)),
+          ],
+        );
+      },
     );
   }
 }

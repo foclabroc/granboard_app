@@ -179,6 +179,7 @@ class TvLink extends ChangeNotifier {
 
   Future<void> unlink(String code) async {
     screens.removeWhere((s) => s.code == code);
+    if (cam?['from'] == code || cam?['to'] == code) cam = null;
     _pending.remove(code);
     await _save();
     _resend(); // le son a pu changer d'écran
@@ -186,6 +187,7 @@ class TvLink extends ChangeNotifier {
 
   Future<void> unlinkAll() async {
     screens.clear();
+    cam = null;
     _pending.clear();
     await _save();
   }
@@ -208,6 +210,62 @@ class TvLink extends ChangeNotifier {
     await _save();
     _resend();
   }
+
+  // ─── Caméra d'un écran affichée sur un autre (tablette → TV) ───
+
+  /// {from, to, sid, front, pos, size, name} ou null (arrêtée).
+  Map<String, dynamic>? cam;
+
+  /// Écrans qui peuvent envoyer ou recevoir la caméra (reliés par le
+  /// serveur : les 2 écrans s'y échangent la mise en relation).
+  List<TvScreen> get camScreens => [
+        for (final s in screens)
+          if (!s.wifiOnly) s
+      ];
+
+  /// Positions de l'image sur l'écran qui la reçoit.
+  static const camPositions = ['tr', 'tl', 'br', 'bl', 'full'];
+  static const camSizes = ['s', 'm', 'l'];
+
+  /// Lance la caméra de [from] sur [to] (caméra arrière par défaut).
+  void startCam(String from, String to) {
+    if (from == to) return;
+    final src = screens.where((s) => s.code == from).firstOrNull;
+    cam = {
+      'from': from,
+      'to': to,
+      'sid': '${DateTime.now().millisecondsSinceEpoch}',
+      'front': cam?['front'] ?? false,
+      'pos': cam?['pos'] ?? 'tr',
+      'size': cam?['size'] ?? 'm',
+      'name': src?.name ?? 'Écran',
+    };
+    notifyListeners();
+    _resendOrLobby();
+  }
+
+  void stopCam() {
+    if (cam == null) return;
+    cam = null;
+    notifyListeners();
+    _resendOrLobby();
+  }
+
+  /// Change la caméra (avant/arrière), la position ou la taille.
+  void setCam({bool? front, String? pos, String? size}) {
+    final c = cam;
+    if (c == null) return;
+    cam = {
+      ...c,
+      if (front != null) 'front': front,
+      if (pos != null) 'pos': pos,
+      if (size != null) 'size': size,
+    };
+    notifyListeners();
+    _resendOrLobby();
+  }
+
+  void _resendOrLobby() => _last == null ? pushLobby() : _resend();
 
   /// Écran d'attente (accueil, réglages).
   void pushLobby() => _push({
@@ -266,6 +324,7 @@ class TvLink extends ChangeNotifier {
         'calls': AudioService.instance.dartCalls,
         'pron': AudioService.instance.pronunciations,
         'wall': Wallpaper.instance.forTv,
+        if (cam case final c?) 'cam': c,
       };
       if (!s.wifiOnly) {
         _pending[s.code] = st;
