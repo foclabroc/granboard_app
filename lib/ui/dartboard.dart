@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' show PointMode;
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,6 +20,10 @@ class BoardSkin {
   final Color ringB;
   final Color wire;
   final Color numbers;
+
+  /// Cible électronique réaliste : plastique troué, relief, anneau de LED
+  /// animé et fléchettes en 3D.
+  final bool realistic;
   const BoardSkin({
     required this.id,
     required this.name,
@@ -31,6 +36,7 @@ class BoardSkin {
     required this.ringB,
     required this.wire,
     required this.numbers,
+    this.realistic = false,
   });
 
   static const classic = BoardSkin(
@@ -138,7 +144,22 @@ class BoardSkin {
     numbers: Color(0xFFFFC27A),
   );
 
+  static const real = BoardSkin(
+    id: 'real',
+    name: 'Réaliste',
+    background: Color(0xFF0C0D10),
+    rim: Color(0xFF2E7BFF),
+    singleDark: Color(0xFF17181C),
+    singleLight: Color(0xFFE6E2D6),
+    ringA: Color(0xFFD7262C),
+    ringB: Color(0xFF1F5FD6),
+    wire: Color(0xFF050506),
+    numbers: Color(0xFFF2F2F2),
+    realistic: true,
+  );
+
   static const all = [
+    real,
     classic,
     pub,
     electro,
@@ -238,6 +259,13 @@ class _BoardPainter extends CustomPainter {
     final outer = size.width / 2;
     final numbersBand = showNumbers ? outer * 0.15 : outer * 0.04;
     final r = outer - numbersBand;
+    if (skin.realistic) {
+      _paintReal(canvas, c, outer, r, numbersBand);
+      for (var k = 0; k < highlights.length; k++) {
+        _highlight(canvas, c, r, highlights[k], k);
+      }
+      return;
+    }
 
     // Fond (bois verni pour le style pub) + cerclage
     final wood = skin.wood;
@@ -328,6 +356,171 @@ class _BoardPainter extends CustomPainter {
         tp.paint(canvas, pos - Offset(tp.width / 2, tp.height / 2));
       }
     }
+  }
+
+  /// Cible électronique : contour en plastique noir, segments en relief
+  /// percés de petits trous, séparateurs, chiffres en relief, reflet.
+  void _paintReal(
+      Canvas canvas, Offset c, double outer, double r, double band) {
+    final full = Rect.fromCircle(center: c, radius: outer);
+    // Contour (catch ring) : plastique noir mat avec relief
+    canvas.drawCircle(
+        c,
+        outer,
+        Paint()
+          ..shader = RadialGradient(
+            colors: const [
+              Color(0xFF2A2C31),
+              Color(0xFF15161A),
+              Color(0xFF0A0A0C),
+              Color(0xFF1E1F23),
+            ],
+            stops: [r / outer * 0.98, r / outer + 0.02, 0.96, 1],
+          ).createShader(full));
+    // Ombre portée de la zone de jeu sur le contour
+    canvas.drawCircle(
+        c,
+        r * 1.012,
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.7)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.02));
+
+    const seg = 2 * math.pi / 20;
+    for (var i = 0; i < 20; i++) {
+      final a0 = -math.pi / 2 - seg / 2 + i * seg;
+      final even = i % 2 == 0;
+      final single = even ? skin.singleDark : skin.singleLight;
+      final ring = even ? skin.ringA : skin.ringB;
+      for (final (ro, ri, col) in [
+        (rDoubleIn, rTripleOut, single),
+        (rTripleIn, rBullOut, single),
+        (rDoubleOut, rDoubleIn, ring),
+        (rTripleOut, rTripleIn, ring),
+      ]) {
+        final path = _wedgePath(c, r * ro, r * ri, a0, seg);
+        // Relief : plus clair au centre du segment, plus sombre aux bords
+        canvas.drawPath(
+            path,
+            Paint()
+              ..shader = RadialGradient(
+                colors: [
+                  Color.lerp(col, Colors.white, 0.10)!,
+                  col,
+                  Color.lerp(col, Colors.black, 0.35)!,
+                ],
+                stops: [ri / ro, (ri / ro + 1) / 2, 1],
+              ).createShader(Rect.fromCircle(center: c, radius: r * ro)));
+        _holes(canvas, c, r, ro, ri, a0, seg, col);
+      }
+    }
+    // Bull : 2 cercles en relief percés
+    for (final (rr, col) in [(rBullOut, skin.ringB), (rBullIn, skin.ringA)]) {
+      canvas.drawCircle(
+          c,
+          r * rr,
+          Paint()
+            ..shader = RadialGradient(colors: [
+              Color.lerp(col, Colors.white, 0.18)!,
+              col,
+              Color.lerp(col, Colors.black, 0.4)!,
+            ]).createShader(Rect.fromCircle(center: c, radius: r * rr)));
+    }
+    _holes(canvas, c, r, rBullOut, rBullIn, 0, 2 * math.pi, skin.ringB);
+    _holes(canvas, c, r, rBullIn, 0.012, 0, 2 * math.pi, skin.ringA);
+
+    // Séparateurs en plastique (rainures sombres + liseré clair)
+    final gap = Paint()
+      ..color = const Color(0xFF050506)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1.2, r * 0.013);
+    final lip = Paint()
+      ..color = Colors.white.withValues(alpha: 0.10)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(0.5, r * 0.004);
+    for (final rr in [rDoubleOut, rDoubleIn, rTripleOut, rTripleIn, rBullOut]) {
+      canvas.drawCircle(c, r * rr, gap);
+      canvas.drawCircle(c, r * rr - r * 0.007, lip);
+    }
+    canvas.drawCircle(c, r * rBullIn, gap);
+    for (var i = 0; i < 20; i++) {
+      final a = -math.pi / 2 - seg / 2 + i * seg;
+      final d = Offset(math.cos(a), math.sin(a));
+      canvas.drawLine(c + d * r * rBullOut, c + d * r, gap);
+    }
+
+    // Chiffres en relief
+    if (showNumbers) {
+      for (var i = 0; i < 20; i++) {
+        final n = kBoardOrder[i];
+        final a = -math.pi / 2 + i * seg;
+        final pos = c + Offset(math.cos(a), math.sin(a)) * (r + band / 2);
+        for (final (off, color) in [
+          (Offset(r * 0.006, r * 0.008), Colors.black),
+          (Offset.zero, skin.numbers),
+        ]) {
+          final tp = TextPainter(
+            text: TextSpan(
+              text: '$n',
+              style: TextStyle(
+                fontFamily: Tv.font,
+                fontWeight: FontWeight.w800,
+                fontSize: band * 0.74,
+                color: color,
+              ),
+            ),
+            textDirection: TextDirection.ltr,
+          )..layout();
+          tp.paint(canvas, pos + off - Offset(tp.width / 2, tp.height / 2));
+        }
+      }
+    }
+
+    // Reflet de la lumière (haut gauche) sur le plastique
+    canvas.drawCircle(
+        c,
+        outer,
+        Paint()
+          ..shader = RadialGradient(
+            center: const Alignment(-0.45, -0.55),
+            radius: 0.9,
+            colors: [
+              Colors.white.withValues(alpha: 0.13),
+              Colors.white.withValues(alpha: 0.03),
+              Colors.transparent,
+            ],
+            stops: const [0, 0.45, 1],
+          ).createShader(full));
+  }
+
+  /// Petits trous de la cible électronique, en rangées régulières.
+  void _holes(Canvas canvas, Offset c, double r, double ro, double ri,
+      double a0, double sweep, Color base) {
+    final pitch = r * 0.034; // écart entre trous
+    final dot = Paint()
+      ..color = Color.lerp(base, Colors.black, 0.62)!
+      ..strokeWidth = pitch * 0.42
+      ..strokeCap = StrokeCap.round;
+    final shine = Paint()
+      ..color = Colors.white.withValues(alpha: 0.10)
+      ..strokeWidth = pitch * 0.16
+      ..strokeCap = StrokeCap.round;
+    final pts = <Offset>[];
+    final hi = <Offset>[];
+    for (var rad = r * ri + pitch * 0.6;
+        rad < r * ro - pitch * 0.4;
+        rad += pitch) {
+      final n = (rad * sweep / pitch).floor();
+      if (n < 1) continue;
+      final step = sweep / n;
+      for (var k = 0; k < n; k++) {
+        final a = a0 + step * (k + 0.5);
+        final p = c + Offset(math.cos(a), math.sin(a)) * rad;
+        pts.add(p);
+        hi.add(p + Offset(pitch * 0.07, pitch * 0.08));
+      }
+    }
+    canvas.drawPoints(PointMode.points, pts, dot);
+    canvas.drawPoints(PointMode.points, hi, shine);
   }
 
   void _highlight(Canvas canvas, Offset c, double r, DartHit h, int order) {
@@ -458,13 +651,18 @@ class AnimatedDartboard extends StatefulWidget {
 
 class _AnimatedDartboardState extends State<AnimatedDartboard>
     with TickerProviderStateMixin {
+  // Démarre « fini » : les fléchettes déjà là sont plantées
   late final _impact = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 650));
+      vsync: this, duration: const Duration(milliseconds: 650), value: 1);
   late final _pulse = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 1400))
     ..repeat(reverse: true);
   late final _flash = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 900));
+  // Anneau de LED et reflet qui tournent (cible réaliste)
+  late final _spin =
+      AnimationController(vsync: this, duration: const Duration(seconds: 6))
+        ..repeat();
 
   @override
   void didUpdateWidget(AnimatedDartboard old) {
@@ -479,6 +677,7 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
     _impact.dispose();
     _pulse.dispose();
     _flash.dispose();
+    _spin.dispose();
     super.dispose();
   }
 
@@ -489,26 +688,39 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
         dimension: widget.size,
         child: Stack(
           children: [
+            // La cible fixe dans sa propre couche : pas redessinée à chaque
+            // image de l'animation
             Positioned.fill(
-              child: ValueListenableBuilder<BoardSkin>(
-                valueListenable: BoardSkin.current,
-                builder: (context, skin, _) => CustomPaint(
-                  painter: _BoardPainter(const [], true, skin: skin),
+              child: RepaintBoundary(
+                child: ValueListenableBuilder<BoardSkin>(
+                  valueListenable: BoardSkin.current,
+                  builder: (context, skin, _) => CustomPaint(
+                    isComplex: true,
+                    painter: _BoardPainter(const [], true, skin: skin),
+                  ),
                 ),
               ),
             ),
             Positioned.fill(
-              child: AnimatedBuilder(
-                animation: Listenable.merge([_impact, _pulse, _flash]),
-                builder: (context, _) => CustomPaint(
-                  painter: _HitsPainter(
-                    hits: widget.hits,
-                    targets: widget.targets,
-                    impact: _impact.value,
-                    pulse: _pulse.value,
-                    flash: _flash.value,
-                    flashColor: widget.win ? Tv.gold : Tv.red,
-                    dartColor: widget.dartColor ?? Tv.gold,
+              child: ValueListenableBuilder<BoardSkin>(
+                valueListenable: BoardSkin.current,
+                builder: (context, skin, _) => AnimatedBuilder(
+                  animation: Listenable.merge(
+                      [_impact, _pulse, _flash, if (skin.realistic) _spin]),
+                  builder: (context, _) => CustomPaint(
+                    painter: _HitsPainter(
+                      hits: widget.hits,
+                      targets: widget.targets,
+                      impact: _impact.value,
+                      pulse: _pulse.value,
+                      flash: _flash.value,
+                      flashColor: widget.win ? Tv.gold : Tv.red,
+                      dartColor: widget.dartColor ?? Tv.gold,
+                      realistic: skin.realistic,
+                      spin: _spin.value,
+                      bust: widget.bust,
+                      win: widget.win,
+                    ),
                   ),
                 ),
               ),
@@ -528,6 +740,10 @@ class _HitsPainter extends CustomPainter {
   final double flash;
   final Color flashColor;
   final Color dartColor;
+  final bool realistic;
+  final double spin; // 0 → 1 en boucle
+  final bool bust;
+  final bool win;
   _HitsPainter({
     required this.hits,
     this.targets = const [],
@@ -536,6 +752,10 @@ class _HitsPainter extends CustomPainter {
     required this.flash,
     required this.flashColor,
     required this.dartColor,
+    this.realistic = false,
+    this.spin = 0,
+    this.bust = false,
+    this.win = false,
   });
 
   @override
@@ -543,6 +763,7 @@ class _HitsPainter extends CustomPainter {
     final c = size.center(Offset.zero);
     final outer = size.width / 2;
     final r = outer - outer * 0.15; // même calcul que _BoardPainter
+    if (realistic) _leds(canvas, c, outer, r);
 
     // Zone à viser pour finir : contour blanc qui pulse (visible sur le
     // rouge comme sur le vert)
@@ -570,10 +791,14 @@ class _HitsPainter extends CustomPainter {
       final last = k == hits.length - 1;
       final path = _zonePath(c, r, hits[k]);
       final glow = 0.55 + 0.35 * pulse + (last ? 0.1 * (1 - impact) : 0);
+      // Cible réaliste : le segment s'allume à la couleur du joueur, comme
+      // sur une cible électronique
+      final lit = realistic ? dartColor : Tv.goldLight;
       canvas.drawPath(
           path,
           Paint()
-            ..color = Tv.goldLight.withValues(alpha: glow.clamp(0, 1))
+            ..color = lit.withValues(
+                alpha: (realistic ? glow * 0.7 : glow).clamp(0, 1))
             ..maskFilter = MaskFilter.blur(BlurStyle.solid, r * 0.03));
       canvas.drawPath(
           path,
@@ -596,8 +821,16 @@ class _HitsPainter extends CustomPainter {
             ..strokeWidth = r * 0.025 * (1 - t) + 1);
     }
 
+    if (realistic) {
+      // Fléchettes en 3D : les plus anciennes d'abord (la dernière par-dessus)
+      for (var k = 0; k < hits.length; k++) {
+        final last = k == hits.length - 1;
+        _dart3d(canvas, dartPoint(c, r, hits[k], k + 1), r, k,
+            last ? impact.clamp(0.0, 1.0) : 1.0);
+      }
+    }
     // Fléchettes plantées (vues de face : empennage en croix)
-    for (var k = 0; k < hits.length; k++) {
+    for (var k = 0; k < (realistic ? 0 : hits.length); k++) {
       final last = k == hits.length - 1;
       final p = dartPoint(c, r, hits[k], k + 1);
       // La dernière arrive de loin : plus grosse puis se plante
@@ -638,6 +871,173 @@ class _HitsPainter extends CustomPainter {
       canvas.drawCircle(
           c, outer, Paint()..color = flashColor.withValues(alpha: a));
     }
+  }
+
+  /// Anneau de LED autour de la cible (comme la 3s) : une lumière qui
+  /// tourne à la couleur du joueur, rouge sur un bust, arc-en-ciel à la
+  /// victoire ; reflet de lumière qui glisse lentement.
+  void _leds(Canvas canvas, Offset c, double outer, double r) {
+    const n = 60;
+    final ringR = outer * 0.972;
+    final ledR = math.max(1.2, outer * 0.012);
+    final phase = spin * 2 * math.pi;
+    for (var i = 0; i < n; i++) {
+      final a = -math.pi / 2 + i * 2 * math.pi / n;
+      final p = c + Offset(math.cos(a), math.sin(a)) * ringR;
+      Color col;
+      double on;
+      if (win) {
+        col = HSVColor.fromAHSV(1, (i * 6 + spin * 360 * 2) % 360, 0.85, 1)
+            .toColor();
+        on = 0.85;
+      } else if (bust) {
+        col = Tv.red;
+        on = 0.35 + 0.65 * pulse;
+      } else {
+        col = dartColor;
+        // 2 « comètes » qui tournent
+        final d = math.cos(a - phase);
+        final d2 = math.cos(a - phase - math.pi);
+        on = 0.18 + 0.82 * math.pow(math.max(0, math.max(d, d2)), 8).toDouble();
+      }
+      canvas.drawCircle(
+          p,
+          ledR * 2.6,
+          Paint()
+            ..color = col.withValues(alpha: 0.35 * on)
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, ledR * 2));
+      canvas.drawCircle(
+          p,
+          ledR,
+          Paint()
+            ..color = Color.lerp(const Color(0xFF202226), col, on)!
+                .withValues(alpha: 1));
+    }
+    // Reflet qui glisse sur le plastique
+    final la = phase / 3;
+    final lc = Alignment(-0.5 + 0.25 * math.cos(la), -0.5 + 0.2 * math.sin(la));
+    canvas.drawCircle(
+        c,
+        r,
+        Paint()
+          ..shader = RadialGradient(
+            center: lc,
+            radius: 0.55,
+            colors: [
+              Colors.white.withValues(alpha: 0.07),
+              Colors.transparent,
+            ],
+          ).createShader(Rect.fromCircle(center: c, radius: r)));
+  }
+
+  /// Fléchette vue un peu de côté : pointe dans la cible, fût en métal,
+  /// tige et empennage à la couleur du joueur, ombre portée. [t] = arrivée
+  /// (0 → 1) : elle grossit puis se plante en vibrant.
+  void _dart3d(Canvas canvas, Offset p, double r, int k, double t) {
+    final arrive = Curves.easeIn.transform(t);
+    final scale = 1 + (1 - arrive) * 1.4;
+    // Vibration après l'impact
+    final wob = t < 1 ? 0.22 * math.sin(t * 22) * (1 - t) : 0.0;
+    final ang = -1.05 + (k - 1) * 0.12 + wob; // vers le haut à droite
+    final d = Offset(math.cos(ang), math.sin(ang));
+    final side = Offset(-d.dy, d.dx);
+    final len = r * 0.25 * scale;
+    Offset at(double f, [double w = 0]) => p + d * len * f + side * w;
+
+    // Ombre sur la cible (lumière en haut à gauche)
+    const sh = Offset(0.75, 0.55);
+    canvas.drawPath(
+        Path()
+          ..moveTo(p.dx, p.dy)
+          ..lineTo((p + sh * len * 0.75 + Offset(-sh.dy, sh.dx) * r * 0.05).dx,
+              (p + sh * len * 0.75 + Offset(-sh.dy, sh.dx) * r * 0.05).dy)
+          ..lineTo((p + sh * len * 0.75 - Offset(-sh.dy, sh.dx) * r * 0.05).dx,
+              (p + sh * len * 0.75 - Offset(-sh.dy, sh.dx) * r * 0.05).dy)
+          ..close(),
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.38 * arrive)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.025));
+    // Trou d'entrée
+    canvas.drawCircle(p, r * 0.014, Paint()..color = Colors.black);
+
+    // Fût en métal (effilé côté pointe)
+    final bw0 = r * 0.022 * scale, bw1 = r * 0.04 * scale;
+    final barrel = Path()
+      ..moveTo(at(0.04, bw0).dx, at(0.04, bw0).dy)
+      ..lineTo(at(0.42, bw1).dx, at(0.42, bw1).dy)
+      ..lineTo(at(0.42, -bw1).dx, at(0.42, -bw1).dy)
+      ..lineTo(at(0.04, -bw0).dx, at(0.04, -bw0).dy)
+      ..close();
+    canvas.drawPath(
+        barrel,
+        Paint()
+          ..shader = const LinearGradient(
+            colors: [
+              Color(0xFF3B3F46),
+              Color(0xFFDDE2E8),
+              Color(0xFF8A9099),
+              Color(0xFF2B2E33),
+            ],
+            stops: [0, 0.35, 0.6, 1],
+          ).createShader(Rect.fromPoints(at(0.2, bw1), at(0.2, -bw1))));
+    // Moletage
+    final knurl = Paint()
+      ..color = Colors.black.withValues(alpha: 0.35)
+      ..strokeWidth = math.max(0.6, r * 0.004);
+    for (var q = 0; q < 6; q++) {
+      final f = 0.12 + q * 0.05;
+      final w = bw0 + (bw1 - bw0) * (f - 0.04) / 0.38;
+      canvas.drawLine(at(f, w), at(f, -w), knurl);
+    }
+    // Pointe visible avant l'impact
+    if (arrive < 1) {
+      canvas.drawLine(
+          at(0.04),
+          at(-0.1 * (1 - arrive)),
+          Paint()
+            ..color = const Color(0xFFB8BEC6)
+            ..strokeWidth = bw0 * 0.6);
+    }
+    // Tige
+    final sw = r * 0.016 * scale;
+    canvas.drawPath(
+        Path()
+          ..moveTo(at(0.42, sw).dx, at(0.42, sw).dy)
+          ..lineTo(at(0.7, sw).dx, at(0.7, sw).dy)
+          ..lineTo(at(0.7, -sw).dx, at(0.7, -sw).dy)
+          ..lineTo(at(0.42, -sw).dx, at(0.42, -sw).dy)
+          ..close(),
+        Paint()..color = Color.lerp(dartColor, Colors.black, 0.45)!);
+    // Empennage : une ailette de face (large), l'autre de profil (fine)
+    final fw = r * 0.07 * scale;
+    final flight = Path()
+      ..moveTo(at(0.6).dx, at(0.6).dy)
+      ..lineTo(at(0.8, fw).dx, at(0.8, fw).dy)
+      ..lineTo(at(1.0, fw * 0.85).dx, at(1.0, fw * 0.85).dy)
+      ..lineTo(at(1.0, -fw * 0.85).dx, at(1.0, -fw * 0.85).dy)
+      ..lineTo(at(0.8, -fw).dx, at(0.8, -fw).dy)
+      ..close();
+    canvas.drawPath(
+        flight,
+        Paint()
+          ..shader = LinearGradient(colors: [
+            Color.lerp(dartColor, Colors.white, 0.35)!,
+            dartColor,
+            Color.lerp(dartColor, Colors.black, 0.35)!,
+          ]).createShader(Rect.fromPoints(at(0.8, fw), at(0.8, -fw))));
+    canvas.drawPath(
+        flight,
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.5)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(0.8, r * 0.005));
+    // Ailette de profil (trait foncé au milieu)
+    canvas.drawLine(
+        at(0.62),
+        at(1.0),
+        Paint()
+          ..color = Color.lerp(dartColor, Colors.black, 0.55)!
+          ..strokeWidth = math.max(1, r * 0.012 * scale));
   }
 
   Path _zonePath(Offset c, double r, DartHit h) {
