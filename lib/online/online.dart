@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../game/x01.dart';
 import '../players.dart';
 import '../server.dart';
 import 'relay.dart';
@@ -256,15 +257,22 @@ class OnlineService extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Répond au défi reçu ; renvoie la salle si accepté (lève ApiError
   /// « on_gone » si le défi n'existe plus).
-  Future<int?> answer(int inviteId, bool accept) async {
+  /// En double, [game] = la partie complétée avec mon coéquipier
+  /// ([completeDouble]).
+  Future<int?> answer(int inviteId, bool accept,
+      {Map<String, dynamic>? game}) async {
     final m = me;
     if (m == null) return null;
     if (invite?.id == inviteId) {
       invite = null;
       notifyListeners();
     }
-    final r = await GbServer.rpc('gb_on_answer',
-        {'p_token': m.token, 'p_invite': inviteId, 'p_accept': accept});
+    final r = await GbServer.rpc('gb_on_answer', {
+      'p_token': m.token,
+      'p_invite': inviteId,
+      'p_accept': accept,
+      if (game != null) 'p_game': game,
+    });
     return r is Map ? (r['room'] as num?)?.toInt() : null;
   }
 
@@ -290,6 +298,14 @@ class OnlineRoom extends ChangeNotifier {
 
   /// Identifiant de mon joueur dans la partie.
   String get myId => account.key;
+
+  /// Le joueur [id] lance chez moi ? En double, la partie dit qui joue dans
+  /// quelle maison (« home » : a = qui a défié, b = l'autre).
+  bool mine(String id) {
+    final home = game['home'];
+    if (home is Map) return home[id] == side;
+    return id == myId;
+  }
 
   /// « a » = celui qui a défié (il lance l'appel vidéo).
   String side = 'a';
@@ -490,4 +506,32 @@ class OnlineRoom extends ChangeNotifier {
     _unlisten = null;
     _signals.close();
   }
+}
+
+/// Défi en double reçu : la partie avec mon coéquipier [mate] ajouté à
+/// mon équipe, joueurs en alternance (équipe qui commence, l'autre, …).
+Map<String, dynamic> completeDouble(
+    Map<String, dynamic> invite, String myId, X01Player mate) {
+  final players = [
+    for (final p in (invite['players'] as List))
+      X01Player.fromJson(Map<String, dynamic>.from(p as Map))
+  ];
+  final myTeam = players.firstWhere((p) => p.id == myId).team;
+  players.add(X01Player(id: mate.id, name: mate.name, team: myTeam));
+  final first = players.first.team;
+  final a = players.where((p) => p.team == first).toList();
+  final b = players.where((p) => p.team != first).toList();
+  final order = [
+    for (var i = 0; i < a.length || i < b.length; i++) ...[
+      if (i < a.length) a[i],
+      if (i < b.length) b[i],
+    ]
+  ];
+  final home = Map<String, dynamic>.from(invite['home'] as Map? ?? const {});
+  home[mate.id] = 'b';
+  return {
+    ...invite,
+    'players': [for (final p in order) p.toJson()],
+    'home': home,
+  };
 }

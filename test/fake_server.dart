@@ -425,11 +425,20 @@ class FakeServer {
           i['status'] = 'declined';
           return <String, dynamic>{};
         }
+        var game = i['game'];
+        if ((game as Map)['double'] == true) {
+          // Double : la partie complétée par celui qui accepte (4 joueurs)
+          final g = b['p_game'];
+          if (g is! Map || (g['players'] as List).length != 4) {
+            throw const ApiError('on_game');
+          }
+          game = _json(g);
+        }
         final id = rooms.length + 1;
         rooms[id] = {
           'a': i['from'],
           'b': me,
-          'game': i['game'],
+          'game': game,
           'seq': 1,
           'left': null,
           'signals': <Map<String, dynamic>>[],

@@ -60,7 +60,7 @@ class _ResultsPageState extends State<ResultsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final freeze = game.settings.freeze;
+    final freeze = game.settings.teamPlay;
     final ranking = _ranking;
     final winTeam = freeze && game.winners.isNotEmpty
         ? game.players[game.winners.first].team

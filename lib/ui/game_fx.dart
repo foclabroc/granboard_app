@@ -516,7 +516,7 @@ class GameFx {
     Timer(const Duration(milliseconds: 600), () => audio.play(Sfx.crowd));
     final names = game.winners.map((i) => game.players[i].name).join(' et ');
     final teams = switch (game) {
-      X01Game g => g.settings.freeze,
+      X01Game g => g.settings.teamPlay,
       CricketGame g => g.settings.teams,
       _ => false,
     };

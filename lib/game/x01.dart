@@ -56,6 +56,10 @@ class X01Settings {
   /// supérieur à celui de l'adversaire est « gelée » et ne peut pas finir.
   final bool freeze;
 
+  /// Double : jeu en équipes, les coéquipiers partagent le même score
+  /// (le joueur qui finit fait gagner son équipe).
+  final bool doubles;
+
   const X01Settings({
     this.startScore = 501,
     this.inRule = InRule.open,
@@ -63,9 +67,17 @@ class X01Settings {
     this.bullMode = BullMode.split,
     this.roundLimit,
     this.freeze = false,
+    this.doubles = false,
   });
 
-  String get name => freeze ? 'Freeze $startScore' : '$startScore';
+  /// Jeu en équipes (Freeze ou double).
+  bool get teamPlay => freeze || doubles;
+
+  String get name => freeze
+      ? 'Freeze $startScore'
+      : doubles
+          ? 'Double $startScore'
+          : '$startScore';
 
   Map<String, dynamic> toJson() => {
         'start': startScore,
@@ -74,6 +86,7 @@ class X01Settings {
         'bull': bullMode.index,
         if (roundLimit != null) 'rounds': roundLimit,
         'freeze': freeze,
+        if (doubles) 'dbl': true,
       };
 
   factory X01Settings.fromJson(Map<String, dynamic> j) => X01Settings(
@@ -83,6 +96,7 @@ class X01Settings {
         bullMode: BullMode.values[(j['bull'] as num?)?.toInt() ?? 0],
         roundLimit: (j['rounds'] as num?)?.toInt(),
         freeze: j['freeze'] as bool? ?? false,
+        doubles: j['dbl'] as bool? ?? false,
       );
 
   String get rulesLabel => [
@@ -207,10 +221,10 @@ class X01Game implements DartsGame {
 
   X01Game(this.settings, this.players) {
     if (players.isEmpty) throw ArgumentError('Aucun joueur');
-    if (settings.freeze) {
+    if (settings.teamPlay) {
       final teams = players.map((p) => p.team).toSet();
       if (teams.length < 2) {
-        throw ArgumentError('Le Freeze se joue avec au moins 2 équipes');
+        throw ArgumentError('Le jeu en équipes demande au moins 2 équipes');
       }
     }
     _reset();
@@ -464,15 +478,18 @@ class X01Game implements DartsGame {
       s.remaining = t.scoreBefore;
       s.opened = t.openedBefore;
       t.bust = bust;
+      _shareScore();
       return true;
     }
 
     s.remaining = left;
+    _shareScore();
     if (finish) {
       t.checkout = true;
       s.checkout = t.total;
       _closeTurnStats(t);
-      _winners = settings.freeze ? membersOf(currentPlayer.team) : [_current];
+      _winners =
+          settings.teamPlay ? membersOf(currentPlayer.team) : [_current];
       _endReason = EndReason.checkout;
     } else if (t.darts.length >= 3) {
       _closeTurnStats(t);
@@ -511,6 +528,17 @@ class X01Game implements DartsGame {
     final n = currentState;
     _turns.add(Turn(_current, _round, n.remaining, n.opened));
     return true;
+  }
+
+  /// Double : les coéquipiers du joueur en cours ont le même score.
+  void _shareScore() {
+    if (!settings.doubles) return;
+    final s = currentState;
+    for (final i in membersOf(currentPlayer.team)) {
+      _states[i]
+        ..remaining = s.remaining
+        ..opened = s.opened;
+    }
   }
 
   void _closeTurnStats(Turn t) {

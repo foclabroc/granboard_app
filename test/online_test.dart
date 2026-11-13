@@ -320,4 +320,85 @@ void main() {
     await tester.runAsync(settle);
     await tester.pump(const Duration(seconds: 3));
   });
+
+  test('Double : défi à 3, réponse avec mon équipier, tour par maison',
+      () async {
+    final leo = await PlayerStore.instance.register('Léo', '1234');
+    final invite = X01Game(const X01Settings(doubles: true), [
+      X01Player(id: foc.key, name: 'Foc'),
+      X01Player(id: sophie.key, name: 'Sophie', team: 1),
+      const X01Player(id: 'guest-a1', name: 'Invité de Foc'),
+    ]).toJson()
+      ..['double'] = true
+      ..['home'] = {foc.key: 'a', 'guest-a1': 'a', sophie.key: 'b'};
+    final full = completeDouble(
+        invite, sophie.key, X01Player(id: leo.key, name: 'Léo'));
+    expect([for (final p in full['players'] as List) p['name']],
+        ['Foc', 'Sophie', 'Invité de Foc', 'Léo']);
+    expect([for (final p in full['players'] as List) p['team']], [0, 1, 0, 1]);
+    expect((full['home'] as Map)[leo.key], 'b');
+
+    await a.ping();
+    await b.ping();
+    await a.ping();
+    final id = await a.challenge(a.players.single, invite);
+    await b.ping();
+    // sans équipier : refusé
+    await expectLater(b.answer(id, true), throwsA(isA<ApiError>()));
+    final room = await b.answer(id, true, game: full);
+    final ra = await a.openRoom(room!);
+    final rb = await b.openRoom(room);
+    addTearDown(ra.close);
+    addTearDown(rb.close);
+    expect(ra.mine(foc.key), isTrue);
+    expect(ra.mine('guest-a1'), isTrue);
+    expect(ra.mine(sophie.key), isFalse);
+    expect(rb.mine(sophie.key), isTrue);
+    expect(rb.mine(leo.key), isTrue);
+    expect(rb.mine(foc.key), isFalse);
+    final g = gameFromJson(ra.game) as X01Game;
+    expect(g.players.length, 4);
+    expect(g.settings.doubles, isTrue);
+  });
+
+  testWidgets('Réglages d\'un défi en double : 01 / Cricket, partie à 3',
+      (tester) async {
+    await phone(tester);
+    Map<String, dynamic>? result;
+    await tester.pumpWidget(MaterialApp(
+      theme: Tv.theme(),
+      home: Builder(
+        builder: (context) => TextButton(
+          onPressed: () async {
+            result = await Navigator.push<Map<String, dynamic>>(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => SetupPage(online: [
+                        X01Player(id: foc.key, name: 'Foc'),
+                        X01Player(id: sophie.key, name: 'Sophie'),
+                        const X01Player(id: 'guest-a1', name: 'Invité de Foc'),
+                      ])),
+            );
+          },
+          child: const Text('go'),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('go'));
+    await tester.pumpAndSettle();
+    expect(find.text('DÉFIER SOPHIE EN DOUBLE'), findsOneWidget);
+    expect(find.text('MATCH'), findsNothing);
+    expect(find.text('FÊTE'), findsNothing);
+    expect(find.text('SON ÉQUIPIER'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('MOI'));
+    await tester.pump();
+    await tester.tap(find.textContaining('DÉFIER : '));
+    await tester.pumpAndSettle();
+    expect(result!['double'], isTrue);
+    final g = gameFromJson(result!) as X01Game;
+    expect(g.settings.doubles, isTrue);
+    expect([for (final p in g.players) p.team], [0, 1, 0]);
+    expect((result!['home'] as Map)['guest-a1'], 'a');
+  });
 }

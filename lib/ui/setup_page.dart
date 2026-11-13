@@ -34,7 +34,8 @@ class SetupPage extends StatefulWidget {
   /// Famille de jeux ouverte d'office : x01, cricket, match, practice, party.
   final String? kind;
 
-  /// Défi en ligne : moi puis l'adversaire. La page ne lance pas la partie,
+  /// Défi en ligne : moi puis l'adversaire (et mon coéquipier en double :
+  /// moi, l'adversaire, mon coéquipier). La page ne lance pas la partie,
   /// elle renvoie son JSON (`Navigator.pop`) pour l'envoyer avec le défi.
   final List<X01Player>? online;
 
@@ -77,6 +78,10 @@ class _SetupPageState extends State<SetupPage> {
 
   bool get _online => widget.online != null;
 
+  /// Défi en ligne en double (2 contre 2, une maison par équipe) : 01 avec
+  /// score d'équipe ou Team Cricket.
+  bool get _double => (widget.online?.length ?? 0) == 3;
+
   /// Ouvert depuis une tuile de l'accueil : le choix du jeu est masqué.
   bool get _fixed => widget.kind != null && !_online;
 
@@ -103,7 +108,10 @@ class _SetupPageState extends State<SetupPage> {
     if (widget.kind != null) setState(() => _kind = widget.kind!);
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_prefKey);
-    if (raw == null) return _selectOwner();
+    if (raw == null) {
+      if (_double) setState(() => _kind = 'x01');
+      return _selectOwner();
+    }
     try {
       final j = jsonDecode(raw) as Map<String, dynamic>;
       setState(() {
@@ -122,6 +130,9 @@ class _SetupPageState extends State<SetupPage> {
           });
       });
     } catch (_) {}
+    if (_double && _kind != 'x01' && _kind != 'cricket' && mounted) {
+      setState(() => _kind = 'x01');
+    }
     _selectOwner();
   }
 
@@ -234,11 +245,12 @@ class _SetupPageState extends State<SetupPage> {
         bullMode: _bull,
         roundLimit: _limit,
         freeze: _freeze && !_online,
+        doubles: _double,
       );
 
   CricketSettings get _cricket => CricketSettings(
         variant: _variant,
-        teams: _cTeams && !_online,
+        teams: (_cTeams && !_online) || _double,
         roundLimit: _cLimit,
         seed: DateTime.now().microsecondsSinceEpoch,
       );
@@ -341,6 +353,16 @@ class _SetupPageState extends State<SetupPage> {
   /// Joueurs dans l'ordre de lancer (Freeze : équipes en alternance).
   List<X01Player> get _order {
     final on = widget.online;
+    if (on != null && on.length == 3) {
+      // Double : moi et mon coéquipier (équipe 0) contre l'adversaire (1) ;
+      // son coéquipier est ajouté quand il accepte
+      final swap = _first == 1 ||
+          (_first == 2 && DateTime.now().microsecondsSinceEpoch.isOdd);
+      final me = X01Player(id: on[0].id, name: on[0].name, team: 0);
+      final opp = X01Player(id: on[1].id, name: on[1].name, team: 1);
+      final mate = X01Player(id: on[2].id, name: on[2].name, team: 0);
+      return swap ? [opp, me, mate] : [me, opp, mate];
+    }
     if (on != null) {
       final swap = _first == 1 ||
           (_first == 2 && DateTime.now().microsecondsSinceEpoch.isOdd);
@@ -363,7 +385,7 @@ class _SetupPageState extends State<SetupPage> {
   }
 
   String? get _problem {
-    final n = _online ? 2 : _selected.length;
+    final n = _online ? widget.online!.length : _selected.length;
     if (n == 0) return 'Ajoute au moins un joueur';
     if (_localTournament) {
       if (n < 2) return 'Il faut au moins 2 joueurs';
@@ -436,7 +458,13 @@ class _SetupPageState extends State<SetupPage> {
               : _cricketOn
                   ? CricketGame(_cricket, _order)
                   : X01Game(_settings, _order);
-      Navigator.pop(context, g.toJson());
+      final json = g.toJson();
+      if (_double) {
+        final on = widget.online!;
+        json['double'] = true;
+        json['home'] = {on[0].id: 'a', on[2].id: 'a', on[1].id: 'b'};
+      }
+      Navigator.pop(context, json);
       return;
     }
     if (!BoardService.instance.isConnected) {
@@ -471,7 +499,7 @@ class _SetupPageState extends State<SetupPage> {
         title: Text(widget.tournament
             ? (_online ? 'NOUVEAU TOURNOI EN LIGNE' : 'TOURNOI À LA MAISON')
             : _online
-                ? 'DÉFIER ${widget.online!.last.name.toUpperCase()}'
+                ? 'DÉFIER ${widget.online![1].name.toUpperCase()}${_double ? ' EN DOUBLE' : ''}'
                 : _fixed
                     ? _familyName
                     : 'NOUVELLE PARTIE'),
@@ -531,8 +559,8 @@ class _SetupPageState extends State<SetupPage> {
                         for (final (v, l) in [
                           ('x01', '01'),
                           ('cricket', 'CRICKET'),
-                          ('match', 'MATCH'),
-                          if (!widget.tournament) ...[
+                          if (!_double) ('match', 'MATCH'),
+                          if (!widget.tournament && !_double) ...[
                             ('practice', 'ENTRAÎN.'),
                             ('party', 'FÊTE'),
                           ],
@@ -1333,13 +1361,15 @@ class _SetupPageState extends State<SetupPage> {
 
   /// Défi en ligne : l'adversaire, qui commence, bouton « Défier ».
   Widget _onlinePanel(String? problem) {
-    final me = widget.online!.first;
-    final opp = widget.online!.last;
+    final me = widget.online![0];
+    final opp = widget.online![1];
+    final mate = _double ? widget.online![2] : null;
+    final size = _double ? 40.0 : 54.0;
     Widget who(X01Player p) => Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             PlayerAvatar(
-                name: p.name, color: store.colorOf(p.id), size: 54, id: p.id),
+                name: p.name, color: store.colorOf(p.id), size: size, id: p.id),
             const SizedBox(height: 4),
             Text(p.name.toUpperCase(),
                 maxLines: 1,
@@ -1358,9 +1388,39 @@ class _SetupPageState extends State<SetupPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  Expanded(child: who(me)),
+                  Expanded(
+                    child: mate == null
+                        ? who(me)
+                        : Row(children: [
+                            Expanded(child: who(me)),
+                            Expanded(child: who(mate)),
+                          ]),
+                  ),
                   Text('VS', style: Tv.title(26, color: Tv.gold)),
-                  Expanded(child: who(opp)),
+                  Expanded(
+                    child: mate == null
+                        ? who(opp)
+                        : Row(children: [
+                            Expanded(child: who(opp)),
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircleAvatar(
+                                      radius: size / 2,
+                                      backgroundColor: Tv.panel2,
+                                      child: Icon(Icons.help_outline,
+                                          color: Tv.muted)),
+                                  const SizedBox(height: 4),
+                                  Text('SON ÉQUIPIER',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Tv.label(12)),
+                                ],
+                              ),
+                            ),
+                          ]),
+                  ),
                 ],
               ),
               const SizedBox(height: 14),
@@ -1382,8 +1442,12 @@ class _SetupPageState extends State<SetupPage> {
               ),
               const SizedBox(height: 10),
               Text(
-                  'Chacun joue chez soi sur sa cible. Les stats comptent '
-                  'comme une partie normale.',
+                  _double
+                      ? 'Chaque équipe joue chez elle sur sa cible. '
+                          '${opp.name} choisit son équipier en acceptant. '
+                          '01 : score commun à l\'équipe.'
+                      : 'Chacun joue chez soi sur sa cible. Les stats comptent '
+                          'comme une partie normale.',
                   style: Tv.label(12)),
             ],
           ),

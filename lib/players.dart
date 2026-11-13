@@ -446,7 +446,7 @@ class PlayerStore extends ChangeNotifier {
       final s = g.stateOf(i);
       ps.add({
         'pid': p.id,
-        if (g.settings.freeze) 'team': p.team,
+        if (g.settings.teamPlay) 'team': p.team,
         'won': g.winners.contains(i),
         'darts': s.darts,
         'points': s.points,

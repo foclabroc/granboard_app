@@ -31,7 +31,7 @@ String x01Rules(X01Settings s) {
   return [
     '# BUT',
     'Chacun part de ${s.startScore} et retire ce qu\'il marque. Le premier à '
-        'tomber pile à 0 gagne${s.freeze ? ' pour son équipe' : ''}.',
+        'tomber pile à 0 gagne${s.teamPlay ? ' pour son équipe' : ''}.',
     '# DÉROULEMENT',
     '- À tour de rôle, 3 fléchettes par manche. Le total de la manche est '
         'retiré de ton score.',
@@ -72,6 +72,15 @@ String x01Rules(X01Settings s) {
           'est GELÉE : ses joueurs marquent toujours, mais ne peuvent pas '
           'finir (bust).',
       '- Le premier joueur qui finit fait gagner toute son équipe.',
+    ],
+    if (s.doubles) ...[
+      '# DOUBLE (ÉQUIPES)',
+      '- 2 équipes. On alterne : joueur 1 de l\'équipe A, joueur 1 de '
+          'l\'équipe B, joueur 2 de A, joueur 2 de B…',
+      '- Les coéquipiers partagent le MÊME score : ce que marque l\'un est '
+          'retiré du score de l\'équipe.',
+      '- Le joueur qui finit fait gagner son équipe. Chacun garde sa propre '
+          'moyenne dans les stats.',
     ],
     if (s.roundLimit != null) ...[
       '# LIMITE DE MANCHES',

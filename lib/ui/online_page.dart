@@ -82,6 +82,134 @@ String? tournamentLine(Map<String, dynamic> game) {
   }
 }
 
+/// Noms de l'équipe qui défie en double (« FOC ET CED »).
+String _teamOf(OnlineInvite invite) {
+  final home = invite.game['home'];
+  final names = [
+    for (final p in (invite.game['players'] as List? ?? const []))
+      if (home is Map && home['${(p as Map)['id']}'] == 'a')
+        '${p['name']}'.toUpperCase()
+  ];
+  return names.join(' ET ');
+}
+
+/// 1 contre 1 (faux) ou double (vrai) ; null = annulé.
+Future<bool?> askDouble(BuildContext context, String opponent) =>
+    showAppSheet<bool>(
+      context,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('DÉFIER ${opponent.toUpperCase()}',
+                style: Tv.title(22, color: Tv.goldLight)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                for (final (dbl, icon, title, sub) in [
+                  (false, Icons.person, '1 CONTRE 1', 'Toi contre $opponent'),
+                  (
+                    true,
+                    Icons.groups,
+                    '2 CONTRE 2',
+                    'Toi et un équipier de chez toi contre $opponent et un '
+                        'équipier de chez lui'
+                  ),
+                ]) ...[
+                  if (dbl) const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      key: ValueKey(dbl ? 'mode-double' : 'mode-single'),
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => Navigator.pop(ctx, dbl),
+                      child: Container(
+                        height: 130,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Tv.panel2,
+                          borderRadius: BorderRadius.circular(14),
+                          border:
+                              Border.all(color: Tv.gold.withValues(alpha: 0.6)),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(icon, size: 36, color: Tv.goldLight),
+                            const SizedBox(height: 4),
+                            Text(title, style: Tv.title(22)),
+                            Text(sub,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Tv.label(11, color: Tv.text)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+/// Choix de mon équipier en double : un compte du téléphone (stats
+/// envoyées) ou un invité. [side] = a (qui défie) ou b : l'invité reçoit
+/// un id propre à ma maison (« guest-a1 »).
+Future<X01Player?> pickTeammate(BuildContext context,
+    {required String side,
+    required PlayerProfile me,
+    required Set<String> exclude}) {
+  final store = PlayerStore.instance;
+  final accounts = [
+    for (final p in store.players)
+      if (!exclude.contains(p.key) && !p.expired) p
+  ];
+  return showAppSheet<X01Player>(
+    context,
+    builder: (ctx) => SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('TON ÉQUIPIER', style: Tv.title(22, color: Tv.goldLight)),
+          Text('Il joue avec toi, chez toi, sur ta cible.',
+              style: Tv.label(12, color: Tv.text)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final p in accounts)
+                ActionChip(
+                  key: ValueKey('mate-${p.key}'),
+                  avatar: PlayerAvatar.of(p, size: 26),
+                  label: Text(p.name.toUpperCase(), style: Tv.title(16)),
+                  onPressed: () =>
+                      Navigator.pop(ctx, X01Player(id: p.key, name: p.name)),
+                ),
+              ActionChip(
+                key: const ValueKey('mate-guest'),
+                avatar: const Icon(Icons.person_outline, size: 20),
+                label: Text('INVITÉ (SANS STATS)', style: Tv.title(16)),
+                onPressed: () => Navigator.pop(
+                    ctx,
+                    X01Player(
+                        id: 'guest-${side}1', name: 'Invité de ${me.name}')),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 /// Fenêtre « X te défie » (affichée par l'accueil, par-dessus n'importe
 /// quel écran). Se ferme seule si le défi est annulé ou expire.
 Future<void> showInviteDialog(BuildContext context, OnlineInvite invite) async {
@@ -95,8 +223,26 @@ Future<void> showInviteDialog(BuildContext context, OnlineInvite invite) async {
     builder: (_) => _InviteDialog(invite: invite),
   );
   if (accept == null || !context.mounted) return;
+  // Double : je choisis mon équipier avant d'entrer dans la partie
+  Map<String, dynamic>? game;
+  final me = OnlineService.instance.me;
+  if (accept && invite.game['double'] == true && me != null) {
+    final ids = {
+      for (final p in (invite.game['players'] as List? ?? const []))
+        '${(p as Map)['id']}'
+    };
+    final mate = await pickTeammate(context, side: 'b', me: me, exclude: ids);
+    if (!context.mounted) return;
+    if (mate == null) {
+      // abandon du choix = refus
+      OnlineService.instance.answer(invite.id, false).catchError((_) => null);
+      return;
+    }
+    game = completeDouble(invite.game, me.key, mate);
+  }
   try {
-    final room = await OnlineService.instance.answer(invite.id, accept);
+    final room =
+        await OnlineService.instance.answer(invite.id, accept, game: game);
     if (room != null && context.mounted) await openOnlineGame(context, room);
   } on ApiError catch (e) {
     if (context.mounted) {
@@ -176,8 +322,19 @@ class _InviteDialogState extends State<_InviteDialog> {
           Text(title.toUpperCase(), style: Tv.title(22)),
           if (rules.isNotEmpty)
             Text(rules.toUpperCase(), style: Tv.label(12, color: Tv.text)),
+          if (widget.invite.game['double'] == true)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                  'EN DOUBLE : ${_teamOf(widget.invite)} · tu choisis ton '
+                  'équipier en acceptant',
+                  style: Tv.title(15, color: Tv.goldLight)),
+            ),
           const SizedBox(height: 6),
-          Text('$first commence · chacun chez soi sur sa cible',
+          Text(
+              widget.invite.game['double'] == true
+                  ? 'Chaque équipe joue chez elle sur sa cible'
+                  : '$first commence · chacun chez soi sur sa cible',
               style: Tv.label(12)),
           if (!BoardService.instance.isConnected)
             Padding(
@@ -226,12 +383,22 @@ class _OnlinePageState extends State<OnlinePage> {
   Future<void> _challenge(OnlinePlayer p) async {
     final me = online.me;
     if (me == null) return;
+    // 1 contre 1, ou double (2 contre 2, une maison par équipe)
+    final double = await askDouble(context, p.name);
+    if (double == null || !mounted) return;
+    X01Player? mate;
+    if (double) {
+      mate = await pickTeammate(context,
+          side: 'a', me: me, exclude: {me.key, p.key});
+      if (mate == null || !mounted) return;
+    }
     final game = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
           builder: (_) => SetupPage(online: [
                 X01Player(id: me.key, name: me.name),
                 X01Player(id: p.key, name: p.name),
+                if (mate != null) mate,
               ])),
     );
     if (game == null || !mounted) return;

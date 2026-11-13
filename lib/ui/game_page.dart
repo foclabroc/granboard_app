@@ -134,7 +134,7 @@ class _GamePageState extends State<GamePage> {
     if (room == null) return !_botTurn || _botMove;
     final g = game;
     if (g is MatchGame && g.betweenLegs) return true;
-    return g.currentPlayer.id == room.myId;
+    return room.mine(g.currentPlayer.id);
   }
 
   DateTime _lastHint = DateTime(2000);
@@ -336,7 +336,7 @@ class _GamePageState extends State<GamePage> {
     });
     // En ligne, on n'annule que ses propres actions : après l'annulation,
     // ce doit être à moi de jouer
-    if (room != null && game.currentPlayer.id != room.myId) {
+    if (room != null && !room.mine(game.currentPlayer.id)) {
       setState(() => game.applyLogEntry(log.last));
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -802,7 +802,7 @@ class _CurrentPanel extends StatelessWidget {
     final st = game.currentState;
     final turn = game.currentTurn;
     final frozen = game.isFrozen(game.current);
-    final freeze = game.settings.freeze;
+    final freeze = game.settings.teamPlay;
     final color = _colorOf(p);
 
     String status;
@@ -1052,7 +1052,7 @@ class _Scoreboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, c) {
-      final freeze = game.settings.freeze;
+      final freeze = game.settings.teamPlay;
       const headH = 30.0;
       final rowH = scoreRowHeight(c.maxHeight, game.players.length,
           extra: freeze ? game.teams.length * headH : 0);
@@ -1081,7 +1081,9 @@ class _Scoreboard extends StatelessWidget {
                 ),
                 if (frozen) const Text(' ❄', style: TextStyle(color: Tv.ice)),
                 const Spacer(),
-                Text('${game.teamRemaining(t)}', style: Tv.title(20)),
+                Text(
+                    '${game.settings.doubles ? game.stateOf(game.membersOf(t).first).remaining : game.teamRemaining(t)}',
+                    style: Tv.title(20)),
               ],
             ),
           ));
