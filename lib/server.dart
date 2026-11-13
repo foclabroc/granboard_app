@@ -172,6 +172,11 @@ class GbServer {
               {'p_token': token, 'p_sound': sound, 'p_voice': voice})) as num)
           .toInt();
 
+  /// Cible du joueur ('' = style par défaut). Renvoie la version des médias.
+  static Future<int> setBoard(String token, String board) async =>
+      ((await rpc('gb_set_board', {'p_token': token, 'p_board': board})) as num)
+          .toInt();
+
   /// Médias des joueurs dont la version diffère de `known`.
   static Future<Map<String, dynamic>> media(
           List<int> ids, Map<String, int> known) async =>

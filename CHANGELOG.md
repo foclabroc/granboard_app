@@ -2,7 +2,7 @@
 
 ## v0.6.6
 
-- **Cible de chaque joueur** : bouton CIBLE dans la fiche du joueur (« Par défaut » = style des options, ou l'un des 9 styles) ; pendant son tour, la cible affichée (téléphone et TV) est la sienne ; celle du profil principal s'affiche sur l'écran TV en attente
+- **Cible de chaque joueur** : bouton CIBLE dans la fiche du joueur (« Par défaut » = style des options, ou l'un des 9 styles) ; pendant son tour, la cible affichée (téléphone et TV) est la sienne ; celle du profil principal s'affiche sur l'écran TV en attente ; gardée sur le serveur avec le compte : le joueur la retrouve chez un ami, sur la TV et en ligne
 - **Cricket : petite cible** dans le panneau de droite (au-dessus des 3 fléchettes) : numéros fermés par le joueur allumés à sa couleur, numéros encore à fermer qui clignotent, fléchettes du tour plantées
 - **Jeux de lumière sur les numéros** de la cible dessinée : le numéro d'une zone touchée s'allume à la couleur du joueur et reste allumé pendant le tour (flash à l'impact), les numéros à viser clignotent en blanc, une lumière fait le tour en attendant la 1re fléchette, tout l'anneau brille sur un bull, passe au rouge sur un bust et en arc-en-ciel à la victoire
 - **Cibles réalistes** : les 9 styles (dont le nouveau « Réaliste » aux couleurs d'une cible électronique) passent au même rendu : cible électronique en plastique troué avec relief, séparateurs et reflet, anneau de LED animé à la couleur du joueur (rouge sur un bust, arc-en-ciel à la victoire), segment touché allumé, fléchettes en 3D (fût en métal, empennage à la couleur du joueur, ombre) qui arrivent et vibrent en se plantant

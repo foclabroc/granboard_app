@@ -5,6 +5,7 @@ import '../audio.dart';
 import '../game/practice.dart';
 import '../media.dart';
 import '../players.dart';
+import '../server.dart';
 import '../tv_link.dart';
 import 'account_page.dart';
 import 'dartboard.dart';
@@ -510,8 +511,15 @@ Future<void> showPlayerBoardSheet(BuildContext context, PlayerProfile p) =>
               key: ValueKey('pboard-${sk?.id ?? 'default'}'),
               borderRadius: BorderRadius.circular(14),
               onTap: () async {
-                await PlayerBoards.instance.set(p.key, sk);
-                TvLink.instance.refresh();
+                try {
+                  await PlayerBoards.instance.set(p, sk);
+                  TvLink.instance.refresh();
+                } on ApiError catch (e) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx)
+                        .showSnackBar(SnackBar(content: Text(e.message)));
+                  }
+                }
               },
               child: Container(
                 padding: const EdgeInsets.all(10),
@@ -558,7 +566,7 @@ Future<void> showPlayerBoardSheet(BuildContext context, PlayerProfile p) =>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                    'Affichée pendant son tour, téléphone et TV. Celle du profil principal reste sur l\'écran TV en attente. « Par défaut » = style choisi dans les options.',
+                    'Affichée pendant son tour, sur tous les téléphones, la TV et en ligne. Celle du profil principal reste sur l\'écran TV en attente. « Par défaut » = style choisi dans les options du téléphone.',
                     style: Tv.label(12)),
               ],
             ),

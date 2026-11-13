@@ -109,6 +109,11 @@ class FakeServer {
         m['sound'] = b['p_sound'];
         if (b['p_voice'] != null) m['voice'] = b['p_voice'];
         return m['v'] = (m['v'] as int) + 1;
+      case 'gb_set_board':
+        final id = _auth(b['p_token']);
+        final m = media[id] ??= {'v': 0, 'sound': ''};
+        m['board'] = b['p_board'] ?? '';
+        return m['v'] = (m['v'] as int) + 1;
       case 'gb_media':
         final known = Map<String, dynamic>.from(b['p_known'] as Map);
         return {
@@ -123,6 +128,7 @@ class FakeServer {
                       'voice': media[id]?['sound'] == 'voice'
                           ? media[id]!['voice']
                           : null,
+                      'board': media[id]?['board'] ?? '',
                     }
         };
       case 'gb_submit':

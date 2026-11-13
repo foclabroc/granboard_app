@@ -279,7 +279,7 @@ void main() {
     await tester.tap(find.text('SUIVANT'));
     await tester.pump(const Duration(seconds: 2));
     expect(board().skin, isNull); // Sophie : style général
-    await PlayerBoards.instance.set(p.key, null);
+    await PlayerBoards.instance.set(p, null);
   });
 
   testWidgets('Joueur : choix de la couleur et d\'un avatar', (tester) async {

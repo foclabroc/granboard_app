@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../granboard.dart';
+import '../media.dart';
+import '../players.dart';
 import 'theme.dart';
 
 /// Style de la cible dessinée (choisi dans l'accueil, envoyé à la TV).
@@ -194,56 +196,36 @@ class BoardSkin {
 
 /// Cible choisie par chaque joueur (fiche du joueur) : elle remplace le
 /// style général pendant son tour, et celle du profil principal s'affiche
-/// sur l'écran TV en attente. Gardée sur le téléphone, envoyée à la TV.
+/// sur l'écran TV en attente. Gardée sur le serveur avec sa photo et son
+/// son (`gb_set_board`, `MediaStore`) : elle le suit sur tous les
+/// téléphones, la TV et en ligne.
 class PlayerBoards extends ChangeNotifier {
   static final instance = PlayerBoards._();
-  PlayerBoards._();
-  static const _pref = 'player_boards_v1';
-
-  final Map<String, String> _mine = {};
+  PlayerBoards._() {
+    MediaStore.instance.addListener(notifyListeners);
+  }
 
   /// Reçues du téléphone (écran TV).
   final Map<String, String> _remote = {};
   String? _idle;
 
-  Map<String, String> get all => Map.of(_mine);
+  /// Cibles connues sur ce téléphone (envoyées à la TV).
+  Map<String, String> get all => MediaStore.instance.boards;
 
   /// Cible du joueur, null = style général.
   BoardSkin? of(String? id) {
     if (id == null) return null;
-    final s = _remote[id] ?? _mine[id];
-    return s == null ? null : BoardSkin.byId(s);
+    final s = _remote[id] ?? MediaStore.instance.boardOf(id);
+    if (s.isEmpty || !BoardSkin.all.any((b) => b.id == s)) return null;
+    return BoardSkin.byId(s);
   }
 
   /// Cible de l'écran TV en attente (null = style général).
   BoardSkin? get idle => _idle == null ? null : BoardSkin.byId(_idle);
 
-  Future<void> load() async {
-    try {
-      final p = await SharedPreferences.getInstance();
-      final raw = p.getStringList(_pref) ?? const [];
-      _mine.clear();
-      for (final e in raw) {
-        final i = e.indexOf('=');
-        if (i > 0) _mine[e.substring(0, i)] = e.substring(i + 1);
-      }
-      notifyListeners();
-    } catch (_) {}
-  }
-
-  Future<void> set(String id, BoardSkin? skin) async {
-    if (skin == null) {
-      _mine.remove(id);
-    } else {
-      _mine[id] = skin.id;
-    }
-    notifyListeners();
-    try {
-      final p = await SharedPreferences.getInstance();
-      await p.setStringList(
-          _pref, [for (final e in _mine.entries) '${e.key}=${e.value}']);
-    } catch (_) {}
-  }
+  /// Change la cible du compte (null = style par défaut). Lève ApiError.
+  Future<void> set(PlayerProfile p, BoardSkin? skin) =>
+      MediaStore.instance.setBoard(p, skin?.id ?? '');
 
   /// Écran TV : cibles envoyées par le téléphone.
   void applyRemote(Map boards, String? idle) {

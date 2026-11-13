@@ -54,9 +54,13 @@ class PlayerMedia {
   Uint8List? photo;
   String sound;
   Uint8List? voice;
+
+  /// Cible choisie ('' = style par défaut).
+  String board;
   ImageProvider? _image;
 
-  PlayerMedia({this.v = 0, this.photo, this.sound = '', this.voice});
+  PlayerMedia(
+      {this.v = 0, this.photo, this.sound = '', this.voice, this.board = ''});
 
   ImageProvider? get image =>
       photo == null ? null : (_image ??= MemoryImage(photo!));
@@ -80,6 +84,15 @@ class MediaStore extends ChangeNotifier {
   String soundOf(String id) => _media[id]?.sound ?? '';
   Uint8List? voiceOf(String id) => _media[id]?.voice;
 
+  /// Cible choisie par le joueur ('' = style par défaut).
+  String boardOf(String id) => _media[id]?.board ?? '';
+
+  /// Cibles connues (envoyées à la TV).
+  Map<String, String> get boards => {
+        for (final e in _media.entries)
+          if (e.value.board.isNotEmpty) e.key: e.value.board
+      };
+
   Future<void> load() async {
     try {
       _dir =
@@ -97,6 +110,7 @@ class MediaStore extends ChangeNotifier {
         _media[id] = PlayerMedia(
           v: (m['v'] as num?)?.toInt() ?? 0,
           sound: '${m['sound'] ?? ''}',
+          board: '${m['board'] ?? ''}',
           photo: m['photo'] == true ? _read('$id.jpg') : null,
           voice: m['voice'] == true ? _read('$id.m4a') : null,
         );
@@ -138,6 +152,7 @@ class MediaStore extends ChangeNotifier {
               e.key: {
                 'v': e.value.v,
                 'sound': e.value.sound,
+                'board': e.value.board,
                 'photo': e.value.photo != null,
                 'voice': e.value.voice != null,
               }
@@ -177,6 +192,7 @@ class MediaStore extends ChangeNotifier {
               photo: _b64(m['photo']),
               sound: '${m['sound'] ?? ''}',
               voice: _b64(m['voice']),
+              board: '${m['board'] ?? ''}',
             ));
         changed = true;
       }
@@ -222,7 +238,11 @@ class MediaStore extends ChangeNotifier {
     _set(
         p.key,
         PlayerMedia(
-            v: v, photo: jpeg, sound: old?.sound ?? '', voice: old?.voice));
+            v: v,
+            photo: jpeg,
+            sound: old?.sound ?? '',
+            voice: old?.voice,
+            board: old?.board ?? ''));
     await _save();
   }
 
@@ -236,7 +256,26 @@ class MediaStore extends ChangeNotifier {
     _set(
         p.key,
         PlayerMedia(
-            v: v, photo: old?.photo, sound: sound, voice: voice ?? old?.voice));
+            v: v,
+            photo: old?.photo,
+            sound: sound,
+            voice: voice ?? old?.voice,
+            board: old?.board ?? ''));
+    await _save();
+  }
+
+  /// Nouvelle cible du joueur ('' = style par défaut). Lève ApiError.
+  Future<void> setBoard(PlayerProfile p, String board) async {
+    final v = await GbServer.setBoard(p.token, board);
+    final old = _media[p.key];
+    _set(
+        p.key,
+        PlayerMedia(
+            v: v,
+            photo: old?.photo,
+            sound: old?.sound ?? '',
+            voice: old?.voice,
+            board: board));
     await _save();
   }
 

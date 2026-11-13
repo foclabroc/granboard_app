@@ -12,7 +12,7 @@ import 'players.dart';
 import 'tv/tv_home.dart';
 import 'tv_link.dart';
 import 'ui/cricket_view.dart' show CricketStyle;
-import 'ui/dartboard.dart' show BoardSkin, PlayerBoards;
+import 'ui/dartboard.dart' show BoardSkin;
 import 'ui/home_page.dart';
 import 'ui/theme.dart';
 import 'ui/wallpaper.dart';
@@ -52,7 +52,6 @@ Future<void> main() async {
   await Future.wait([
     AudioService.instance.init(),
     BoardSkin.load(),
-    PlayerBoards.instance.load(),
     CricketStyle.load(),
     Tv.load(),
     Wallpaper.instance.load(),
