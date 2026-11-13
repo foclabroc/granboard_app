@@ -6,14 +6,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../audio.dart';
 import '../board_service.dart';
 import '../game/practice.dart';
+import '../game_save.dart';
+import '../tournament.dart' show LocalTournamentStore;
 import '../online/online.dart';
+import '../format.dart';
 import '../players.dart';
+import '../server.dart';
 import '../tv_link.dart';
 import '../update_check.dart';
 import 'calibration_page.dart';
 import 'connect_page.dart';
 import 'dartboard.dart';
 import 'diagnostic_page.dart';
+import 'game_page.dart' show GamePage;
 import 'online_page.dart';
 import 'players_page.dart';
 import 'ranking_page.dart';
@@ -69,6 +74,9 @@ class _HomePageState extends State<HomePage>
               fullscreenDialog: true, builder: (_) => const WelcomePage()));
         }
       });
+    } else {
+      // Partie coupée (appli fermée, téléphone éteint) : la reprendre ?
+      WidgetsBinding.instance.addPostFrameCallback((_) => _offerResume());
     }
     // Reconnexion automatique à la dernière cible
     if (board.lastId != null && !board.isConnected) {
@@ -78,6 +86,61 @@ class _HomePageState extends State<HomePage>
 
   final _online = OnlineService.instance;
   int? _shownInvite;
+
+  Future<void> _offerResume() async {
+    final saved = await GameSave.load();
+    if (saved == null || !mounted) return;
+    final go = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text('Partie interrompue', style: Tv.title(22)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(saved.summary, style: Tv.title(18, color: Tv.goldLight)),
+            const SizedBox(height: 8),
+            const Text('La reprendre là où elle s\'est arrêtée ?'),
+          ],
+        ),
+        actions: [
+          TextButton(
+              key: const ValueKey('resume-no'),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('ABANDONNER')),
+          FilledButton(
+              key: const ValueKey('resume-yes'),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('REPRENDRE')),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (go != true) {
+      GameSave.clear();
+      return;
+    }
+    final tn = saved.tournament;
+    if (tn == null) {
+      _open(GamePage(game: saved.game));
+      return;
+    }
+    final local = LocalTournamentStore.instance;
+    await local.load();
+    final uid = '${tn['uid']}';
+    if (!mounted) return;
+    if (local.byUid(uid) == null) {
+      // tournoi supprimé entre-temps : la partie seule
+      _open(GamePage(game: saved.game));
+      return;
+    }
+    _open(LocalTournamentPage(uid: uid, resume: (
+      saved.game,
+      (tn['r'] as num?)?.toInt() ?? 0,
+      (tn['s'] as num?)?.toInt() ?? 0
+    )));
+  }
 
   void _onOnline() {
     final inv = _online.invite;
@@ -312,6 +375,7 @@ class _HomePageState extends State<HomePage>
                           ),
                         ),
                       ),
+                      const _NetPill(),
                       const SizedBox(width: 8),
                       Flexible(
                         flex: 2,
@@ -685,6 +749,64 @@ class _MeChip extends StatelessWidget {
 }
 
 /// État de la cible en pastille : touche = choisir une cible, menu = outils.
+/// Hors ligne ou parties pas encore envoyées : petite pastille dans la barre
+/// (rien quand tout va bien). Toucher = explication + nouvel essai.
+class _NetPill extends StatelessWidget {
+  const _NetPill();
+
+  @override
+  Widget build(BuildContext context) {
+    final store = PlayerStore.instance;
+    return ListenableBuilder(
+      listenable: Listenable.merge([GbServer.reachable, store]),
+      builder: (context, _) {
+        final off = !GbServer.reachable.value;
+        final n = store.pending.length;
+        if (!off && n == 0) return const SizedBox.shrink();
+        final color = off ? Tv.red : Tv.gold;
+        final text =
+            off ? (n > 0 ? 'HORS LIGNE · $n' : 'HORS LIGNE') : '$n À ENVOYER';
+        return Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: InkWell(
+            key: const ValueKey('net-pill'),
+            borderRadius: BorderRadius.circular(18),
+            onTap: () {
+              store.flush();
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(off
+                      ? 'Pas d\'internet : tu peux jouer quand même. '
+                          '${n == 0 ? 'Les parties seront envoyées' : n == 1 ? '1 partie en attente, envoyée' : '$n parties en attente, envoyées'} '
+                          'au serveur dès le retour du réseau.'
+                      : 'Envoi de ${plural(n, 'partie', 'parties')} au serveur…')));
+            },
+            child: Container(
+              height: 36,
+              padding: const EdgeInsets.symmetric(horizontal: 9),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: color.withValues(alpha: 0.55)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(off ? Icons.cloud_off : Icons.cloud_upload,
+                      size: 18, color: color),
+                  if (n > 0) ...[
+                    const SizedBox(width: 4),
+                    Text('$n', style: Tv.title(14)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _BoardPill extends StatelessWidget {
   final BoardService board;
   final VoidCallback onChoose;

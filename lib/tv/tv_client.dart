@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import '../lan.dart';
 import '../server.dart';
 
 /// Côté TV : ouvre un salon (code à afficher), écoute le relais temps réel
@@ -44,15 +46,40 @@ class TvClient extends ChangeNotifier {
   bool _fetching = false;
   bool _closed = false;
 
+  /// Wi-Fi local : le téléphone envoie aussi l'état directement.
+  LanServer? _lan;
+
+  /// Code fait par l'écran lui-même (serveur injoignable au démarrage) :
+  /// seul le Wi-Fi local marche.
+  bool lanOnly = false;
+
   Future<void> start() async {
     await _openRoom();
     _schedulePoll();
     if (realtime) _connect();
+    if (realtime && Lan.enabled) {
+      _lan =
+          LanServer(code: () => code, name: deviceName, onState: _applyState);
+      await _lan!.start();
+    }
+  }
+
+  int _lastAt = 0;
+
+  /// Nouvel état (serveur ou Wi-Fi) : le plus récent gagne (`at` = heure
+  /// d'envoi du téléphone).
+  void _applyState(Map<String, dynamic> s) {
+    final at = (s['at'] as num?)?.toInt() ?? 0;
+    if (at != 0 && at < _lastAt) return;
+    if (at != 0) _lastAt = at;
+    state = s;
+    notifyListeners();
   }
 
   @override
   void dispose() {
     _closed = true;
+    _lan?.close();
     _poll?.cancel();
     _heartbeat?.cancel();
     _reconnect?.cancel();
@@ -72,7 +99,8 @@ class TvClient extends ChangeNotifier {
       } catch (_) {}
     }
     if (code != null && !fresh) {
-      if (await fetch()) return;
+      lanOnly = prefs.getBool('${prefKey}_lan') ?? false;
+      if (lanOnly || await fetch()) return;
     }
     try {
       final r = Map<String, dynamic>.from(
@@ -81,15 +109,37 @@ class TvClient extends ChangeNotifier {
       _key = r['key'] as String;
       _topic = r['topic'] as String;
       _seq = 0;
+      _lastAt = 0;
       state = null;
       error = null;
+      lanOnly = false;
       await prefs.setString(
           prefKey, jsonEncode({'code': code, 'key': _key, 'topic': _topic}));
+      await prefs.remove('${prefKey}_lan');
     } on ApiError catch (e) {
       error = e.message;
+      // Pas d'internet : un code à soi, pour le Wi-Fi local seulement
+      if (e.offline && Lan.enabled && (code == null || fresh)) {
+        code = _localCode();
+        _key = null;
+        _topic = null;
+        _seq = 0;
+        _lastAt = 0;
+        state = null;
+        lanOnly = true;
+        await prefs.setString(prefKey, jsonEncode({'code': code}));
+        await prefs.setBool('${prefKey}_lan', true);
+      }
     }
     notifyListeners();
     if (realtime) _rejoin();
+  }
+
+  static const _alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  String _localCode() {
+    final r = Random();
+    return List.generate(4, (_) => _alphabet[r.nextInt(_alphabet.length)])
+        .join();
   }
 
   /// Simule un état reçu (tests, captures).
@@ -116,8 +166,7 @@ class TvClient extends ChangeNotifier {
       final seq = (m['seq'] as num?)?.toInt() ?? _seq;
       if (m['state'] is Map && seq > _seq) {
         _seq = seq;
-        state = Map<String, dynamic>.from(m['state'] as Map);
-        notifyListeners();
+        _applyState(Map<String, dynamic>.from(m['state'] as Map));
       }
       return true;
     } on ApiError catch (e) {

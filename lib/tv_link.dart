@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'audio.dart';
 import 'game/darts_game.dart';
+import 'lan.dart';
 import 'players.dart';
 import 'server.dart';
 import 'ui/theme.dart';
@@ -16,15 +17,27 @@ import 'ui/dartboard.dart' show BoardSkin;
 /// Un écran relié (TV, tablette…), un salon par écran sur le serveur.
 class TvScreen {
   final String code;
-  final String hostKey;
+  final String hostKey; // vide : relié seulement par le Wi-Fi local
   final String name;
-  TvScreen(this.code, this.hostKey, this.name);
+
+  /// Adresse sur le Wi-Fi local (ip:port), si l'écran a répondu.
+  String? lan;
+  TvScreen(this.code, this.hostKey, this.name, {this.lan});
 
   String get label => '$name $code';
 
-  Map<String, dynamic> toJson() => {'code': code, 'key': hostKey, 'name': name};
+  /// Relié sans le serveur (pas d'internet à la liaison).
+  bool get wifiOnly => hostKey.isEmpty;
+
+  Map<String, dynamic> toJson() => {
+        'code': code,
+        'key': hostKey,
+        'name': name,
+        if (lan != null) 'lan': lan,
+      };
   factory TvScreen.fromJson(Map<String, dynamic> j) =>
-      TvScreen('${j['code']}', '${j['key']}', '${j['name'] ?? 'Écran'}');
+      TvScreen('${j['code']}', '${j['key'] ?? ''}', '${j['name'] ?? 'Écran'}',
+          lan: j['lan'] as String?);
 }
 
 /// Côté téléphone : liaison avec un ou plusieurs écrans. Le téléphone pilote
@@ -90,6 +103,9 @@ class TvLink extends ChangeNotifier {
     _fixSound();
     _applyMute();
     notifyListeners();
+    for (final s in screens) {
+      _rediscover(s);
+    }
   }
 
   Future<void> _save() async {
@@ -129,11 +145,27 @@ class TvLink extends ChangeNotifier {
   /// Relie l'écran qui affiche [tvCode] (lève ApiError). Une TV reliée
   /// prend le son si le son était sur le téléphone.
   Future<TvScreen> link(String tvCode) async {
-    final r = await GbServer.rpc('gb_tv_link',
-        {'p_code': tvCode.trim().toUpperCase(), 'p_name': _hostName});
-    final m = Map<String, dynamic>.from(r as Map);
-    final s =
-        TvScreen('${m['code']}', '${m['host_key']}', '${m['name'] ?? 'Écran'}');
+    final want = tvCode.trim().toUpperCase();
+    // Recherche sur le Wi-Fi local en même temps (marche sans internet)
+    final near = Lan.discover(want);
+    TvScreen s;
+    try {
+      final r = await GbServer.rpc(
+          'gb_tv_link', {'p_code': want, 'p_name': _hostName});
+      final m = Map<String, dynamic>.from(r as Map);
+      s = TvScreen(
+          '${m['code']}', '${m['host_key']}', '${m['name'] ?? 'Écran'}');
+      near.then((f) {
+        if (f == null || !screens.contains(s)) return;
+        s.lan = f.address;
+        _save();
+        _resend();
+      });
+    } on ApiError {
+      final f = await near;
+      if (f == null) rethrow;
+      s = TvScreen(f.code, '', f.name, lan: f.address);
+    }
     screens.removeWhere((x) => x.code == s.code);
     screens.add(s);
     if (soundOn.length == 1 && soundOn.contains(phone) && s.name == 'TV') {
@@ -213,10 +245,13 @@ class TvLink extends ChangeNotifier {
 
   void _push(Map<String, dynamic> state) {
     _last = state;
+    // heure d'envoi : l'écran garde le plus récent (serveur ou Wi-Fi)
+    final at = DateTime.now().millisecondsSinceEpoch;
     for (final s in screens) {
       // Chaque écran sait s'il doit jouer le son
-      _pending[s.code] = {
+      final st = {
         ...state,
+        'at': at,
         'sound': soundOn.contains(s.code),
         'skin': BoardSkin.current.value.id,
         'cricket': CricketStyle.current.value,
@@ -225,8 +260,73 @@ class TvLink extends ChangeNotifier {
         'pron': AudioService.instance.pronunciations,
         'wall': Wallpaper.instance.forTv,
       };
-      if (!_sending.contains(s.code)) _flush(s);
+      if (!s.wifiOnly) {
+        _pending[s.code] = st;
+        if (!_sending.contains(s.code)) _flush(s);
+      }
+      if (s.lan != null) {
+        _lanPending[s.code] = st;
+        if (!_lanSending.contains(s.code)) _flushLan(s);
+      } else {
+        _rediscover(s);
+      }
     }
+  }
+
+  // ─── Wi-Fi local ───
+
+  final _lanPending = <String, Map<String, dynamic>>{};
+  final _lanSending = <String>{};
+  final _lanOk = <String, bool>{};
+  final _lastLook = <String, DateTime>{};
+
+  /// L'écran répond-il sur le Wi-Fi local ?
+  bool lanWorks(TvScreen s) => s.lan != null && (_lanOk[s.code] ?? true);
+
+  Future<void> _flushLan(TvScreen s) async {
+    _lanSending.add(s.code);
+    try {
+      while (_lanPending.containsKey(s.code) &&
+          screens.contains(s) &&
+          s.lan != null) {
+        final st = _lanPending.remove(s.code)!;
+        final ok = await Lan.push(s.lan!, s.code, st);
+        if (ok != _lanOk[s.code]) {
+          _lanOk[s.code] = ok;
+          if (ok && s.wifiOnly) error = null;
+          notifyListeners();
+        }
+        if (!ok) {
+          if (s.wifiOnly) {
+            error = '${s.label} ne répond pas sur le Wi-Fi';
+            notifyListeners();
+          }
+          // l'adresse a pu changer : on la recherche
+          _rediscover(s, force: true);
+          return;
+        }
+      }
+    } finally {
+      _lanSending.remove(s.code);
+    }
+  }
+
+  /// Recherche l'écran sur le Wi-Fi (au plus une fois toutes les 20 s).
+  Future<void> _rediscover(TvScreen s, {bool force = false}) async {
+    if (!Lan.enabled) return;
+    final last = _lastLook[s.code];
+    if (last != null &&
+        DateTime.now().difference(last) < const Duration(seconds: 20)) {
+      return;
+    }
+    _lastLook[s.code] = DateTime.now();
+    final f = await Lan.discover(s.code);
+    if (f == null || !screens.contains(s)) return;
+    final changed = s.lan != f.address;
+    s.lan = f.address;
+    _lanOk[s.code] = true;
+    if (changed) await _save();
+    _resend();
   }
 
   /// Envoi « le dernier gagne » par écran.
@@ -249,10 +349,15 @@ class TvLink extends ChangeNotifier {
             await unlink(s.code);
             return;
           }
-          error =
-              e.message; // hors ligne : on retente avec l'état le plus récent
+          // hors ligne : on retente avec l'état le plus récent (pas
+          // d'erreur affichée si le Wi-Fi local passe)
+          final msg = lanWorks(s) ? null : e.message;
+          if (msg != error) {
+            error = msg;
+            notifyListeners();
+          }
           _pending.putIfAbsent(s.code, () => st);
-          notifyListeners();
+          if (s.lan == null) _rediscover(s);
           await Future<void>.delayed(const Duration(seconds: 2));
         }
       }

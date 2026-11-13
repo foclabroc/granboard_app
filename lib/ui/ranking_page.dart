@@ -202,8 +202,22 @@ class _TopListState extends State<_TopList> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(e is ApiError ? e.message : 'Erreur',
+                Text(
+                    e is ApiError && e.offline
+                        ? 'HORS LIGNE'
+                        : e is ApiError
+                            ? e.message
+                            : 'Erreur',
                     style: Tv.title(18, color: Tv.red)),
+                if (e is ApiError && e.offline)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                        'Les classements reviendront avec le réseau. '
+                        'Tes parties sont gardées et seront envoyées.',
+                        textAlign: TextAlign.center,
+                        style: Tv.label(13, color: Tv.text)),
+                  ),
                 const SizedBox(height: 8),
                 OutlinedButton(
                     onPressed: _retry, child: const Text('RÉESSAYER')),

@@ -318,12 +318,12 @@ class _SetupPageState extends State<SetupPage> {
   int _teamOf(String id) => _team[id] ?? 0;
 
   String _nameOf(String id) => isBotId(id)
-      ? 'Bot ${id.substring(9)}'
+      ? 'Joueur virtuel ${id.substring(9)}'
       : isGuestId(id)
           ? 'Invité ${id.substring(6)}'
           : store.byId(id)?.name ?? '?';
 
-  /// Bot : son niveau suit celui des joueurs humains de la partie.
+  /// Joueur virtuel : son niveau suit celui des joueurs humains de la partie.
   void _addBot() {
     var n = 1;
     while (_selected.contains('guest-bot$n')) {
@@ -617,7 +617,7 @@ class _SetupPageState extends State<SetupPage> {
                                   visualDensity: chipDensity,
                                   avatar: const Icon(Icons.smart_toy_outlined,
                                       size: 18),
-                                  label: const Text('Bot'),
+                                  label: const Text('Joueur virtuel'),
                                   onPressed: _addBot,
                                 ),
                               ActionChip(
@@ -1146,7 +1146,7 @@ class _SetupPageState extends State<SetupPage> {
                                   visualDensity: VisualDensity.compact,
                                   avatar: const Icon(Icons.smart_toy_outlined,
                                       size: 18),
-                                  label: const Text('Bot'),
+                                  label: const Text('Joueur virtuel'),
                                   onPressed: _addBot,
                                 ),
                               ActionChip(
@@ -1723,7 +1723,7 @@ class _SetupPageState extends State<SetupPage> {
                 overflow: TextOverflow.ellipsis, style: Tv.title(18)),
           ),
           if (guest)
-            Text(isBotId(id) ? '  BOT' : '  INVITÉ', style: Tv.label(10)),
+            Text(isBotId(id) ? '  VIRTUEL' : '  INVITÉ', style: Tv.label(10)),
           if (p?.expired == true)
             Text('  À RECONNECTER', style: Tv.label(10, color: Tv.red)),
         ],

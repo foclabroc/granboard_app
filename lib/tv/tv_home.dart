@@ -187,6 +187,14 @@ class _CodeScreen extends StatelessWidget {
                   Text(client.error ?? 'Connexion au serveur…',
                       style: Tv.title(24, color: Tv.red))
                 else ...[
+                  if (client.lanOnly)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                          'SANS INTERNET : LE TÉLÉPHONE DOIT ÊTRE SUR LE MÊME WI-FI',
+                          maxLines: 2,
+                          style: Tv.label(15, color: Tv.goldLight)),
+                    ),
                   Text('SUR LE TÉLÉPHONE : ACCUEIL › TV › ENTRE CE CODE',
                       maxLines: 2, style: Tv.label(15, color: Tv.muted)),
                   const SizedBox(height: 12),

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:http/http.dart' as http;
 
 /// Serveur maison (même API que Pixel Trade : PostgREST derrière Caddy).
@@ -79,9 +80,19 @@ class GbServer {
 
   static final _http = http.Client();
 
+  /// Le serveur a-t-il répondu au dernier appel ? (pastille « hors ligne »)
+  static final reachable = ValueNotifier<bool>(true);
+
   static Future<dynamic> rpc(String fn, Map<String, dynamic> body) async {
     final fake = debugRpc;
-    final r = fake != null ? await fake(fn, body) : await _post(fn, body);
+    dynamic r;
+    try {
+      r = fake != null ? await fake(fn, body) : await _post(fn, body);
+      reachable.value = true;
+    } on ApiError catch (e) {
+      reachable.value = !e.offline;
+      rethrow;
+    }
     // Erreurs renvoyées (et non levées) par le serveur : {"error": …}
     if (r is Map && r['error'] is String) {
       throw ApiError(r['error'] as String, data: Map<String, dynamic>.from(r));

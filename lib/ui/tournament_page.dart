@@ -996,7 +996,10 @@ class _MatchCard extends StatelessWidget {
 /// entre les matchs.
 class LocalTournamentPage extends StatefulWidget {
   final String uid;
-  const LocalTournamentPage({super.key, required this.uid});
+
+  /// Partie coupée à reprendre tout de suite : (partie, tour, emplacement).
+  final (DartsGame, int, int)? resume;
+  const LocalTournamentPage({super.key, required this.uid, this.resume});
 
   @override
   State<LocalTournamentPage> createState() => _LocalTournamentPageState();
@@ -1010,7 +1013,16 @@ class _LocalTournamentPageState extends State<LocalTournamentPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _pushTv());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pushTv();
+      final r = widget.resume;
+      final lt = _lt;
+      if (r == null || lt == null) return;
+      final (game, round, slot) = r;
+      final m =
+          lt.view().matches.where((m) => m.round == round && m.slot == slot);
+      if (m.isNotEmpty && m.first.winner == null) _play(m.first, game: game);
+    });
   }
 
   void _pushTv() {
@@ -1018,16 +1030,17 @@ class _LocalTournamentPageState extends State<LocalTournamentPage> {
     if (lt != null) TvLink.instance.pushTournament(lt.view().toJson());
   }
 
-  Future<void> _play(TnMatch m) async {
+  Future<void> _play(TnMatch m, {DartsGame? game}) async {
     final lt = _lt;
     if (lt == null) return;
-    final game = gameFromJson(lt.gameFor(m));
+    game ??= gameFromJson(lt.gameFor(m));
     var tie = false;
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => GamePage(
           game: game,
+          tournament: {'uid': widget.uid, 'r': m.round, 's': m.slot},
           nextMatch: lt.view().nextLine(m.round, m.slot),
           onTournamentEnd: (g) {
             if (g.winners.length != 1) {

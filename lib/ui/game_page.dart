@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../audio.dart';
 import '../board_lights.dart';
 import '../game/bot.dart';
+import '../game_save.dart';
 import '../board_service.dart';
 import '../game/cricket.dart';
 import '../game/darts_game.dart';
@@ -52,6 +53,9 @@ class GamePage extends StatefulWidget {
   /// Tournoi : le match suivant, affiché pendant la partie (et sur la TV).
   /// En ligne, il est lu au tableau du serveur.
   final String? nextMatch;
+
+  /// Tournoi à la maison : {uid, r, s}, gardé avec la partie pour la reprise.
+  final Map<String, dynamic>? tournament;
   const GamePage(
       {super.key,
       this.settings,
@@ -59,7 +63,8 @@ class GamePage extends StatefulWidget {
       this.game,
       this.online,
       this.onTournamentEnd,
-      this.nextMatch})
+      this.nextMatch,
+      this.tournament})
       : assert(game != null || (settings != null && players != null));
 
   @override
@@ -346,6 +351,17 @@ class _GamePageState extends State<GamePage> {
   void _pushTv() {
     TvLink.instance.pushGame(game, next: _nextMatch);
     BoardLights.instance.state(game, _colorOf(game.currentPlayer));
+    // Gardée après chaque action : reprise si l'appli est fermée
+    if (_room == null && !_closed) {
+      GameSave.save(game, tournament: widget.tournament);
+    }
+  }
+
+  /// Partie quittée (résultats ou abandon) : plus de sauvegarde.
+  bool _closed = false;
+  void _close() {
+    _closed = true;
+    GameSave.clear();
   }
 
   late String? _nextMatch = widget.nextMatch;
@@ -402,6 +418,7 @@ class _GamePageState extends State<GamePage> {
 
   void _results() {
     // Tournoi à la maison : stats envoyées, retour au tableau
+    _close();
     if (widget.onTournamentEnd != null) {
       _saveStats();
       _endLocalTournament();
@@ -423,6 +440,7 @@ class _GamePageState extends State<GamePage> {
   Future<bool> _confirmQuit() async {
     // Partie finie quittée sans ouvrir les résultats : stats envoyées quand même
     if (game.finished) {
+      _close();
       _saveStats();
       _endLocalTournament();
       return true;
@@ -445,6 +463,7 @@ class _GamePageState extends State<GamePage> {
         ],
       ),
     );
+    if (r == true) _close();
     return r ?? false;
   }
 

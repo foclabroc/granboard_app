@@ -2,6 +2,10 @@
 
 ## v0.6.6
 
+- **Reprise d'une partie coupée** : la partie est gardée sur le téléphone après chaque fléchette ; si l'appli se ferme (batterie, Android, plantage), elle est proposée au lancement suivant (REPRENDRE / ABANDONNER), aussi pour un match de tournoi à la maison
+- **Hors ligne** : pastille rouge dans l'accueil quand le serveur ne répond pas (avec le nombre de parties en attente), renvoi automatique dès le retour du réseau, message clair dans les classements
+- **Écran TV sans internet** : le téléphone retrouve la TV ou la tablette sur le Wi-Fi de la maison et lui envoie la partie directement ; sans internet au démarrage, l'écran fait son propre code
+- « Bot » devient « Joueur virtuel »
 - **Écran TV en attente** : la cible ne tourne plus, elle flotte doucement ; à gauche les classements du serveur qui défilent (rang, moyenne 01, MPR, 180, meilleures fins), à droite les dernières parties des joueurs du téléphone
 - **Nouvel écran de réglages** façon retransmission TV (toutes les tuiles et le tournoi à la maison) : bandeau doré, 3 colonnes Jeu / Règles / Joueurs avec une petite icône par variante, bandeau du bas avec le résumé de la partie et LANCER ; s'adapte au thème choisi
 - **Favoris** : bouton FAVORI pour garder le jeu et ses règles (sans les joueurs), à part pour chaque tuile ; un toucher sur un favori le remet, appui long pour le retirer (8 par tuile)

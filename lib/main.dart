@@ -67,6 +67,8 @@ Future<void> main() async {
   // Comptes : vérifie les sessions, envoie les parties en attente
   if (!tv) {
     PlayerStore.instance.sync();
+    // Hors ligne : renvoi automatique dès que le réseau revient
+    PlayerStore.instance.startAutoSync();
     // Jeu en ligne : présence et défis tant que l'appli est ouverte
     OnlineService.instance.start();
   }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -361,6 +362,35 @@ class PlayerStore extends ChangeNotifier {
     }
   }
 
+  // ─── Hors ligne : renvoi automatique au retour du réseau ───
+
+  Timer? _auto;
+  bool _wasReachable = true;
+
+  /// Toutes les 30 s : renvoie les parties en attente, ou vérifie si le
+  /// serveur est revenu ; dès qu'il revient, tout est resynchronisé.
+  void startAutoSync() {
+    if (_auto != null) return;
+    _auto = Timer.periodic(const Duration(seconds: 30), (_) => _autoTick());
+    GbServer.reachable.addListener(_onReachable);
+  }
+
+  void _onReachable() {
+    final r = GbServer.reachable.value;
+    if (r && !_wasReachable) sync();
+    _wasReachable = r;
+  }
+
+  Future<void> _autoTick() async {
+    if (pending.isNotEmpty) {
+      await flush();
+    } else if (!GbServer.reachable.value) {
+      try {
+        await GbServer.check(const []);
+      } catch (_) {}
+    }
+  }
+
   /// Envoie les parties en attente. Renvoie true si tout est parti.
   Future<bool> flush() async {
     if (syncing) return pending.isEmpty;
@@ -402,6 +432,7 @@ class PlayerStore extends ChangeNotifier {
       return true;
     } finally {
       syncing = false;
+      notifyListeners(); // nombre de parties en attente
     }
   }
 

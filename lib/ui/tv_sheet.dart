@@ -89,8 +89,12 @@ class _TvSheetState extends State<_TvSheet> {
       setState(() => _busy = false);
     } on ApiError catch (e) {
       setState(() {
-        _error =
-            e.code == 'tv_code' ? 'Code inconnu : vérifie l\'écran' : e.message;
+        _error = e.code == 'tv_code'
+            ? 'Code inconnu : vérifie l\'écran'
+            : e.offline
+                ? 'Pas d\'internet et écran introuvable sur le Wi-Fi : '
+                    'mets le téléphone sur le même Wi-Fi que l\'écran'
+                : e.message;
         _busy = false;
       });
     }
@@ -132,6 +136,14 @@ class _TvSheetState extends State<_TvSheet> {
                     Expanded(
                         child:
                             Text(s.label.toUpperCase(), style: Tv.title(20))),
+                    if (link.lanWorks(s))
+                      const Padding(
+                        padding: EdgeInsets.only(right: 6),
+                        child: Tooltip(
+                          message: 'Relié aussi par le Wi-Fi local',
+                          child: Icon(Icons.wifi, color: Tv.green, size: 20),
+                        ),
+                      ),
                     if (link.soundsOn(s.code))
                       Padding(
                         padding: const EdgeInsets.only(right: 4),
