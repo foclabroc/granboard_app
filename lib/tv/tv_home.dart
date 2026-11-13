@@ -145,7 +145,7 @@ class _TvHomeState extends State<TvHome> {
       body = _TvGame(state: s!, code: client.code);
     } else if (screen == 'results' && s?['game'] is Map) {
       body = KeyedSubtree(
-        key: ValueKey(jsonEncode(s!['game']).hashCode),
+        key: ValueKey(canonicalJson(s!['game']).hashCode),
         child: resultsPageFor(
             gameFromJson(Map<String, dynamic>.from(s['game'] as Map)),
             tv: true),
@@ -436,7 +436,8 @@ class _TvGameState extends State<_TvGame> {
   /// dernière (pas de rafale de sons après une coupure).
   void _update({bool first = false}) {
     final j = Map<String, dynamic>.from(widget.state['game'] as Map);
-    final sig = jsonEncode({'s': j['settings'], 'p': j['players']});
+    // Ordre des champs indifférent (le serveur le change, pas le Wi-Fi)
+    final sig = canonicalJson({'s': j['settings'], 'p': j['players']});
     final actions = [for (final a in (j['actions'] as List? ?? const [])) '$a'];
     final g = _game;
     if (g == null || sig != _sig) {
@@ -507,4 +508,18 @@ class _TvGameState extends State<_TvGame> {
       ],
     );
   }
+}
+
+/// JSON aux clés triées : même texte quel que soit l'ordre des champs
+/// (le serveur, en jsonb, les réordonne ; l'envoi par le Wi-Fi non).
+String canonicalJson(Object? v) {
+  Object? sort(Object? x) => switch (x) {
+        Map m => {
+            for (final k in (m.keys.map((k) => '$k').toList()..sort()))
+              k: sort(m[k])
+          },
+        List l => [for (final e in l) sort(e)],
+        _ => x,
+      };
+  return jsonEncode(sort(v));
 }

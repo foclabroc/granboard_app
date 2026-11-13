@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.8
+
+- **Écrans TV / tablette : bandeau du tour, vidéos et annonces de nouveau là** : chaque envoi du téléphone arrive 2 fois (serveur et Wi-Fi) avec les champs dans un ordre différent ; l'écran croyait à une nouvelle partie et la reconstruisait sans effets. Doublons ignorés, comparaison indépendante de l'ordre
+
 ## v0.6.7
 
 - Son sur la TV plus fiable : si la vidéo d'un T20 / bull ne peut pas être lue, le bruitage et l'annonce de la fléchette reviennent (avant : silence) ; bruitages en lecteur classique sur la TV (le mode « faible latence » restait parfois muet)

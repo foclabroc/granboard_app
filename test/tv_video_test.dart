@@ -61,4 +61,67 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));
   });
+
+  testWidgets(
+      'Écran TV : même état reçu 2 fois (serveur + Wi-Fi, champs dans un autre ordre) → effets gardés',
+      (tester) async {
+    tester.view.physicalSize = const Size(960, 540);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({});
+    FakeServer().install();
+    await PlayerStore.instance.load();
+    final tv = TvClient(realtime: false);
+    const ps = [
+      X01Player(id: 'guest-1', name: 'Ana'),
+      X01Player(id: 'guest-2', name: 'Bob'),
+    ];
+    final g = X01Game(const X01Settings(startScore: 501), ps);
+    // Wi-Fi : ordre d'origine ; serveur (jsonb) : clés réordonnées
+    Map<String, dynamic> wifi() =>
+        {'screen': 'game', 'game': g.toJson(), 'sound': true};
+    Map<String, dynamic> server() {
+      Object? rev(Object? x) => switch (x) {
+            Map m => {
+                for (final k in m.keys.toList().reversed) '$k': rev(m[k])
+              },
+            List l => [for (final e in l) rev(e)],
+            _ => x,
+          };
+      return Map<String, dynamic>.from(rev(wifi()) as Map);
+    }
+
+    tv.debugSetState('ABCD', wifi());
+    await tester
+        .pumpWidget(MaterialApp(theme: Tv.theme(), home: TvHome(client: tv)));
+    await tester.pump(const Duration(seconds: 1));
+    g.throwDart(const DartHit(5, 1, Ring.singleOuter));
+    tv.debugSetState('ABCD', wifi());
+    await tester.pump();
+    tv.debugSetState('ABCD', server()); // le même, par le serveur
+    await tester.pump();
+    AwardPlayer.enabled = true;
+    addTearDown(() => AwardPlayer.enabled = false);
+    g.throwDart(const DartHit(20, 3, Ring.triple));
+    tv.debugSetState('ABCD', wifi()); // arrive d'abord par le Wi-Fi
+    await tester.pump();
+    expect(AwardPlayer.active, isTrue);
+    AwardPlayer.stop();
+    AwardPlayer.enabled = false;
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  test('Doublon (même heure d\'envoi) ignoré, plus récent gardé', () {
+    final tv = TvClient(realtime: false);
+    var n = 0;
+    tv.addListener(() => n++);
+    tv.debugApplyState({'screen': 'lobby', 'at': 100});
+    tv.debugApplyState({'screen': 'lobby', 'at': 100}); // 2e chemin
+    tv.debugApplyState({'screen': 'game', 'at': 90}); // plus ancien
+    expect(n, 1);
+    tv.debugApplyState({'screen': 'game', 'at': 101});
+    expect(n, 2);
+    expect(tv.state!['screen'], 'game');
+  });
 }
