@@ -44,7 +44,11 @@ import '../ui/widgets.dart';
 class NextUpChip extends StatefulWidget {
   final DartsGame game;
   final double scale;
-  const NextUpChip({super.key, required this.game, this.scale = 1});
+
+  /// Largeur maximale (sinon 280 × [scale]).
+  final double? maxWidth;
+  const NextUpChip(
+      {super.key, required this.game, this.scale = 1, this.maxWidth});
 
   @override
   State<NextUpChip> createState() => _NextUpChipState();
@@ -72,7 +76,7 @@ class _NextUpChipState extends State<NextUpChip> {
     // coupé) ; « ENSUITE » et ce qu'il lui reste au-dessus
     return Container(
       key: const ValueKey('next-up'),
-      constraints: BoxConstraints(maxWidth: 280 * s),
+      constraints: BoxConstraints(maxWidth: widget.maxWidth ?? 280 * s),
       padding: EdgeInsets.fromLTRB(4 * s, 3 * s, 12 * s, 3 * s),
       decoration: BoxDecoration(
         color: Tv.panel2,

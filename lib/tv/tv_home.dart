@@ -484,33 +484,56 @@ class _TvGameState extends State<_TvGame> {
           padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
           child: Row(
             children: [
-              // Nom du jeu : rétréci s'il est long (Cut Throat caché, Le
-              // Chat et la Souris…), jamais coupé
-              Flexible(
-                flex: 3,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(g.title.toUpperCase(),
-                      maxLines: 1, style: Tv.title(30, color: Tv.gold)),
-                ),
-              ),
-              const SizedBox(width: 14),
+              // À gauche : jeu, règles, joueur suivant (place restante
+              // laissée à droite de ce bloc) ; manche et code collés à droite
               Expanded(
-                flex: 2,
-                child: Text(g.rulesLabel.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Tv.label(14)),
+                child: LayoutBuilder(builder: (context, box) {
+                  // Parts maximales de la largeur : le joueur suivant passe
+                  // avant les règles, qui prennent le reste
+                  final w = box.maxWidth;
+                  final next = widget.state['next'] is String && !g.finished;
+                  return Row(
+                    children: [
+                      // Nom du jeu : rétréci s'il est long (Cut Throat caché,
+                      // Le Chat et la Souris…), jamais coupé
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                            maxWidth: min(next ? 150 : 220, w * 0.3)),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(g.title.toUpperCase(),
+                              maxLines: 1,
+                              style: Tv.title(30, color: Tv.gold)),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Flexible(
+                        child: Text(g.rulesLabel.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Tv.label(14)),
+                      ),
+                      const SizedBox(width: 12),
+                      NextUpChip(
+                          game: g,
+                          scale: 1.2,
+                          maxWidth:
+                              min(280 * 1.2, w * (next ? 0.35 : 0.45))),
+                      if (next) ...[
+                        const SizedBox(width: 12),
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: w * 0.3),
+                          child: NextMatchChip(
+                              text: widget.state['next'] as String,
+                              scale: 1.3),
+                        ),
+                      ],
+                    ],
+                  );
+                }),
               ),
-              // Toujours sa place (largeur limitée dans la pastille) : le
-              // nom du joueur suivant passe avant le texte des règles
-              NextUpChip(game: g, scale: 1.2),
               const SizedBox(width: 12),
-              if (widget.state['next'] is String && !g.finished) ...[
-                NextMatchChip(text: widget.state['next'] as String, scale: 1.3),
-                const SizedBox(width: 16),
-              ],
               Text(
                 limit == null
                     ? 'MANCHE ${g.round}'

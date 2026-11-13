@@ -594,7 +594,8 @@ class NextMatchChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('PROCHAIN MATCH', style: Tv.label(9 * scale, color: Tv.gold)),
+          Text('PROCHAIN MATCH',
+              maxLines: 1, style: Tv.label(9 * scale, color: Tv.gold)),
           Text(text.toUpperCase(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
