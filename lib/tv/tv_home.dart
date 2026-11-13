@@ -98,6 +98,7 @@ class _TvHomeState extends State<TvHome> {
     }
     if (s?['wall'] is String) Wallpaper.instance.applyFromPhone(s!['wall']);
     if (s?['calls'] is bool) AudioService.instance.dartCalls = s!['calls'];
+    if (s?['tease'] is bool) AudioService.instance.teasing = s!['tease'];
     if (s?['pron'] is Map) {
       AudioService.instance.pronunciations
         ..clear()

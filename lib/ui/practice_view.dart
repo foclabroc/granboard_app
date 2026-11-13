@@ -52,7 +52,15 @@ class PracticeLayout extends StatelessWidget {
                               : t.darts)
                             if (d.hit != null) d.hit!
                         ],
-                        targets: game.finished ? const [] : game.targetZones,
+                        targets: game.finished ||
+                                game.settings.kind == PracticeKind.paint
+                            ? const []
+                            : game.targetZones,
+                        painted: [
+                          for (final z in game.painted)
+                            for (final h in z.zones)
+                              (h, _colorOf(game, z.owner), z.locked)
+                        ],
                         win: game.finished,
                         dartColor: _colorOf(game, game.current),
                         skin: PlayerBoards.instance

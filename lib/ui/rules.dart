@@ -722,6 +722,48 @@ String practiceRules(PracticeSettings s) {
         '- La souris touche le bull : elle s\'échappe et gagne.',
         '- Après 20 manches, la souris gagne si elle court toujours.',
       ],
+    PracticeKind.paint => [
+        '# BUT',
+        'Avoir le plus de zones peintes à ta couleur à la fin des '
+            '${s.roundsOrDefault} manches.',
+        '# LES ZONES',
+        '- La cible est découpée en 61 zones : pour chaque numéro, le '
+            'simple (intérieur et extérieur ensemble), le double et le '
+            'triple, plus le bull (25 et 50 ensemble).',
+        '# PEINDRE',
+        '- Ta fléchette peint la zone touchée à ta couleur.',
+        '- Zone d\'un adversaire : tu la lui prends (ZONE PRISE), sauf si '
+            'elle est protégée.',
+        '- Zone déjà à toi : elle devient protégée (bord renforcé) ; plus '
+            'personne ne peut la prendre.',
+        '- Une fléchette ratée ne peint rien.',
+        '# SCORE',
+        '- 1 point par zone peinte, quelle que soit sa taille : un petit '
+            'triple vaut autant qu\'un gros simple.',
+        '- Égalité : les joueurs à égalité gagnent ensemble.',
+      ],
+    PracticeKind.bowling => [
+        '# BUT',
+        'Faire le plus gros score en 10 frames, comme au bowling (300 au '
+            'maximum).',
+        '# LES QUILLES',
+        '- 10 quilles debout au début de chaque frame.',
+        '- Une fléchette fait tomber ses points ÷ 6 quilles (arrondi) : '
+            'T20 ou T19 = 10 (strike), T18 = 9, bull 50 = 8, D20 = 7, 25 = 4, '
+            '20 simple = 3, 5 simple = 1.',
+        '- On ne fait pas tomber plus de quilles qu\'il n\'en reste debout.',
+        '# LES FRAMES',
+        '- 2 fléchettes par frame. Strike (les 10 quilles avec la 1re) : le '
+            'frame s\'arrête.',
+        '- Spare : les 10 quilles tombées avec les 2 fléchettes.',
+        '- 10e frame : après un strike ou un spare, une 3e fléchette (les '
+            'quilles sont relevées).',
+        '# SCORE',
+        '- Frame normal : les quilles tombées.',
+        '- Spare : 10 + les quilles de la boule suivante.',
+        '- Strike : 10 + les quilles des 2 boules suivantes.',
+        '- 12 strikes de suite = 300.',
+      ],
     PracticeKind.timeAttack => [
         '# BUT',
         'Finir ${s.goalOrDefault} le plus vite possible.',

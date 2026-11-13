@@ -731,6 +731,9 @@ class AnimatedDartboard extends StatefulWidget {
 
   /// Style imposé (cible du joueur en cours), sinon le style général.
   final BoardSkin? skin;
+
+  /// Zones peintes (Paint) : (zone, couleur, protégée).
+  final List<(DartHit, Color, bool)> painted;
   const AnimatedDartboard({
     super.key,
     required this.size,
@@ -738,6 +741,7 @@ class AnimatedDartboard extends StatefulWidget {
     this.targets = const [],
     this.litNumbers = const {},
     this.aimNumbers = const {},
+    this.painted = const [],
     this.bust = false,
     this.win = false,
     this.dartColor,
@@ -815,6 +819,7 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
                         targets: widget.targets,
                         litNumbers: widget.litNumbers,
                         aimNumbers: widget.aimNumbers,
+                        painted: widget.painted,
                         impact: _impact.value,
                         pulse: _pulse.value,
                         flash: _flash.value,
@@ -851,8 +856,10 @@ class _HitsPainter extends CustomPainter {
   final bool win;
   final Set<int> litNumbers;
   final Set<int> aimNumbers;
+  final List<(DartHit, Color, bool)> painted;
   _HitsPainter({
     required this.hits,
+    this.painted = const [],
     this.targets = const [],
     this.litNumbers = const {},
     this.aimNumbers = const {},
@@ -872,6 +879,7 @@ class _HitsPainter extends CustomPainter {
     final c = size.center(Offset.zero);
     final outer = size.width / 2;
     final r = outer - outer * 0.15; // même calcul que _BoardPainter
+    if (painted.isNotEmpty) _paintZones(canvas, c, r);
     if (realistic) {
       _leds(canvas, c, outer, r);
       _numberLights(canvas, c, outer, r);
@@ -1255,6 +1263,20 @@ class _HitsPainter extends CustomPainter {
         Paint()
           ..color = Color.lerp(dartColor, Colors.black, 0.55)!
           ..strokeWidth = math.max(1, r * 0.012 * scale));
+  }
+
+  /// Paint : zones à la couleur de leur joueur, bord blanc si protégées.
+  void _paintZones(Canvas canvas, Offset c, double r) {
+    for (final (h, color, locked) in painted) {
+      final path = _zonePath(c, r, h);
+      canvas.drawPath(path, Paint()..color = color.withValues(alpha: 0.82));
+      canvas.drawPath(
+          path,
+          Paint()
+            ..color = locked ? Colors.white : Colors.black54
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = math.max(1, r * (locked ? 0.016 : 0.006)));
+    }
   }
 
   Path _zonePath(Offset c, double r, DartHit h) {

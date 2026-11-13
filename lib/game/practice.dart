@@ -52,6 +52,8 @@ enum PracticeKind {
   football,
   hotPotato,
   catMouse,
+  paint,
+  bowling,
 }
 
 /// Réglages proposés pour chaque jeu.
@@ -254,6 +256,12 @@ const kPracticeInfo = <PracticeKind, PracticeInfo>{
       party: true,
       minPlayers: 2,
       maxPlayers: 2),
+  PracticeKind.paint: PracticeInfo('Paint',
+      'Chaque fléchette peint sa zone (simple, double, triple ou bull d\'un numéro) à ta couleur, même si un autre l\'avait : tu la lui prends. Touche une zone déjà à toi : elle est protégée. Le plus de zones à la fin gagne.',
+      rounds: [8, 10, 15], defaultRounds: 10, party: true, minPlayers: 2),
+  PracticeKind.bowling: PracticeInfo('Bowling',
+      '10 frames, 2 fléchettes par frame pour faire tomber 10 quilles : quilles = points de la fléchette ÷ 6 (T20 = strike). Strike et spare comme au bowling (bonus des boules suivantes), 3e fléchette au 10e frame. 300 au maximum.',
+      party: true, minPlayers: 1),
   PracticeKind.timeAttack: PracticeInfo('Contre la montre',
       'Finis ton 01 le plus vite possible : le chrono tourne pendant tes tours (de « suivant » à ta dernière fléchette). Bust = retour au score de début de manche. Le meilleur temps gagne.',
       goalLabel: 'Départ',
@@ -688,6 +696,9 @@ class PracticeGame implements DartsGame {
   /// Grille du jeu (null = cible classique).
   PracticeGrid? get grid => rules.grid(this);
 
+  /// Zones peintes (Paint).
+  List<PaintedZone> get painted => rules.painted(this);
+
   void _finish(PracticeEnd e) {
     _end = e;
     final r = List.generate(players.length, (i) => i)
@@ -758,6 +769,8 @@ abstract class PracticeRules {
         PracticeKind.football => _Football(s),
         PracticeKind.hotPotato => _HotPotato(s),
         PracticeKind.catMouse => _CatMouse(s),
+        PracticeKind.paint => _Paint(s),
+        PracticeKind.bowling => _Bowling(s),
         PracticeKind.timeAttack => _TimeAttack(s),
       };
 
@@ -791,6 +804,9 @@ abstract class PracticeRules {
   bool skipTurn(PracticeGame g, int p) => false;
 
   PracticeGrid? grid(PracticeGame g) => null;
+
+  /// Zones peintes (Paint) : affichées à la couleur de leur joueur.
+  List<PaintedZone> painted(PracticeGame g) => const [];
 
   /// < 0 si a est mieux classé que b.
   int compare(PracticeGame g, int a, int b) =>
@@ -3036,4 +3052,201 @@ List<DartHit> _routeZones(String label) {
   if (label.startsWith('T')) return [DartHit(n, 3, Ring.triple)];
   if (label.startsWith('D')) return [DartHit(n, 2, Ring.double)];
   return [DartHit(n, 1, Ring.singleInner), DartHit(n, 1, Ring.singleOuter)];
+}
+
+// ─── Paint ───
+
+/// Zone peinte : ses parties sur la cible, son joueur, protégée ou non.
+class PaintedZone {
+  final List<DartHit> zones;
+  final int owner;
+  final bool locked;
+  const PaintedZone(this.zones, this.owner, this.locked);
+}
+
+/// 61 zones : simple / double / triple de chaque numéro + bull. Toucher une
+/// zone la peint à sa couleur (prise à un autre s'il ne l'a pas protégée) ;
+/// toucher une de ses zones la protège. Score = zones peintes.
+class _Paint extends PracticeRules {
+  _Paint(super.s);
+
+  static String? key(DartHit? h) {
+    if (h == null) return null;
+    if (h.isBull) return 'b';
+    final r = switch (h.ring) {
+      Ring.double => 'd',
+      Ring.triple => 't',
+      _ => 's',
+    };
+    return '${h.number}$r';
+  }
+
+  static List<DartHit> zonesOf(String k) {
+    if (k == 'b') {
+      return const [
+        DartHit(25, 1, Ring.outerBull),
+        DartHit(25, 2, Ring.innerBull)
+      ];
+    }
+    final n = int.parse(k.substring(0, k.length - 1));
+    return switch (k[k.length - 1]) {
+      'd' => [DartHit(n, 2, Ring.double)],
+      't' => [DartHit(n, 3, Ring.triple)],
+      _ => [DartHit(n, 1, Ring.singleOuter), DartHit(n, 1, Ring.singleInner)],
+    };
+  }
+
+  Map<String, int> _owners(PracticeGame g) =>
+      (g.shared['own'] ??= <String, int>{}) as Map<String, int>;
+  Set<String> _locks(PracticeGame g) =>
+      (g.shared['lock'] ??= <String>{}) as Set<String>;
+
+  @override
+  int? roundLimit(PracticeGame g) => s.roundsOrDefault;
+
+  @override
+  String target(PracticeGame g, int p) => 'PEINS LA CIBLE';
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final k = key(d.hit);
+    if (k == null) return;
+    final own = _owners(g), lock = _locks(g);
+    final was = own[k];
+    if (was == p) {
+      if (lock.add(k)) {
+        d.ok = true;
+        t.note = 'PROTÉGÉE';
+      }
+    } else if (was == null || !lock.contains(k)) {
+      own[k] = p;
+      d.ok = true;
+      d.points = 1;
+      if (was != null) t.note = 'ZONE PRISE';
+    }
+    for (var i = 0; i < g.players.length; i++) {
+      g.stateOf(i).score = own.values.where((o) => o == i).length;
+    }
+  }
+
+  @override
+  List<PaintedZone> painted(PracticeGame g) {
+    final lock = _locks(g);
+    return [
+      for (final e in _owners(g).entries)
+        PaintedZone(zonesOf(e.key), e.value, lock.contains(e.key))
+    ];
+  }
+
+  @override
+  String info(PracticeGame g, int p) {
+    final mine =
+        _owners(g).entries.where((e) => e.value == p).map((e) => e.key);
+    final locked = mine.where(_locks(g).contains).length;
+    return '${plural(mine.length, 'zone')} · ${plural(locked, 'protégée')}';
+  }
+}
+
+// ─── Bowling ───
+
+/// 10 frames de 2 fléchettes (3 au 10e après strike ou spare), 10 quilles ;
+/// une fléchette fait tomber points ÷ 6 quilles (arrondi, au plus les
+/// quilles debout) : T20 / T19 = strike. Score du bowling classique.
+class _Bowling extends PracticeRules {
+  _Bowling(super.s);
+
+  static int pinsOf(int points) => (points / 6).round().clamp(0, 10);
+
+  @override
+  int? roundLimit(PracticeGame g) => 10;
+  @override
+  String rulesLabel(PracticeGame g) => '10 frames';
+
+  @override
+  void init(PracticeGame g, int p, PracticePlayer st) {
+    st.v['n'] = 0;
+    st.v['up'] = 10;
+  }
+
+  @override
+  void onTurnStart(PracticeGame g, int p) {
+    final st = g.stateOf(p);
+    st.v['up'] = 10;
+    st.v['fr'] = 0; // boules jouées dans le frame
+  }
+
+  List<int> _rolls(PracticePlayer st) =>
+      [for (var i = 0; i < st.v['n']!; i++) st.v['r$i']!];
+
+  /// Score du bowling (bonus connus seulement).
+  static int score(List<int> r) {
+    var total = 0, i = 0;
+    for (var f = 0; f < 10 && i < r.length; f++) {
+      if (r[i] == 10) {
+        total += 10 +
+            (i + 1 < r.length ? r[i + 1] : 0) +
+            (i + 2 < r.length ? r[i + 2] : 0);
+        i += 1;
+      } else if (i + 1 < r.length && r[i] + r[i + 1] == 10) {
+        total += 10 + (i + 2 < r.length ? r[i + 2] : 0);
+        i += 2;
+      } else {
+        total += r[i] + (i + 1 < r.length ? r[i + 1] : 0);
+        i += 2;
+      }
+    }
+    return total;
+  }
+
+  @override
+  String target(PracticeGame g, int p) =>
+      'QUILLES ${g.stateOf(p).v['up'] ?? 10}';
+
+  @override
+  List<DartHit> zones(PracticeGame g, int p) =>
+      const [DartHit(20, 3, Ring.triple)];
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final st = g.stateOf(p);
+    final last = g.round >= 10;
+    final up = st.v['up']!;
+    final fr = st.v['fr']!;
+    final pins = min(up, pinsOf(_value(d.hit, s.bull)));
+    final n = st.v['n']!;
+    st.v['r$n'] = pins;
+    st.v['n'] = n + 1;
+    st.v['fr'] = fr + 1;
+    d.points = pins;
+    d.ok = pins > 0;
+    final left = up - pins;
+    final strike = pins == 10 && up == 10;
+    final spare = !strike && left == 0 && fr % 2 == 1;
+    if (strike) {
+      t.note = 'STRIKE !';
+      st.hits++;
+    } else if (spare) {
+      t.note = 'SPARE !';
+    }
+    if (!last) {
+      st.v['up'] = left;
+      t.maxDarts = strike ? 1 : 2;
+    } else {
+      // 10e frame : 3e boule après strike ou spare, quilles relevées
+      final r = _rolls(st).sublist(st.v['n']! - st.v['fr']!);
+      final bonus = r[0] == 10 || (r.length >= 2 && r[0] + r[1] == 10);
+      st.v['up'] = left == 0 ? 10 : left;
+      t.maxDarts = bonus ? 3 : 2;
+    }
+    st.score = score(_rolls(st));
+  }
+
+  @override
+  String scoreText(PracticeGame g, int p) => '${g.stateOf(p).score}';
+
+  @override
+  String info(PracticeGame g, int p) {
+    final st = g.stateOf(p);
+    return 'FRAME ${min(g.round, 10)}/10 · ${plural(st.hits, 'strike')}';
+  }
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,8 +19,52 @@ import 'turn_banner.dart';
 
 /// Sons, annonces et animations d'une partie, partagés par le téléphone et
 /// l'écran TV (qui rejoue les actions reçues du téléphone).
+/// Chambrage (mêmes textes que TEASES dans tools/make_voice.py : la voix
+/// enregistrée les a tous).
+const kLowTeases = [
+  'Aïe, c\'est maigre.',
+  'On a connu mieux.',
+  'Il fait froid aux doigts ?',
+  'Les fléchettes sont dans le bon sens ?',
+  'Allez, on se réveille !',
+  'C\'était un échauffement, j\'espère.',
+  'La cible, c\'est un peu plus haut.',
+  'Petit tour pour rien.',
+];
+const kBustTeases = [
+  'Trop gourmand !',
+  'Il fallait freiner !',
+  'Calcul mental à revoir.',
+  'La prochaine fois, on compte sur ses doigts.',
+];
+const kZeroMarkTeases = [
+  'Zéro marque, on se concentre !',
+  'Le Cricket, c\'est pas du hasard.',
+  'Les numéros ne vont pas se fermer tout seuls.',
+  'Petit tour pour rien.',
+];
+
 class GameFx {
   final AudioService audio;
+
+  /// Tirage des phrases de chambrage (graine fixe en test).
+  static Random random = Random();
+  String? _lastTease;
+
+  /// Une phrase de chambrage (2 fois sur 3, jamais la même 2 fois de
+  /// suite), ou '' si le chambrage est coupé.
+  String tease(List<String> list) {
+    if (!audio.teasing || !audio.voice) return '';
+    if (random.nextInt(3) == 0) return '';
+    final pool = [
+      for (final t in list)
+        if (t != _lastTease) t
+    ];
+    final t = pool[random.nextInt(pool.length)];
+    _lastTease = t;
+    return t;
+  }
+
   final GlobalKey<GameSplashState> splash;
   final bool haptics;
   GameFx(this.splash, {this.haptics = true}) : audio = AudioService.instance;
@@ -323,6 +368,8 @@ class GameFx {
   /// Notes de manche qui méritent une annonce animée.
   static bool _bigNote(String n) =>
       n.startsWith('HAT') ||
+      n.startsWith('STRIKE') ||
+      n.startsWith('SPARE') ||
       n.startsWith('WHITE') ||
       n.startsWith('ARAIGNÉE') ||
       n.startsWith('TOUTES') ||
@@ -388,8 +435,11 @@ class GameFx {
     if (turn.isBust) {
       _haptic(true);
       audio.play(Sfx.bust);
+      final t = turn.bust == BustReason.frozen ? '' : tease(kBustTeases);
       audio.sayLater(
-          turn.bust == BustReason.frozen ? 'Bust ! Équipe gelée.' : 'Bust !',
+          turn.bust == BustReason.frozen
+              ? 'Bust ! Équipe gelée.'
+              : _join('Bust !', t),
           250);
       _show('BUST', Tv.red);
       return;
@@ -413,7 +463,9 @@ class GameFx {
         audio.sayLater(_join(call, left), 400 + _wait);
         _show('$total', Tv.gold);
       } else {
-        audio.sayLater(_join(call, left), 400 + _wait);
+        // Moins de 20 en 3 fléchettes : on chambre
+        final t = total < 20 ? tease(kLowTeases) : '';
+        audio.sayLater(_join(_join(call, left), t), 400 + _wait);
       }
     } else if (call.isNotEmpty) {
       audio.sayLater(call, 150 + _wait);
@@ -480,12 +532,14 @@ class GameFx {
       } else {
         audio.sayLater(
             _join(
-                call,
-                m == 0
-                    ? 'Aucune marque'
-                    : m == 1
-                        ? 'Une marque'
-                        : '$m marques'),
+                _join(
+                    call,
+                    m == 0
+                        ? 'Aucune marque'
+                        : m == 1
+                            ? 'Une marque'
+                            : '$m marques'),
+                m == 0 ? tease(kZeroMarkTeases) : ''),
             400 + _wait);
       }
     }

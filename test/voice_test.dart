@@ -2,12 +2,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:granboard_proto/ui/game_fx.dart';
 import 'package:granboard_proto/voice.dart';
 
 void main() {
-  final bank = VoiceBank((jsonDecode(
-          File('assets/voice/index.json').readAsStringSync()) as Map)
-      .cast<String, String>());
+  final bank = VoiceBank(
+      (jsonDecode(File('assets/voice/index.json').readAsStringSync()) as Map)
+          .cast<String, String>());
   final names = ['Foc', 'Sophie', 'Invité 1'];
 
   /// Résumé d'un découpage : « # » = voix enregistrée, sinon le texte lu
@@ -18,11 +19,23 @@ void main() {
       .join('|');
 
   test('Mots : ponctuation, signes', () {
-    expect(voiceTokens('Bust ! Équipe gelée.'),
-        ['bust', '!', 'équipe', 'gelée']);
-    expect(voiceTokens('bonus +50 -3 ÷ 2 12/20 cache-cache'),
-        ['bonus', 'plus', '50', 'moins', '3', 'divisé', 'par', '2', '12',
-         'sur', '20', 'cache', 'cache']);
+    expect(
+        voiceTokens('Bust ! Équipe gelée.'), ['bust', '!', 'équipe', 'gelée']);
+    expect(voiceTokens('bonus +50 -3 ÷ 2 12/20 cache-cache'), [
+      'bonus',
+      'plus',
+      '50',
+      'moins',
+      '3',
+      'divisé',
+      'par',
+      '2',
+      '12',
+      'sur',
+      '20',
+      'cache',
+      'cache'
+    ]);
   });
 
   test('Chaque fichier de l\'index existe', () {
@@ -61,8 +74,8 @@ void main() {
     expect(plan('Bull découvert !'), '#');
     expect(plan('Team Cut Throat caché. Foc, à toi.'), '#|Foc|#');
     expect(plan('Foc, spoiler'), 'Foc|#');
-    expect(plan('Partie gagnée ! Victoire de Foc et Sophie !'),
-        '#|Foc|#|Sophie');
+    expect(
+        plan('Partie gagnée ! Victoire de Foc et Sophie !'), '#|Foc|#|Sophie');
     expect(plan('Fin de la partie. Victoire de Équipe A : Foc et Sophie.'),
         '#|#|Foc|#|Sophie');
     expect(plan('Match en 5 legs. Leg 1, 501. Foc, à toi.'), '#|#|Foc|#');
@@ -85,27 +98,50 @@ void main() {
   });
 
   test('Commentaires et fléchettes annoncées : tout est enregistré', () {
-    bool allClips(String t) =>
-        bank.plan(t, names).every((p) => p.clip != null);
+    bool allClips(String t) => bank.plan(t, names).every((p) => p.clip != null);
     for (var n = 1; n <= 20; n++) {
       for (final t in ['$n', 'triple $n', 'double $n']) {
         expect(allClips(t), isTrue, reason: t);
       }
     }
     for (final t in [
-      'raté', 'bull', '25', 'triple 20, 140 !', 'double 5, 46',
-      'raté, Aucun point', 'triple 19, 6 marques !', '15, 15 découvert !',
-      'Il te reste 40, double 20', 'Il te reste 170, triple 20, triple 20, bull',
-      'Il te reste 61, 25, double 18', 'Deuxième 180 de la soirée',
-      'Dixième 180 de la soirée', 'Encore un 180', 'Match point',
-      'Plus que 15 et bull', 'Plus que 20',
+      'raté',
+      'bull',
+      '25',
+      'triple 20, 140 !',
+      'double 5, 46',
+      'raté, Aucun point',
+      'triple 19, 6 marques !',
+      '15, 15 découvert !',
+      'Il te reste 40, double 20',
+      'Il te reste 170, triple 20, triple 20, bull',
+      'Il te reste 61, 25, double 18',
+      'Deuxième 180 de la soirée',
+      'Dixième 180 de la soirée',
+      'Encore un 180',
+      'Match point',
+      'Plus que 15 et bull',
+      'Plus que 20',
       'Fin à 121. Plus haute fin de la soirée. Partie gagnée ! Victoire de',
       'Fin à 100. Leg pour',
     ]) {
       expect(allClips(t), isTrue, reason: '${plan(t)} ← $t');
     }
-    expect(plan('Troisième 180 de la soirée. Match point. Foc, à toi. '
+    expect(
+        plan('Troisième 180 de la soirée. Match point. Foc, à toi. '
             'Il te reste 32, double 16'),
         '#|#|Foc|#|#|#');
+  });
+
+  test('Chambrage, Bowling, Paint : tout est enregistré', () {
+    for (final t in [...kLowTeases, ...kBustTeases, ...kZeroMarkTeases]) {
+      expect(plan(t), isNot(contains(RegExp('[a-z]'))), reason: t);
+      expect(plan('Bust !, $t'), isNot(contains(RegExp('[a-z]'))), reason: t);
+      expect(plan('il reste 41, $t'), isNot(contains(RegExp('[a-z]'))),
+          reason: t);
+    }
+    for (final t in ['strike !', 'spare !', 'zone prise', 'protégée']) {
+      expect(plan(t), '#', reason: t);
+    }
   });
 }

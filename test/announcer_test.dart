@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:granboard_proto/audio.dart';
@@ -31,6 +33,7 @@ void main() {
     audio
       ..voice = true
       ..dartCalls = true
+      ..teasing = false
       ..said.clear();
     GameFx.session180 = 0;
     GameFx.sessionBestCheckout = 0;
@@ -76,6 +79,47 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
     }
     expect(audio.said.last, 'raté, Il reste 301');
+    await close(tester);
+  });
+
+  testWidgets('Chambrage : tour à moins de 20, aucune marque, coupé',
+      (tester) async {
+    audio.teasing = true;
+    GameFx.random = _Always1();
+    addTearDown(() => GameFx.random = Random());
+    await open(tester,
+        const GamePage(settings: X01Settings(startScore: 301), players: two));
+    await dart(tester, 1, Ring.singleOuter);
+    await dart(tester, 2, Ring.singleOuter);
+    await dart(tester, 3, Ring.singleOuter); // 6 points
+    expect(audio.said.last, startsWith('3, Il reste 295, '));
+    expect(kLowTeases.any(audio.said.last.endsWith), isTrue);
+    await next(tester);
+    // 60 points : pas de chambrage
+    await dart(tester, 20, Ring.singleOuter);
+    await dart(tester, 20, Ring.singleOuter);
+    await dart(tester, 20, Ring.singleOuter);
+    expect(audio.said.last, '20, Il reste 241');
+    await close(tester);
+
+    // Cricket : aucune marque
+    await open(
+        tester, GamePage(game: CricketGame(const CricketSettings(), two)));
+    for (var i = 0; i < 3; i++) {
+      await dart(tester, 2, Ring.singleOuter);
+    }
+    expect(audio.said.last, startsWith('2, Aucune marque, '));
+    expect(kZeroMarkTeases.any(audio.said.last.endsWith), isTrue);
+    await close(tester);
+
+    // Coupé dans les réglages
+    audio.teasing = false;
+    await open(tester,
+        const GamePage(settings: X01Settings(startScore: 301), players: two));
+    for (var i = 0; i < 3; i++) {
+      await dart(tester, 1, Ring.singleOuter);
+    }
+    expect(audio.said.last, '1, Il reste 298');
     await close(tester);
   });
 
@@ -172,4 +216,14 @@ void main() {
     expect(find.text('PRONONCIATION : SÈDE'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
+
+/// Tirage toujours à 1 : le chambrage passe (1 ≠ 0), 2e phrase de la liste.
+class _Always1 implements Random {
+  @override
+  int nextInt(int max) => max > 1 ? 1 : 0;
+  @override
+  double nextDouble() => 0.5;
+  @override
+  bool nextBool() => true;
 }

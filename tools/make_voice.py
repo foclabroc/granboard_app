@@ -192,6 +192,33 @@ for i, o in enumerate(['Deuxième', 'Troisième', 'Quatrième', 'Cinquième',
     add(f'{o} 180 de la soirée', f'{o} cent quatre-vingts de la soirée !')
 add('Encore un 180', 'Encore un cent quatre-vingts !')
 
+# ─── Chambrage (v0.6.6, lib/ui/game_fx.dart kLowTeases / kBustTeases /
+# kZeroMarkTeases : mêmes textes) ───
+TEASES = [
+    'Aïe, c\'est maigre.',
+    'On a connu mieux.',
+    'Il fait froid aux doigts ?',
+    'Les fléchettes sont dans le bon sens ?',
+    'Allez, on se réveille !',
+    'C\'était un échauffement, j\'espère.',
+    'La cible, c\'est un peu plus haut.',
+    'Petit tour pour rien.',
+    'Trop gourmand !',
+    'Il fallait freiner !',
+    'Calcul mental à revoir.',
+    'La prochaine fois, on compte sur ses doigts.',
+    'Zéro marque, on se concentre !',
+    'Le Cricket, c\'est pas du hasard.',
+    'Les numéros ne vont pas se fermer tout seuls.',
+]
+for t in TEASES:
+    add(t)
+# Bowling, Paint
+add('strike !', 'Straïke !')
+add('spare !', 'Spère !')
+add('zone prise')
+add('protégée')
+
 
 def main():
     # --add : ne fabrique que les annonces absentes de index.json (les

@@ -358,6 +358,7 @@ class TvLink extends ChangeNotifier {
         'cricket': CricketStyle.current.value,
         'theme': Tv.skin.value.id,
         'calls': AudioService.instance.dartCalls,
+        'tease': AudioService.instance.teasing,
         'pron': AudioService.instance.pronunciations,
         'wall': Wallpaper.instance.forTv,
         if (cam case final c?) 'cam': c,

@@ -53,6 +53,15 @@ class _SoundSheet extends StatelessWidget {
                 onChanged: a.voice ? a.setDartCalls : null,
               ),
               SwitchListTile(
+                key: const ValueKey('teasing'),
+                secondary: const Icon(Icons.sentiment_very_satisfied),
+                title: Text('Chambrage', style: Tv.title(18)),
+                subtitle: const Text(
+                    'Une petite phrase moqueuse sur un tour raté ou un bust'),
+                value: a.teasing,
+                onChanged: a.voice ? a.setTeasing : null,
+              ),
+              SwitchListTile(
                 secondary: const Icon(Icons.graphic_eq),
                 title: Text('Effets sonores', style: Tv.title(18)),
                 value: a.effects,

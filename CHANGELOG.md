@@ -2,6 +2,9 @@
 
 ## v0.6.6
 
+- **Paint** (fête) : chaque fléchette peint sa zone de la cible à la couleur du joueur, on prend les zones des autres, une zone touchée 2 fois est protégée ; le plus de zones gagne
+- **Bowling** (fête) : 10 frames, quilles = points ÷ 6 (T20 = strike), strikes et spares comptés comme au bowling, 300 au maximum
+- **Chambrage** de l'annonceur (réglage du son, activé par défaut) : petite phrase moqueuse sur un tour à moins de 20, un bust ou un tour de Cricket sans marque ; voix enregistrée (19 nouvelles annonces, dont « strike » et « spare »)
 - Bandeau « AU TOUR DE … » affiché 3 s (1,5 s avant)
 - **Caméra de la tablette sur la TV** : dans la fenêtre TV du téléphone, choisir l'écran qui filme et celui qui affiche, ALLUMER LA CAMÉRA ; caméra avant / arrière, position (4 coins ou plein écran) et taille ; l'image passe directement d'un écran à l'autre par le Wi-Fi (sans le son), l'écran qui filme montre un petit aperçu « EN DIRECT » ; l'appareil qui pilote (tablette fixe reliée à la cible, téléphone) peut aussi filmer lui-même pour la TV (« Cet appareil », aperçu en haut au milieu)
 - **Le Chat et la Souris** (fête, 2 joueurs) : la souris part avec 3, 5 ou 7 cases d'avance sur le tour 1 → 20 → bull, le chat doit la rattraper (simple 1 case, double 2, triple 3) ; la souris gagne au bull ou après 20 manches

@@ -142,4 +142,91 @@ void main() {
       expect(g.winners, [1]);
     });
   });
+
+  group('Paint', () {
+    PracticeGame game() =>
+        PracticeGame(const PracticeSettings(PracticeKind.paint), two);
+
+    test('peindre, prendre, protéger', () {
+      final g = game();
+      g.throwDart(t(20)); // A peint T20
+      g.throwDart(s(20)); // A peint le simple 20
+      g.throwDart(const DartHit(20, 1, Ring.singleInner)); // même zone : protégée
+      expect(g.stateOf(0).score, 2);
+      expect(g.currentTurn.note, 'PROTÉGÉE');
+      g.next();
+      g.throwDart(t(20)); // B prend T20
+      expect(g.currentTurn.note, 'ZONE PRISE');
+      g.throwDart(s(20)); // protégée : rien
+      g.throwDart(ib); // B peint le bull
+      expect(g.stateOf(0).score, 1);
+      expect(g.stateOf(1).score, 2);
+      final z = g.painted;
+      expect(z, hasLength(3));
+      final single =
+          z.firstWhere((p) => p.zones.length == 2 && !p.zones.first.isBull);
+      expect(single.owner, 0);
+      expect(single.locked, isTrue);
+      expect(z.firstWhere((p) => p.zones.first.isBull).owner, 1);
+      // rejeu identique (TV)
+      final c = PracticeGame.fromJson(g.toJson());
+      expect(c.stateOf(1).score, 2);
+      expect(c.painted, hasLength(3));
+    });
+
+    test('10 manches puis le plus de zones gagne', () {
+      final g = game();
+      g.throwDart(t(20));
+      while (!g.finished) {
+        g.next();
+      }
+      expect(g.round, 10);
+      expect(g.winners, [0]);
+    });
+  });
+
+  group('Bowling', () {
+    PracticeGame game() => PracticeGame(
+        const PracticeSettings(PracticeKind.bowling),
+        const [X01Player(id: 'a', name: 'A')]);
+
+    test('quilles = points ÷ 6', () {
+      final g = game();
+      g.throwDart(s(20)); // 3 quilles
+      expect(g.stateOf(0).score, 3);
+      g.throwDart(d(20)); // 7 : spare
+      expect(g.currentTurn.note, 'SPARE !');
+      expect(g.turnOver, isTrue); // 2 fléchettes par frame
+      g.next();
+      g.throwDart(t(20)); // strike : frame fini, spare = 10 + 10
+      expect(g.currentTurn.note, 'STRIKE !');
+      expect(g.turnOver, isTrue);
+      expect(g.stateOf(0).score, 30);
+    });
+
+    test('partie parfaite = 300, 3 fléchettes au 10e frame', () {
+      final g = game();
+      for (var f = 0; f < 9; f++) {
+        g.throwDart(t(20));
+        g.next();
+      }
+      g.throwDart(t(20));
+      expect(g.turnOver, isFalse);
+      g.throwDart(t(20));
+      g.throwDart(t(20));
+      expect(g.turnOver, isTrue);
+      expect(g.stateOf(0).score, 300);
+      g.next();
+      expect(g.finished, isTrue);
+    });
+
+    test('frames sans quille, « suivant » tout de suite', () {
+      final g = game();
+      while (!g.finished) {
+        g.next();
+      }
+      expect(g.stateOf(0).score, 0);
+      expect(g.stateOf(0).darts, 20);
+    });
+  });
 }

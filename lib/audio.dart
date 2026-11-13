@@ -27,6 +27,10 @@ class AudioService extends ChangeNotifier {
   /// L'annonceur dit chaque fléchette (« triple 20 », « double 16 »…).
   bool dartCalls = true;
 
+  /// Chambrage : petite phrase moqueuse sur un tour raté (moins de 20 en
+  /// 01, aucune marque en Cricket) ou un bust.
+  bool teasing = true;
+
   /// Coupé quand une TV est reliée (le son passe sur la TV).
   bool _muted = false;
   bool get muted => _muted;
@@ -132,6 +136,7 @@ class AudioService extends ChangeNotifier {
         music = v[2] == '1';
         musicVolume = double.tryParse(v[3]) ?? musicVolume;
         if (v.length >= 5) dartCalls = v[4] == '1';
+        if (v.length >= 6) teasing = v[5] == '1';
       }
       final pr = prefs.getString(_prefPron);
       if (pr != null) {
@@ -200,12 +205,18 @@ class AudioService extends ChangeNotifier {
         music ? '1' : '0',
         musicVolume.toStringAsFixed(2),
         dartCalls ? '1' : '0',
+        teasing ? '1' : '0',
       ]);
     } catch (_) {}
   }
 
   void setDartCalls(bool v) {
     dartCalls = v;
+    _save();
+  }
+
+  void setTeasing(bool v) {
+    teasing = v;
     _save();
   }
 
