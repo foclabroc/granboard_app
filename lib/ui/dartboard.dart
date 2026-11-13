@@ -36,7 +36,7 @@ class BoardSkin {
     required this.ringB,
     required this.wire,
     required this.numbers,
-    this.realistic = false,
+    this.realistic = true,
   });
 
   static const classic = BoardSkin(
@@ -363,20 +363,52 @@ class _BoardPainter extends CustomPainter {
   void _paintReal(
       Canvas canvas, Offset c, double outer, double r, double band) {
     final full = Rect.fromCircle(center: c, radius: outer);
-    // Contour (catch ring) : plastique noir mat avec relief
+    final wood = skin.wood;
+    if (wood != null) {
+      // Contour en bois verni avec ses veines
+      canvas.drawCircle(
+          c,
+          outer,
+          Paint()
+            ..shader = RadialGradient(
+              colors: wood,
+              stops: [r / outer, (r / outer + 1) / 2, 1],
+            ).createShader(full));
+      final grain = Paint()
+        ..color = Colors.black.withValues(alpha: 0.18)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(0.6, outer * 0.006);
+      for (var k = 0; k < 18; k++) {
+        final rr = r + (outer - r) * (k + 0.5) / 18;
+        canvas.drawArc(Rect.fromCircle(center: c, radius: rr), k * 0.7,
+            1.8 + (k % 3) * 0.6, false, grain);
+      }
+    } else {
+      // Contour (catch ring) en plastique mat avec relief, teinté au style
+      final b = skin.background;
+      canvas.drawCircle(
+          c,
+          outer,
+          Paint()
+            ..shader = RadialGradient(
+              colors: [
+                Color.lerp(b, Colors.white, 0.14)!,
+                Color.lerp(b, Colors.white, 0.05)!,
+                Color.lerp(b, Colors.black, 0.4)!,
+                Color.lerp(b, Colors.white, 0.1)!,
+              ],
+              stops: [r / outer * 0.98, r / outer + 0.02, 0.96, 1],
+            ).createShader(full));
+    }
+    // Liseré extérieur à la couleur du style (classique : couleur du thème)
     canvas.drawCircle(
         c,
-        outer,
+        outer - outer * 0.006,
         Paint()
-          ..shader = RadialGradient(
-            colors: const [
-              Color(0xFF2A2C31),
-              Color(0xFF15161A),
-              Color(0xFF0A0A0C),
-              Color(0xFF1E1F23),
-            ],
-            stops: [r / outer * 0.98, r / outer + 0.02, 0.96, 1],
-          ).createShader(full));
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(1, outer * 0.012)
+          ..color = (skin == BoardSkin.classic ? Tv.gold : skin.rim)
+              .withValues(alpha: 0.85));
     // Ombre portée de la zone de jeu sur le contour
     canvas.drawCircle(
         c,
@@ -430,11 +462,12 @@ class _BoardPainter extends CustomPainter {
 
     // Séparateurs en plastique (rainures sombres + liseré clair)
     final gap = Paint()
-      ..color = const Color(0xFF050506)
+      ..color = Color.lerp(skin.wire, Colors.black, 0.8)!
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(1.2, r * 0.013);
     final lip = Paint()
-      ..color = Colors.white.withValues(alpha: 0.10)
+      ..color =
+          Color.lerp(skin.wire, Colors.white, 0.3)!.withValues(alpha: 0.22)
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(0.5, r * 0.004);
     for (final rr in [rDoubleOut, rDoubleIn, rTripleOut, rTripleIn, rBullOut]) {

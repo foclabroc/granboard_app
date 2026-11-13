@@ -2,7 +2,7 @@
 
 ## v0.6.6
 
-- **Cible « Réaliste »** (nouveau style, OPTIONS › Style de la cible, suivi par la TV) : cible électronique en plastique troué avec relief, séparateurs et reflet, anneau de LED animé à la couleur du joueur (rouge sur un bust, arc-en-ciel à la victoire), segment touché allumé, fléchettes en 3D (fût en métal, empennage à la couleur du joueur, ombre) qui arrivent et vibrent en se plantant
+- **Cibles réalistes** : les 9 styles (dont le nouveau « Réaliste » aux couleurs d'une cible électronique) passent au même rendu : cible électronique en plastique troué avec relief, séparateurs et reflet, anneau de LED animé à la couleur du joueur (rouge sur un bust, arc-en-ciel à la victoire), segment touché allumé, fléchettes en 3D (fût en métal, empennage à la couleur du joueur, ombre) qui arrivent et vibrent en se plantant
 - **Écran TV « Ensuite »** : en haut de l'écran de partie, le joueur qui lancera après celui en cours (photo, nom) et ce qu'il lui reste en 01 (ou son score)
 - **Double en ligne (2 contre 2)** : DÉFIER propose 1 CONTRE 1 ou 2 CONTRE 2 ; chaque équipe joue chez elle sur sa cible (un appareil par maison), l'équipier est un compte du téléphone ou un invité, l'adversaire choisit le sien en acceptant ; 01 en **double** (score commun à l'équipe) ou Team Cricket ; SQL `2026-11-13_double.sql`
 - **Barre du haut de l'accueil allégée** : la cible à gauche (pastille plus étroite), puis des boutons encadrés : joueurs (icône + nombre), STATS, TV, SON et PROFIL (photo + rang), avec leur nom sous l'icône ; le reste est dans la tuile OPTIONS
