@@ -13,7 +13,6 @@ import '../format.dart';
 import '../players.dart';
 import '../server.dart';
 import '../tv_link.dart';
-import '../update_check.dart';
 import 'calibration_page.dart';
 import 'connect_page.dart';
 import 'dartboard.dart';
@@ -24,9 +23,7 @@ import 'players_page.dart';
 import 'ranking_page.dart';
 import 'setup_page.dart';
 import 'sound_settings.dart';
-import 'lights_sheet.dart';
 import 'options_page.dart';
-import 'share_sheet.dart';
 import 'theme.dart';
 import 'tile_art.dart';
 import 'tv_sheet.dart';
@@ -167,17 +164,12 @@ class _HomePageState extends State<HomePage>
     } catch (_) {}
   }
 
-  Future<void> _checkUpdate() => checkForUpdate(context);
-
   Future<void> _open(Widget page) async {
     await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
     AudioService.instance.startMusic();
     TvLink.instance.pushLobby();
     _loadStart();
   }
-
-  Future<void> _chooseTheme() => showThemeSheet(context);
-  Future<void> _chooseSkin() => showBoardSkinSheet(context);
 
   @override
   Widget build(BuildContext context) {
@@ -212,9 +204,11 @@ class _HomePageState extends State<HomePage>
                           ),
                         ),
                       ),
-                      SizedBox(width: compact ? 6 : 12),
-                      Flexible(
-                        flex: 3,
+                      const Spacer(),
+                      // Cible : pastille étroite (état + menu des outils)
+                      ConstrainedBox(
+                        constraints:
+                            BoxConstraints(maxWidth: compact ? 170 : 200),
                         child: ListenableBuilder(
                           listenable: board,
                           builder: (context, _) => _BoardPill(
@@ -226,27 +220,12 @@ class _HomePageState extends State<HomePage>
                         ),
                       ),
                       const _NetPill(),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        flex: 2,
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: ListenableBuilder(
-                            listenable: PlayerStore.instance,
-                            builder: (context, _) => TextButton.icon(
-                              style: TextButton.styleFrom(
-                                foregroundColor: Tv.text,
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 10),
-                              ),
-                              onPressed: () => _open(const PlayersPage()),
-                              icon: const Icon(Icons.group_add, size: 22),
-                              label: Text(
-                                  'JOUEURS (${PlayerStore.instance.players.length})',
-                                  style: Tv.title(16)),
-                            ),
-                          ),
-                        ),
+                      const SizedBox(width: 6),
+                      IconButton(
+                        visualDensity: dense,
+                        tooltip: 'Stats et classements',
+                        icon: const Icon(Icons.leaderboard),
+                        onPressed: () => _open(const RankingPage()),
                       ),
                       ListenableBuilder(
                         listenable: TvLink.instance,
@@ -263,47 +242,20 @@ class _HomePageState extends State<HomePage>
                       ),
                       IconButton(
                         visualDensity: dense,
-                        tooltip: 'Classements',
-                        icon: const Icon(Icons.leaderboard),
-                        onPressed: () => _open(const RankingPage()),
-                      ),
-                      IconButton(
-                        visualDensity: dense,
                         tooltip: 'Sons',
                         icon: const Icon(Icons.volume_up),
                         onPressed: () => showSoundSettings(context),
                       ),
-                      PopupMenuButton<String>(
-                        tooltip: 'Plus',
-                        onSelected: (v) {
-                          if (v == 'theme') _chooseTheme();
-                          if (v == 'skin') _chooseSkin();
-                          if (v == 'lights') showLightsSheet(context);
-                          if (v == 'share') showShareSheet(context);
-                          if (v == 'update') _checkUpdate();
-                        },
-                        itemBuilder: (_) => [
-                          const PopupMenuItem(
-                              value: 'theme', child: Text('Thème de l\'appli')),
-                          const PopupMenuItem(
-                              value: 'skin', child: Text('Style de la cible')),
-                          const PopupMenuItem(
-                              value: 'lights',
-                              child: Text('Lumières de la cible')),
-                          const PopupMenuItem(
-                              value: 'share',
-                              child: Text('Partager l\'appli (QR code)')),
-                          const PopupMenuItem(
-                              value: 'update',
-                              child: Text('Mises à jour (v$kAppVersion)')),
-                        ],
-                      ),
                       const SizedBox(width: 4),
                       ListenableBuilder(
                         listenable: PlayerStore.instance,
-                        builder: (context, _) => _MeChip(
-                            compact: compact,
-                            onTap: () => _open(const PlayersPage())),
+                        builder: (context, _) {
+                          final me = PlayerStore.instance.owner;
+                          return _MeChip(
+                              onTap: () => _open(me == null
+                                  ? const PlayersPage()
+                                  : PlayerDetailPage(player: me)));
+                        },
                       ),
                     ],
                   ),
@@ -563,20 +515,18 @@ class _Tile extends StatelessWidget {
 /// Pastille du profil principal avec sa classe ; ouvre « Joueurs ».
 class _MeChip extends StatelessWidget {
   final VoidCallback onTap;
-
-  /// Avatar seul (petit téléphone).
-  final bool compact;
-  const _MeChip({required this.onTap, this.compact = false});
+  const _MeChip({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final me = PlayerStore.instance.owner;
-    final rating = me?.rating;
+    final ranked = me != null && me.rating != null;
     return InkWell(
+      key: const ValueKey('me-chip'),
       borderRadius: BorderRadius.circular(20),
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.fromLTRB(4, 3, compact ? 4 : 10, 3),
+        padding: EdgeInsets.fromLTRB(3, 3, ranked ? 8 : 3, 3),
         decoration: BoxDecoration(
           color: Tv.panel2,
           borderRadius: BorderRadius.circular(20),
@@ -591,20 +541,9 @@ class _MeChip extends StatelessWidget {
                     backgroundColor: Tv.panel,
                     child: const Icon(Icons.groups, size: 18, color: Tv.text))
                 : PlayerAvatar.of(me, size: 30),
-            if (!compact) ...[
+            if (ranked) ...[
               const SizedBox(width: 6),
-              Text(me == null ? 'JOUEURS' : me.name.toUpperCase(),
-                  style: Tv.title(15)),
-            ],
-            if (rating != null && !compact) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(
-                    color: Tv.gold, borderRadius: BorderRadius.circular(6)),
-                child: Text(ratingClass(rating),
-                    style: Tv.title(13, color: Colors.black)),
-              ),
+              RankChip(me.key, size: 13),
             ],
           ],
         ),
