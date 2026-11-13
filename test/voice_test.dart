@@ -38,6 +38,11 @@ void main() {
       if (n >= 100) expect(plan('$n !'), '#');
       if (n >= 2 && n <= 170) expect(plan('Foc, il te reste $n'), 'Foc|#');
     }
+    // Après 3 fléchettes : ce qu'il reste (01 de 901 compris)
+    for (var n = 1; n <= 901; n++) {
+      expect(plan('triple 20, Il reste $n'), '#|#', reason: '$n');
+    }
+    expect(plan('Cent quatre-vingts ! Il reste 321'), '#|#');
     expect(bank.plan('140 !').single.clip, bank.index['140 !']);
     expect(bank.plan('140').single.clip, bank.index['140']);
     expect(plan('Cent quatre-vingts !'), '#');

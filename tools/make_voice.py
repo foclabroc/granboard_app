@@ -78,6 +78,10 @@ for n in range(100, 181):
 add('Cent quatre-vingts !')
 for n in range(2, 171):
     add(f'il te reste {n}')
+# Après les 3 fléchettes : ce qu'il reste à faire (01, Finition 121, Spider,
+# Kick Down)
+for n in range(1, 902):
+    add(f'il reste {n}')
 
 # ─── 01 ───
 for t in ['Bust !', 'Bust ! Équipe gelée.', 'Aucun point', 'à toi',

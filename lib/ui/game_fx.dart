@@ -194,7 +194,12 @@ class GameFx {
         final key = '${g.turns.length}:$note';
         final hits = g.turnHits;
         final call = _call(hit);
-        if (call.isNotEmpty && (note == null || key == _lastNote)) {
+        final quiet = note == null || key == _lastNote;
+        // Jeux à rebours : à la 3e fléchette, ce qu'il reste à faire
+        final left = hits.length == 3 && quiet ? _practiceLeft(g) : null;
+        if (left != null && left > 0) {
+          audio.sayLater(_join(call, 'Il reste $left'), 400 + _wait);
+        } else if (call.isNotEmpty && quiet) {
           audio.sayLater(call, 150 + _wait);
         }
         if (hits.length == 3 &&
@@ -292,6 +297,17 @@ class GameFx {
 
   String? _lastNote;
 
+  /// Jeux où l'on descend vers 0 ou monte vers un objectif pile : ce qu'il
+  /// reste au joueur en cours (null pour les autres jeux).
+  static int? _practiceLeft(PracticeGame g) {
+    final st = g.stateOf(g.current);
+    return switch (g.settings.kind) {
+      PracticeKind.checkout121 || PracticeKind.spider => st.v['rem'],
+      PracticeKind.kickDown => g.settings.goalOrDefault - st.score,
+      _ => null,
+    };
+  }
+
   static bool _badNote(String n) =>
       n == 'BUST' ||
       n.startsWith('TROP') ||
@@ -380,20 +396,21 @@ class GameFx {
     final call = _call(hit);
     if (turn.darts.length == 3) {
       final total = turn.total;
+      // Après les 3 fléchettes : ce qu'il reste à faire (pas le total)
+      final left = 'Il reste ${game.currentState.remaining}';
       if (total == 180) _count180();
       if (_award(awardOf(game.turnHits, total: total))) {
         _haptic(true);
       } else if (total == 180) {
         audio.play(Sfx.crowd);
-        audio.sayLater('Cent quatre-vingts !', 500);
+        audio.sayLater('Cent quatre-vingts ! $left', 500);
         _show('180', Tv.gold, big: true);
       } else if (total >= 100) {
         audio.play(Sfx.ton);
-        audio.sayLater(_join(call, '$total !'), 400 + _wait);
+        audio.sayLater(_join(call, left), 400 + _wait);
         _show('$total', Tv.gold);
       } else {
-        audio.sayLater(
-            _join(call, total == 0 ? 'Aucun point' : '$total'), 400 + _wait);
+        audio.sayLater(_join(call, left), 400 + _wait);
       }
     } else if (call.isNotEmpty) {
       audio.sayLater(call, 150 + _wait);

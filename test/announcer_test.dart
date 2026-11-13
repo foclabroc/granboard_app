@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:granboard_proto/audio.dart';
 import 'package:granboard_proto/board_service.dart';
 import 'package:granboard_proto/game/cricket.dart';
+import 'package:granboard_proto/game/practice.dart';
 import 'package:granboard_proto/game/x01.dart';
 import 'package:granboard_proto/granboard.dart';
 import 'package:granboard_proto/players.dart';
@@ -60,21 +61,35 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
   }
 
-  testWidgets('01 : chaque fléchette puis le total', (tester) async {
+  testWidgets('01 : chaque fléchette puis ce qu\'il reste', (tester) async {
     await open(tester,
         const GamePage(settings: X01Settings(startScore: 301), players: two));
     await dart(tester, 20, Ring.triple);
     await dart(tester, 16, Ring.double);
     expect(audio.said, ['triple 20', 'double 16']);
     await dart(tester, 5, Ring.singleOuter);
-    expect(audio.said.last, '5, 97');
+    expect(audio.said.last, '5, Il reste 204');
     await next(tester);
     expect(audio.said.last, startsWith('Bob, à toi'));
     for (var i = 0; i < 3; i++) {
       await tester.tap(find.text('RATÉ').last);
       await tester.pump(const Duration(seconds: 1));
     }
-    expect(audio.said.last, 'raté, Aucun point');
+    expect(audio.said.last, 'raté, Il reste 301');
+    await close(tester);
+  });
+
+  testWidgets('Finition 121 : ce qu\'il reste après 3 fléchettes',
+      (tester) async {
+    await open(
+        tester,
+        GamePage(
+            game: PracticeGame(
+                const PracticeSettings(PracticeKind.checkout121), two)));
+    await dart(tester, 20, Ring.triple);
+    await dart(tester, 1, Ring.singleOuter);
+    await dart(tester, 20, Ring.singleOuter);
+    expect(audio.said.last, '20, Il reste 40');
     await close(tester);
   });
 
