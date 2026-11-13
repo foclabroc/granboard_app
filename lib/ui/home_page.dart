@@ -175,7 +175,6 @@ class _HomePageState extends State<HomePage>
   Widget build(BuildContext context) {
     // Petit téléphone : barre du haut resserrée (icônes, profil en avatar)
     final compact = MediaQuery.sizeOf(context).width < 720;
-    final dense = compact ? VisualDensity.compact : null;
     return Scaffold(
       body: TvBackground(
         child: SafeArea(
@@ -185,7 +184,7 @@ class _HomePageState extends State<HomePage>
               children: [
                 // ─── Barre du haut ───
                 SizedBox(
-                  height: 46,
+                  height: 52,
                   child: Row(
                     children: [
                       // Largeur bornée : le titre rétrécit au lieu de pousser
@@ -204,57 +203,64 @@ class _HomePageState extends State<HomePage>
                           ),
                         ),
                       ),
-                      const Spacer(),
-                      // Cible : pastille étroite (état + menu des outils)
-                      ConstrainedBox(
-                        constraints:
-                            BoxConstraints(maxWidth: compact ? 170 : 200),
-                        child: ListenableBuilder(
-                          listenable: board,
-                          builder: (context, _) => _BoardPill(
-                            board: board,
-                            onChoose: () => _open(const ConnectPage()),
-                            onDiagnostic: () => _open(const DiagnosticPage()),
-                            onCalibrate: () => _open(const CalibrationPage()),
+                      SizedBox(width: compact ? 6 : 12),
+                      // Cible : pastille étroite à gauche (état + outils)
+                      Flexible(
+                        flex: 6,
+                        child: ConstrainedBox(
+                          constraints:
+                              BoxConstraints(maxWidth: compact ? 170 : 200),
+                          child: ListenableBuilder(
+                            listenable: board,
+                            builder: (context, _) => _BoardPill(
+                              board: board,
+                              onChoose: () => _open(const ConnectPage()),
+                              onDiagnostic: () => _open(const DiagnosticPage()),
+                              onCalibrate: () => _open(const CalibrationPage()),
+                            ),
                           ),
                         ),
                       ),
                       const _NetPill(),
-                      const SizedBox(width: 6),
-                      IconButton(
-                        visualDensity: dense,
-                        tooltip: 'Stats et classements',
-                        icon: const Icon(Icons.leaderboard),
-                        onPressed: () => _open(const RankingPage()),
+                      const Spacer(),
+                      _BarButton(
+                        key: const ValueKey('bar-stats'),
+                        icon: const Icon(Icons.leaderboard, size: 24),
+                        label: 'STATS',
+                        onTap: () => _open(const RankingPage()),
                       ),
                       ListenableBuilder(
                         listenable: TvLink.instance,
-                        builder: (context, _) => IconButton(
-                          visualDensity: dense,
-                          tooltip: 'Écran TV',
+                        builder: (context, _) => _BarButton(
+                          key: const ValueKey('bar-tv'),
                           icon: Icon(
                               TvLink.instance.linked
                                   ? Icons.connected_tv
                                   : Icons.tv,
+                              size: 24,
                               color: TvLink.instance.linked ? Tv.green : null),
-                          onPressed: () => showTvSheet(context),
+                          label: 'TV',
+                          onTap: () => showTvSheet(context),
                         ),
                       ),
-                      IconButton(
-                        visualDensity: dense,
-                        tooltip: 'Sons',
-                        icon: const Icon(Icons.volume_up),
-                        onPressed: () => showSoundSettings(context),
+                      _BarButton(
+                        key: const ValueKey('bar-sound'),
+                        icon: const Icon(Icons.volume_up, size: 24),
+                        label: 'SON',
+                        onTap: () => showSoundSettings(context),
                       ),
-                      const SizedBox(width: 4),
                       ListenableBuilder(
                         listenable: PlayerStore.instance,
                         builder: (context, _) {
                           final me = PlayerStore.instance.owner;
-                          return _MeChip(
-                              onTap: () => _open(me == null
-                                  ? const PlayersPage()
-                                  : PlayerDetailPage(player: me)));
+                          return _BarButton(
+                            key: const ValueKey('me-chip'),
+                            icon: _MeChip(me: me),
+                            label: me == null ? 'JOUEURS' : 'PROFIL',
+                            onTap: () => _open(me == null
+                                ? const PlayersPage()
+                                : PlayerDetailPage(player: me)),
+                          );
                         },
                       ),
                     ],
@@ -513,41 +519,55 @@ class _Tile extends StatelessWidget {
 }
 
 /// Pastille du profil principal avec sa classe ; ouvre « Joueurs ».
-class _MeChip extends StatelessWidget {
+/// Bouton de la barre du haut : icône et petit titre dessous.
+class _BarButton extends StatelessWidget {
+  final Widget icon;
+  final String label;
   final VoidCallback onTap;
-  const _MeChip({required this.onTap});
+  const _BarButton(
+      {super.key,
+      required this.icon,
+      required this.label,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(height: 28, child: Center(child: icon)),
+              const SizedBox(height: 2),
+              Text(label, style: Tv.label(10, color: Tv.text)),
+            ],
+          ),
+        ),
+      );
+}
+
+/// Profil principal : photo et rang.
+class _MeChip extends StatelessWidget {
+  final PlayerProfile? me;
+  const _MeChip({required this.me});
 
   @override
   Widget build(BuildContext context) {
-    final me = PlayerStore.instance.owner;
-    final ranked = me != null && me.rating != null;
-    return InkWell(
-      key: const ValueKey('me-chip'),
-      borderRadius: BorderRadius.circular(20),
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.fromLTRB(3, 3, ranked ? 8 : 3, 3),
-        decoration: BoxDecoration(
-          color: Tv.panel2,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Tv.line),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            me == null
-                ? CircleAvatar(
-                    radius: 15,
-                    backgroundColor: Tv.panel,
-                    child: const Icon(Icons.groups, size: 18, color: Tv.text))
-                : PlayerAvatar.of(me, size: 30),
-            if (ranked) ...[
-              const SizedBox(width: 6),
-              RankChip(me.key, size: 13),
-            ],
-          ],
-        ),
-      ),
+    final me = this.me;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        me == null
+            ? const Icon(Icons.groups, size: 24)
+            : PlayerAvatar.of(me, size: 26),
+        if (me != null && me.rating != null) ...[
+          const SizedBox(width: 5),
+          RankChip(me.key, size: 12),
+        ],
+      ],
     );
   }
 }

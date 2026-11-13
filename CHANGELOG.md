@@ -2,7 +2,7 @@
 
 ## v0.6.6
 
-- **Barre du haut de l'accueil allégée** : seulement la cible (pastille plus étroite), stats et classements, TV, sons et le profil (photo + rang) ; le reste est dans la tuile OPTIONS
+- **Barre du haut de l'accueil allégée** : la cible à gauche (pastille plus étroite), puis STATS, TV, SON et PROFIL (photo + rang) avec leur nom sous l'icône ; le reste est dans la tuile OPTIONS
 - **Tuile OPTIONS** dans l'accueil (4 + 4 tuiles) : une page avec les joueurs du téléphone à gauche (fiche, ajout, gestion) et tous les réglages à droite (thème, style de la cible, sons, écran TV, cible Bluetooth, calibration, lumières, diagnostic, partage, mises à jour)
 - **Annonceur** : après les 3 fléchettes du 01, il dit ce qu'il reste à faire (« triple 20, il reste 341 ») au lieu du total ; pareil en Finition 121, Spider et Kick Down (901 nouvelles annonces enregistrées)
 - **Règles détaillées pour tous les jeux** (01, Cricket et ses variantes, Match, 17 entraînements, 16 jeux de fête), adaptées aux réglages choisis, dans une fenêtre qui défile avec des intertitres
