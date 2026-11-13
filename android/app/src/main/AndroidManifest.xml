@@ -55,6 +55,12 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Rendu Impeller en OpenGL ES (au lieu de Vulkan) : les vidéos
+             (coups, récompenses, caméra) ne s'affichaient pas sur certaines
+             TV Android (TCL 55P615, puce MediaTek 32 bits) -->
+        <meta-data
+            android:name="io.flutter.embedding.android.ImpellerBackend"
+            android:value="opengles" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

@@ -105,6 +105,10 @@ class AwardPlayer {
   /// Faux en test (pas de lecteur vidéo).
   static bool enabled = true;
 
+  /// Vidéo impossible à lire (erreur du lecteur, ou pas prête au bout de
+  /// 4 s) : l'écran TV l'affiche pour qu'on sache ce qui se passe.
+  static void Function(String message)? onError;
+
   static OverlayEntry? _entry;
 
   /// Lance l'animation de [award]. Renvoie faux si elle ne peut pas être
@@ -169,6 +173,12 @@ class _AwardVideoState extends State<_AwardVideo> {
     super.initState();
     // Secours : jamais plus de 10 s à l'écran, même si la lecture cale
     _guard = Timer(const Duration(seconds: 10), _close);
+    Timer(const Duration(seconds: 4), () {
+      if (mounted && !_ready && !_closing) {
+        AwardPlayer.onError?.call('la vidéo ne démarre pas');
+        _close();
+      }
+    });
     _start();
   }
 
@@ -184,7 +194,8 @@ class _AwardVideoState extends State<_AwardVideo> {
       c.addListener(_watch);
       await c.play();
       if (mounted) setState(() => _ready = true);
-    } catch (_) {
+    } catch (e) {
+      AwardPlayer.onError?.call('$e');
       _close();
     }
   }
@@ -192,6 +203,9 @@ class _AwardVideoState extends State<_AwardVideo> {
   void _watch() {
     final v = _c?.value;
     if (v == null) return;
+    if (v.hasError && !_closing) {
+      AwardPlayer.onError?.call(v.errorDescription ?? 'erreur');
+    }
     if (v.hasError ||
         (v.duration > Duration.zero &&
             v.position >= v.duration - const Duration(milliseconds: 120))) {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -10,6 +11,7 @@ import '../media.dart';
 import '../players.dart';
 import '../ui/cricket_view.dart' show CricketStyle;
 import '../ui/dartboard.dart';
+import '../ui/award.dart';
 import '../ui/game_fx.dart';
 import '../ui/game_page.dart' show NextMatchChip, gameView, resultsPageFor;
 import '../tournament.dart';
@@ -40,9 +42,23 @@ class _TvHomeState extends State<TvHome> {
   late final ScreenCam _cam = ScreenCam(client);
   String? _screen;
 
+  /// Vidéo impossible à lire sur cet écran : message en bas (8 s).
+  String? _videoError;
+  Timer? _videoErrorTimer;
+
+  void _onVideoError(String e) {
+    if (!mounted) return;
+    _videoErrorTimer?.cancel();
+    setState(() => _videoError = e);
+    _videoErrorTimer = Timer(const Duration(seconds: 8), () {
+      if (mounted) setState(() => _videoError = null);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    AwardPlayer.onError = _onVideoError;
     WakelockPlus.enable().catchError((_) {});
     client.addListener(_onState);
     _cam.update(client.state?['cam'] as Map?);
@@ -53,6 +69,8 @@ class _TvHomeState extends State<TvHome> {
   @override
   void dispose() {
     client.removeListener(_onState);
+    if (AwardPlayer.onError == _onVideoError) AwardPlayer.onError = null;
+    _videoErrorTimer?.cancel();
     _cam.dispose();
     if (widget.client == null) client.dispose();
     super.dispose();
@@ -155,7 +173,35 @@ class _TvHomeState extends State<TvHome> {
         child: SafeArea(
           child: Stack(
             fit: StackFit.expand,
-            children: [body, ScreenCamLayer(cam: _cam)],
+            children: [
+              body,
+              ScreenCamLayer(cam: _cam),
+              if (_videoError case final e?)
+                Positioned(
+                  left: 12,
+                  bottom: 12,
+                  right: 12,
+                  child: IgnorePointer(
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Container(
+                        key: const ValueKey('video-error'),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Tv.red),
+                        ),
+                        child: Text('VIDÉO IMPOSSIBLE SUR CET ÉCRAN : $e',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Tv.label(13, color: Tv.text)),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
