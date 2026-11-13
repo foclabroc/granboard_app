@@ -11,6 +11,7 @@ import 'package:granboard_proto/server.dart';
 import 'package:granboard_proto/tv/tv_client.dart';
 import 'package:granboard_proto/tv/tv_home.dart';
 import 'package:granboard_proto/tv_link.dart';
+import 'package:granboard_proto/ui/game_page.dart';
 import 'package:granboard_proto/ui/award.dart';
 import 'package:granboard_proto/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -273,5 +274,89 @@ void main() {
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 11));
+  });
+
+  testWidgets('Partie abandonnée : l\'écran TV revient tout de suite à l\'accueil',
+      (tester) async {
+    tester.view.physicalSize = const Size(2160, 1080);
+    tester.view.devicePixelRatio = 2.75;
+    addTearDown(tester.view.reset);
+    final tv = TvClient(realtime: false);
+    await tester.runAsync(() async {
+      await tv.start();
+      await TvLink.instance.link(tv.code!);
+    });
+    await tester.pumpWidget(MaterialApp(
+        theme: Tv.theme(),
+        home: Builder(
+            builder: (c) => TextButton(
+                onPressed: () => Navigator.push(
+                    c,
+                    MaterialPageRoute(
+                        builder: (_) => GamePage(
+                            game: X01Game(const X01Settings(), const [
+                              X01Player(id: 'guest-1', name: 'A'),
+                              X01Player(id: 'guest-2', name: 'B'),
+                            ])))),
+                child: const Text('GO')))));
+    await tester.tap(find.text('GO'));
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    await tester.runAsync(() async {
+      await settle();
+      await tv.fetch();
+    });
+    expect(tv.state?['screen'], 'game');
+    // Retour → Abandonner
+    tester.state<NavigatorState>(find.byType(Navigator)).maybePop();
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    await tester.tap(find.text('Abandonner'));
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    await tester.runAsync(() async {
+      await settle();
+      await tv.fetch();
+    });
+    expect(tv.state?['screen'], 'lobby');
+    expect(find.byType(GamePage), findsNothing);
+    await tester.runAsync(() => TvLink.instance.unlinkAll());
+    tv.dispose();
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  test('Musique des menus : l\'écran joue le même morceau que le téléphone',
+      () async {
+    final audio = AudioService.instance;
+    final tv = TvClient(realtime: false);
+    await tv.start();
+    await TvLink.instance.link(tv.code!);
+    await settle();
+    await tv.fetch();
+    final m = tv.state?['music'] as Map;
+    expect(m['t'], audio.menuTrack);
+    expect(m['t'], isIn(AudioService.kMenuTracks));
+    // l'écran suit (ici le même AudioService : on vérifie le choix du morceau)
+    final other =
+        AudioService.kMenuTracks.firstWhere((t) => t != audio.menuTrack);
+    audio.followMusic(other, 0);
+    expect(audio.menuTrack, other);
+    // même morceau et même compteur : rien ne change (pas de retour en
+    // arrière quand l'écran passe tout seul au morceau suivant)
+    audio.followMusic(other, 0);
+    expect(audio.menuTrack, other);
+    // un nouveau morceau lancé sur le téléphone est renvoyé à l'écran
+    final before = tv.state?['at'];
+    audio.musicStarts.value++;
+    await settle();
+    await tv.fetch();
+    expect(tv.state?['at'], isNot(before));
+    expect((tv.state?['music'] as Map)['n'], audio.musicStarts.value);
+    await TvLink.instance.unlinkAll();
+    tv.dispose();
   });
 }

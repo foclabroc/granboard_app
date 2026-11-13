@@ -183,6 +183,9 @@ class GameFx {
         ? 'Match en ${game.settings.legs} legs. Leg 1, ${game.leg.title}'
         : game.title;
     _turn(game, '$title. ${game.currentPlayer.name}, à toi.', 400, false);
+    // Bandeau du 1er joueur aussi (après la 1re image : la page n'est pas
+    // encore affichée)
+    WidgetsBinding.instance.addPostFrameCallback((_) => _banner(game));
   }
 
   /// Après une action du journal (écran TV qui rejoue la partie).
@@ -299,7 +302,11 @@ class GameFx {
     AwardPlayer.stop();
     _names(game);
     _afterNext(game);
-    // Bandeau « au tour de … » (pas en solo, ni entre 2 legs ou à la fin)
+    _banner(game);
+  }
+
+  /// Bandeau « au tour de … » (pas en solo, ni entre 2 legs ou à la fin).
+  void _banner(DartsGame game) {
     if (game.finished || game.players.length < 2) return;
     if (game is MatchGame && game.betweenLegs) return;
     final p = game.currentPlayer;

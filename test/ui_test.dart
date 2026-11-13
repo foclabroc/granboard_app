@@ -95,7 +95,12 @@ void main() {
       settings: const X01Settings(startScore: 301),
       players: four.take(2).toList(),
     )));
-    await tester.pump(const Duration(seconds: 2));
+    // Dès le début : le 1er joueur a son bandeau
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('AU TOUR DE'), findsOneWidget);
+    expect(find.text(four[0].name.toUpperCase()), findsWidgets);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('AU TOUR DE'), findsNothing);
     await tester.tap(find.text('SUIVANT'));
     await tester.pump();

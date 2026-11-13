@@ -122,6 +122,10 @@ class _TvHomeState extends State<TvHome> {
         ..clear()
         ..addAll((s!['pron'] as Map).map((k, v) => MapEntry('$k', '$v')));
     }
+    // musique des menus : le même morceau que le téléphone
+    if (s?['music'] case {'t': final String t, 'n': final num n}) {
+      AudioService.instance.followMusic(t, n.toInt());
+    }
     // caméra de la tablette sur la TV (cet écran filme ou affiche)
     _cam.update(s?['cam'] as Map?);
     final screen = s?['screen'] as String?;

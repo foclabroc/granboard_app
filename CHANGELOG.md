@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.10
+
+- Bandeau « AU TOUR DE » aussi pour le tout premier joueur de la partie (téléphone et écran TV)
+- Partie abandonnée : l'écran TV quitte la partie tout de suite (avant : il y restait jusqu'au retour à l'accueil)
+- Musique des menus : l'écran TV / la tablette joue le même morceau que le téléphone ; quand le son est ajouté au téléphone, le morceau repart au début sur les deux
+- Écran TV : manche et code collés à droite de la barre du haut, règles affichées en entier quand il y a la place
+
 ## v0.6.9
 
 - Check-up avant soirée (tous les jeux passés en revue sur téléphone et écran TV, du début aux résultats, à 1, 2, 4, 8 et 10 joueurs) :

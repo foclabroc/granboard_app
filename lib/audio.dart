@@ -127,6 +127,33 @@ class AudioService extends ChangeNotifier {
   final _order = [...kMenuTracks]..shuffle(Random());
   int _track = 0;
 
+  /// Morceau des menus en cours (ou le prochain) : envoyé aux écrans pour
+  /// qu'ils jouent le même.
+  String get menuTrack => _order[_track % _order.length];
+
+  /// +1 à chaque morceau lancé ici : les écrans le relancent avec nous.
+  final musicStarts = ValueNotifier<int>(0);
+
+  String? _followed;
+
+  /// Écran TV : joue le morceau du téléphone [track] (et le reprend au début
+  /// quand le téléphone le relance : [n] change).
+  void followMusic(String track, int n) {
+    final key = '$track#$n';
+    if (key == _followed) return;
+    final i = _order.indexOf(track);
+    if (i < 0) return;
+    final first = _followed == null;
+    _followed = key;
+    final same = i == _track % _order.length;
+    _track = i;
+    final m = _music;
+    if (m == null || !_musicWanted || _muted || !music) return;
+    // 1re fois : le morceau déjà en cours continue s'il est le bon
+    if (first && same && m.state == PlayerState.playing) return;
+    _playTrack();
+  }
+
   /// Lit les réglages (rapide), puis prépare les lecteurs et la voix en
   /// arrière-plan : sur une Android TV, la synthèse vocale met plusieurs
   /// secondes à démarrer et ne doit pas retarder le premier écran.
@@ -375,6 +402,7 @@ class AudioService extends ChangeNotifier {
     final m = _music;
     if (m == null) return;
     final name = _order[_track % _order.length];
+    musicStarts.value++;
     () async {
       try {
         await m.play(AssetSource('music/$name'), volume: musicVolume);

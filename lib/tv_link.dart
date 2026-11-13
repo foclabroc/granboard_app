@@ -46,7 +46,12 @@ class TvScreen {
 /// tout et envoie l'état à chaque écran ; le son sort sur un ou plusieurs
 /// appareils (téléphone et/ou écrans).
 class TvLink extends ChangeNotifier {
-  TvLink._();
+  TvLink._() {
+    // Nouveau morceau des menus ici : les écrans le lancent aussi
+    AudioService.instance.musicStarts.addListener(() {
+      if (screens.isNotEmpty) _resend();
+    });
+  }
   static final instance = TvLink._();
 
   static const _prefKey = 'tv_link_v2';
@@ -373,6 +378,11 @@ class TvLink extends ChangeNotifier {
         'tease': AudioService.instance.teasing,
         'pron': AudioService.instance.pronunciations,
         'wall': Wallpaper.instance.forTv,
+        // musique des menus : l'écran joue le même morceau que nous
+        'music': {
+          't': AudioService.instance.menuTrack,
+          'n': AudioService.instance.musicStarts.value,
+        },
         if (cam case final c?) 'cam': c,
       };
       if (!s.wifiOnly) {
