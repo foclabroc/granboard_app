@@ -218,8 +218,22 @@ class GameFx {
     if (game is MatchGame && game.betweenLegs) return;
     final leg = game is MatchGame ? game.leg : game;
     if (leg is X01Game && leg.currentTurn.isBust) return;
-    AwardPlayer.playAsset(splash.currentContext, clip.randomAsset(),
-        opacity: 0.92);
+    // Vidéo impossible (certaines TV) : le bruitage et l'annonce de la
+    // fléchette à la place, sinon on n'entendrait rien
+    // (à la 3e fléchette, l'annonce de la manche suit : le bruitage seul)
+    final last = game.turnOver;
+    void fallback() {
+      _hitSound(hit);
+      final call = last ? '' : _call(hit);
+      if (call.isNotEmpty) audio.say(call);
+    }
+
+    if (!AwardPlayer.playAsset(splash.currentContext, clip.randomAsset(),
+        opacity: 0.92,
+        onFail: fallback,
+        startTimeout: const Duration(milliseconds: 1500))) {
+      fallback();
+    }
   }
 
   void _afterDart(DartsGame game, DartHit? hit, {bool outerRing = false}) {

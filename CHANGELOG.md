@@ -2,6 +2,7 @@
 
 ## v0.6.6
 
+- Son sur la TV plus fiable : si la vidéo d'un T20 / bull ne peut pas être lue, le bruitage et l'annonce de la fléchette reviennent (avant : silence) ; bruitages en lecteur classique sur la TV (le mode « faible latence » restait parfois muet)
 - Vidéos sur la TV : rendu de l'appli en OpenGL ES (au lieu de Vulkan), qui affiche mieux les vidéos sur certaines TV Android ; si une vidéo ne peut pas être lue, l'écran TV l'écrit en bas (« VIDÉO IMPOSSIBLE SUR CET ÉCRAN : … »)
 - Vidéos des coups (T20, bull, double bull) et des récompenses en plein écran sur les écrans plus allongés que le 16:9 (plus de bandes noires sur les côtés)
 - **Paint** (fête) : chaque fléchette peint sa zone de la cible à la couleur du joueur, on prend les zones des autres, une zone touchée 2 fois est protégée ; le plus de zones gagne

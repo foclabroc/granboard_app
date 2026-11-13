@@ -121,8 +121,13 @@ class AwardPlayer {
 
   /// Lance la vidéo [asset] (voir [play]). [opacity] < 1 laisse deviner la
   /// partie derrière.
+  ///
+  /// [onFail] : la vidéo n'a pas pu être lue (erreur, ou pas prête au bout
+  /// de [startTimeout]) ; l'appelant joue alors le son habituel.
   static bool playAsset(BuildContext? context, String asset,
-      {double opacity = 1}) {
+      {double opacity = 1,
+      VoidCallback? onFail,
+      Duration startTimeout = const Duration(seconds: 4)}) {
     if (!enabled || context == null) return false;
     final overlay = Overlay.maybeOf(context, rootOverlay: true);
     if (overlay == null) return false;
@@ -132,6 +137,8 @@ class AwardPlayer {
       builder: (_) => _AwardVideo(
         asset: asset,
         opacity: opacity,
+        onFail: onFail,
+        startTimeout: startTimeout,
         onDone: () {
           if (identical(_entry, entry)) _entry = null;
           if (entry.mounted) entry.remove();
@@ -155,8 +162,14 @@ class _AwardVideo extends StatefulWidget {
   final String asset;
   final double opacity;
   final VoidCallback onDone;
+  final VoidCallback? onFail;
+  final Duration startTimeout;
   const _AwardVideo(
-      {required this.asset, required this.onDone, this.opacity = 1});
+      {required this.asset,
+      required this.onDone,
+      this.opacity = 1,
+      this.onFail,
+      this.startTimeout = const Duration(seconds: 4)});
 
   @override
   State<_AwardVideo> createState() => _AwardVideoState();
@@ -173,10 +186,10 @@ class _AwardVideoState extends State<_AwardVideo> {
     super.initState();
     // Secours : jamais plus de 10 s à l'écran, même si la lecture cale
     _guard = Timer(const Duration(seconds: 10), _close);
-    Timer(const Duration(seconds: 4), () {
+    Timer(widget.startTimeout, () {
       if (mounted && !_ready && !_closing) {
         AwardPlayer.onError?.call('la vidéo ne démarre pas');
-        _close();
+        _fail();
       }
     });
     _start();
@@ -196,7 +209,7 @@ class _AwardVideoState extends State<_AwardVideo> {
       if (mounted) setState(() => _ready = true);
     } catch (e) {
       AwardPlayer.onError?.call('$e');
-      _close();
+      _fail();
     }
   }
 
@@ -205,12 +218,24 @@ class _AwardVideoState extends State<_AwardVideo> {
     if (v == null) return;
     if (v.hasError && !_closing) {
       AwardPlayer.onError?.call(v.errorDescription ?? 'erreur');
+      if (!_ready) {
+        _fail();
+        return;
+      }
     }
     if (v.hasError ||
         (v.duration > Duration.zero &&
             v.position >= v.duration - const Duration(milliseconds: 120))) {
       _close();
     }
+  }
+
+  /// Pas lue : le son habituel à la place (une seule fois).
+  void _fail() {
+    if (_closing) return;
+    final f = widget.onFail;
+    _close();
+    f?.call();
   }
 
   void _close() {

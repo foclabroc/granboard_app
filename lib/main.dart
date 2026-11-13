@@ -50,6 +50,7 @@ Future<void> main() async {
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   final androidTv = await isAndroidTv();
   final tv = androidTv || await detectTv();
+  AudioService.instance.tvDevice = tv;
   await Future.wait([
     AudioService.instance.init(),
     BoardSkin.load(),

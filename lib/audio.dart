@@ -31,6 +31,10 @@ class AudioService extends ChangeNotifier {
   /// 01, aucune marque en Cricket) ou un bust.
   bool teasing = true;
 
+  /// Écran TV (posé par main.dart avant init) : bruitages en lecteur
+  /// classique, plus fiable que le mode faible latence sur ces appareils.
+  bool tvDevice = false;
+
   /// Coupé quand une TV est reliée (le son passe sur la TV).
   bool _muted = false;
   bool get muted => _muted;
@@ -166,7 +170,9 @@ class AudioService extends ChangeNotifier {
       if (_musicWanted) startMusic();
       for (var i = 0; i < 4; i++) {
         final p = AudioPlayer();
-        await p.setPlayerMode(PlayerMode.lowLatency);
+        // Mode « faible latence » (SoundPool) : parfois muet sur les TV
+        // Android (son rechargé à chaque fois) → lecteur classique sur TV
+        if (!tvDevice) await p.setPlayerMode(PlayerMode.lowLatency);
         await p.setReleaseMode(ReleaseMode.stop);
         _pool.add(p);
       }

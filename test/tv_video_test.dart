@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:granboard_proto/audio.dart';
 import 'package:granboard_proto/game/x01.dart';
 import 'package:granboard_proto/granboard.dart';
 import 'package:granboard_proto/players.dart';
@@ -12,7 +13,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'fake_server.dart';
 
 void main() {
-  testWidgets('Écran TV : vidéo du T20 lancée, erreur de lecture affichée',
+  testWidgets(
+      'Écran TV : vidéo du T20 lancée, erreur affichée, son habituel à la place',
       (tester) async {
     tester.view.physicalSize = const Size(960, 540);
     tester.view.devicePixelRatio = 1;
@@ -29,10 +31,14 @@ void main() {
     Map<String, dynamic> state() =>
         {'screen': 'game', 'host': 'Foc', 'game': g.toJson(), 'sound': true};
     tv.debugSetState('ABCD', state());
-    await tester.pumpWidget(
-        MaterialApp(theme: Tv.theme(), home: TvHome(client: tv)));
+    await tester
+        .pumpWidget(MaterialApp(theme: Tv.theme(), home: TvHome(client: tv)));
     await tester.pump(const Duration(seconds: 1));
 
+    AudioService.instance
+      ..voice = true
+      ..dartCalls = true
+      ..said.clear();
     AwardPlayer.enabled = true;
     addTearDown(() => AwardPlayer.enabled = false);
     g.throwDart(const DartHit(20, 3, Ring.triple));
@@ -47,6 +53,8 @@ void main() {
     }
     expect(find.byKey(const ValueKey('video-error')), findsOneWidget);
     expect(AwardPlayer.active, isFalse);
+    // … et l'annonce de la fléchette à la place du son de la vidéo
+    expect(AudioService.instance.said, contains('triple 20'));
     await tester.pump(const Duration(seconds: 9));
     expect(find.byKey(const ValueKey('video-error')), findsNothing);
     AwardPlayer.enabled = false;
