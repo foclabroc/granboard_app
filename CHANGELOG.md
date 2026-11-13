@@ -2,6 +2,7 @@
 
 ## v0.6.6
 
+- **Jeux de lumière sur les numéros** de la cible dessinée : le numéro d'une zone touchée s'allume à la couleur du joueur et reste allumé pendant le tour (flash à l'impact), les numéros à viser clignotent en blanc, une lumière fait le tour en attendant la 1re fléchette, tout l'anneau brille sur un bull, passe au rouge sur un bust et en arc-en-ciel à la victoire
 - **Cibles réalistes** : les 9 styles (dont le nouveau « Réaliste » aux couleurs d'une cible électronique) passent au même rendu : cible électronique en plastique troué avec relief, séparateurs et reflet, anneau de LED animé à la couleur du joueur (rouge sur un bust, arc-en-ciel à la victoire), segment touché allumé, fléchettes en 3D (fût en métal, empennage à la couleur du joueur, ombre) qui arrivent et vibrent en se plantant
 - **Écran TV « Ensuite »** : en haut de l'écran de partie, le joueur qui lancera après celui en cours (photo, nom) et ce qu'il lui reste en 01 (ou son score)
 - **Double en ligne (2 contre 2)** : DÉFIER propose 1 CONTRE 1 ou 2 CONTRE 2 ; chaque équipe joue chez elle sur sa cible (un appareil par maison), l'équipier est un compte du téléphone ou un invité, l'adversaire choisit le sien en acceptant ; 01 en **double** (score commun à l'équipe) ou Team Cricket ; SQL `2026-11-13_double.sql`

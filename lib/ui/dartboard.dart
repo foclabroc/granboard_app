@@ -796,7 +796,10 @@ class _HitsPainter extends CustomPainter {
     final c = size.center(Offset.zero);
     final outer = size.width / 2;
     final r = outer - outer * 0.15; // même calcul que _BoardPainter
-    if (realistic) _leds(canvas, c, outer, r);
+    if (realistic) {
+      _leds(canvas, c, outer, r);
+      _numberLights(canvas, c, outer, r);
+    }
 
     // Zone à viser pour finir : contour blanc qui pulse (visible sur le
     // rouge comme sur le vert)
@@ -961,6 +964,107 @@ class _HitsPainter extends CustomPainter {
               Colors.transparent,
             ],
           ).createShader(Rect.fromCircle(center: c, radius: r)));
+  }
+
+  /// Jeux de lumière sur l'anneau des numéros : le numéro d'une zone
+  /// touchée s'allume à la couleur du joueur et reste allumé pendant le
+  /// tour (flash à l'impact), les numéros à viser clignotent en blanc, une
+  /// petite lumière fait le tour quand rien n'est touché, tout passe au rouge
+  /// sur un bust et en arc-en-ciel qui tourne à la victoire.
+  void _numberLights(Canvas canvas, Offset c, double outer, double r) {
+    const seg = 2 * math.pi / 20;
+    final ri = r * 1.01, ro = outer * 0.95;
+    final band = outer - r;
+    final lit = <int, double>{}; // numéro → intensité
+    for (var k = 0; k < hits.length; k++) {
+      final h = hits[k];
+      if (h.isBull) continue;
+      final last = k == hits.length - 1;
+      final boost = last && impact < 1 ? (1 - impact) * 0.6 : 0.0;
+      lit[h.number] = math.max(lit[h.number] ?? 0, 0.75 + 0.15 * pulse + boost);
+    }
+    final aim = {
+      for (final t in targets)
+        if (!t.isBull) t.number
+    };
+    final anyBull = hits.any((h) => h.isBull);
+    final phase = spin * 20; // position de la lumière qui tourne
+    for (var i = 0; i < 20; i++) {
+      final n = kBoardOrder[i];
+      final a0 = -math.pi / 2 - seg / 2 + i * seg;
+      Color? col;
+      var on = 0.0;
+      if (win) {
+        col = HSVColor.fromAHSV(1, (i * 18 + spin * 720) % 360, 0.85, 1)
+            .toColor();
+        on = 0.75;
+      } else if (bust) {
+        col = Tv.red;
+        on = 0.25 + 0.55 * pulse;
+      } else if (lit.containsKey(n)) {
+        col = dartColor;
+        on = lit[n]!.clamp(0.0, 1.0);
+      } else if (anyBull) {
+        // un bull fait briller tout l'anneau un instant
+        col = dartColor;
+        on = impact < 1 ? 0.45 * (1 - impact) : 0;
+      } else if (hits.isEmpty) {
+        // attente : une lumière douce fait le tour
+        final d = ((i - phase) % 20 + 20) % 20;
+        on = d < 1 ? 0.35 * (1 - d) : (d > 19 ? 0.35 * (d - 19) : 0);
+        col = dartColor;
+      }
+      final path = Path()
+        ..arcTo(
+            Rect.fromCircle(center: c, radius: ro), a0 + 0.02, seg - 0.04, true)
+        ..arcTo(Rect.fromCircle(center: c, radius: ri), a0 + seg - 0.02,
+            -(seg - 0.04), false)
+        ..close();
+      if (col != null && on > 0.01) {
+        canvas.drawPath(
+            path,
+            Paint()
+              ..color = col.withValues(alpha: 0.75 * on)
+              ..maskFilter = MaskFilter.blur(BlurStyle.normal, band * 0.12));
+        canvas.drawPath(
+            path,
+            Paint()
+              ..color = col.withValues(alpha: 0.9 * on)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = math.max(1, band * 0.05));
+      }
+      if (aim.contains(n) && !win && !bust) {
+        canvas.drawPath(
+            path,
+            Paint()
+              ..color = Colors.white.withValues(alpha: 0.35 + 0.55 * pulse)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = math.max(1, band * 0.06));
+      }
+      // Numéro redessiné par-dessus, lumineux quand sa zone est allumée
+      if (on > 0.3 || aim.contains(n)) {
+        final mid = a0 + seg / 2;
+        final pos = c + Offset(math.cos(mid), math.sin(mid)) * (r + band / 2);
+        final tp = TextPainter(
+          text: TextSpan(
+            text: '$n',
+            style: TextStyle(
+              fontFamily: Tv.font,
+              fontWeight: FontWeight.w800,
+              fontSize: band * 0.74,
+              color: Colors.white,
+              shadows: [
+                Shadow(
+                    color: (col ?? Colors.white).withValues(alpha: 0.9),
+                    blurRadius: band * 0.25),
+              ],
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas, pos - Offset(tp.width / 2, tp.height / 2));
+      }
+    }
   }
 
   /// Fléchette vue un peu de côté : pointe dans la cible, fût en métal,
