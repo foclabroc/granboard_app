@@ -6,6 +6,7 @@
   - écran TV : la barre du haut ne déborde plus avec les noms de jeu longs (Cut Throat caché, Match, Contre la montre, Le Chat et la Souris) : le nom rétrécit
   - écran TV : les effets (son, vidéo, annonce) portent toujours sur la dernière fléchette, même quand le temps du tour (Contre la montre) ou un changement de cible arrive juste après
   - écran TV : un 2e téléphone dont l'horloge retarde n'est plus ignoré ; 2 envois dans la même milliseconde ne se perdent plus
+  - écran TV : le nom du joueur suivant (« ENSUITE ») s'affiche en entier, même long (rétréci au besoin, plus coupé par « … »)
 
 ## v0.6.8
 

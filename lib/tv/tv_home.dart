@@ -503,7 +503,9 @@ class _TvGameState extends State<_TvGame> {
                     overflow: TextOverflow.ellipsis,
                     style: Tv.label(14)),
               ),
-              Flexible(flex: 3, child: NextUpChip(game: g, scale: 1.2)),
+              // Toujours sa place (largeur limitée dans la pastille) : le
+              // nom du joueur suivant passe avant le texte des règles
+              NextUpChip(game: g, scale: 1.2),
               const SizedBox(width: 12),
               if (widget.state['next'] is String && !g.finished) ...[
                 NextMatchChip(text: widget.state['next'] as String, scale: 1.3),

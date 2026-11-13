@@ -68,10 +68,12 @@ class _NextUpChipState extends State<NextUpChip> {
     final (p, info) = n;
     final s = widget.scale;
     final color = PlayerStore.instance.colorOf(p.id);
+    // Nom en entier sur sa propre ligne (rétréci s'il est long, jamais
+    // coupé) ; « ENSUITE » et ce qu'il lui reste au-dessus
     return Container(
       key: const ValueKey('next-up'),
-      constraints: BoxConstraints(maxWidth: 260 * s),
-      padding: EdgeInsets.fromLTRB(4 * s, 3 * s, 10 * s, 3 * s),
+      constraints: BoxConstraints(maxWidth: 280 * s),
+      padding: EdgeInsets.fromLTRB(4 * s, 3 * s, 12 * s, 3 * s),
       decoration: BoxDecoration(
         color: Tv.panel2,
         borderRadius: BorderRadius.circular(22 * s),
@@ -87,23 +89,29 @@ class _NextUpChipState extends State<NextUpChip> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('ENSUITE', style: Tv.label(9 * s, color: Tv.gold)),
-                Text(p.name.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Tv.title(15 * s)),
+                Text.rich(
+                  TextSpan(children: [
+                    TextSpan(
+                        text: 'ENSUITE',
+                        style: Tv.label(9 * s, color: Tv.gold)),
+                    if (info.isNotEmpty)
+                      TextSpan(
+                          text: '  ·  $info',
+                          style: Tv.label(9 * s, color: Tv.goldLight)),
+                  ]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                FittedBox(
+                  key: const ValueKey('next-up-name'),
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(p.name.toUpperCase(),
+                      maxLines: 1, style: Tv.title(15 * s)),
+                ),
               ],
             ),
           ),
-          if (info.isNotEmpty) ...[
-            SizedBox(width: 8 * s),
-            Flexible(
-              child: Text(info,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Tv.title(13 * s, color: Tv.goldLight)),
-            ),
-          ],
         ],
       ),
     );
