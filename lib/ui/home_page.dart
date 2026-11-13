@@ -25,10 +25,9 @@ import 'ranking_page.dart';
 import 'setup_page.dart';
 import 'sound_settings.dart';
 import 'lights_sheet.dart';
+import 'options_page.dart';
 import 'share_sheet.dart';
 import 'theme.dart';
-import 'wallpaper.dart';
-import 'wallpaper_picker.dart';
 import 'tile_art.dart';
 import 'tv_sheet.dart';
 import 'welcome_page.dart';
@@ -168,14 +167,7 @@ class _HomePageState extends State<HomePage>
     } catch (_) {}
   }
 
-  Future<void> _checkUpdate() async {
-    final r = await updateGateKey.currentState?.check(manual: true);
-    if (!mounted || r == 1) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(r == 2
-            ? 'Impossible de joindre GitHub'
-            : 'À jour (v$kAppVersion)')));
-  }
+  Future<void> _checkUpdate() => checkForUpdate(context);
 
   Future<void> _open(Widget page) async {
     await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
@@ -184,150 +176,8 @@ class _HomePageState extends State<HomePage>
     _loadStart();
   }
 
-  Future<void> _chooseTheme() => showAppSheet(
-        context,
-        builder: (ctx) => ValueListenableBuilder<AppSkin>(
-          valueListenable: Tv.skin,
-          builder: (ctx, cur, _) => SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const TvSection('Thème de l\'appli',
-                    padding: EdgeInsets.only(bottom: 10)),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    for (final sk in AppSkin.all)
-                      InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () {
-                          Tv.choose(sk);
-                          TvLink.instance.pushLobby();
-                        },
-                        child: Container(
-                          width: 150,
-                          height: 84,
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            image: sk.fx == SkinFx.wallpaper
-                                ? DecorationImage(
-                                    image: Wallpaper.instance.imageOf(
-                                            Wallpaper.instance.shown,
-                                            thumb: true) ??
-                                        AssetImage(Wallpaper.thumbPath(1)),
-                                    fit: BoxFit.cover,
-                                    colorFilter: const ColorFilter.mode(
-                                        Color(0x66000000), BlendMode.darken))
-                                : null,
-                            gradient: RadialGradient(
-                              center: const Alignment(-0.6, -1),
-                              radius: 1.6,
-                              colors: [
-                                Color.lerp(sk.accent, sk.bg, 0.55)!,
-                                sk.bg,
-                                Color.lerp(sk.glow, sk.bg, 0.6)!,
-                              ],
-                            ),
-                            border: Border.all(
-                                color: cur == sk ? sk.accent : sk.line,
-                                width: cur == sk ? 3 : 1),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  for (final c in [
-                                    sk.accent,
-                                    sk.glow,
-                                    sk.panel2
-                                  ])
-                                    Container(
-                                      width: 16,
-                                      height: 16,
-                                      margin: const EdgeInsets.only(right: 5),
-                                      decoration: BoxDecoration(
-                                          color: c, shape: BoxShape.circle),
-                                    ),
-                                  const Spacer(),
-                                  if (cur == sk)
-                                    Icon(Icons.check_circle,
-                                        color: sk.accent, size: 20),
-                                ],
-                              ),
-                              Text(sk.name.toUpperCase(),
-                                  style: Tv.title(20, color: sk.accentLight)),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                if (cur.fx == SkinFx.wallpaper) const WallpaperPicker(),
-              ],
-            ),
-          ),
-        ),
-      );
-
-  Future<void> _chooseSkin() => showAppSheet(
-        context,
-        builder: (ctx) => ValueListenableBuilder<BoardSkin>(
-          valueListenable: BoardSkin.current,
-          builder: (ctx, cur, _) => SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const TvSection('Style de la cible',
-                    padding: EdgeInsets.only(bottom: 10)),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 12,
-                  children: [
-                    for (final sk in BoardSkin.all)
-                      InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () {
-                          BoardSkin.choose(sk);
-                          TvLink.instance.pushLobby();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                                color: cur == sk ? Tv.gold : Tv.line,
-                                width: cur == sk ? 2.5 : 1),
-                          ),
-                          child: Column(
-                            children: [
-                              DartboardPreview(skin: sk, size: 104),
-                              const SizedBox(height: 6),
-                              Text(sk.name.toUpperCase(),
-                                  style: Tv.title(18,
-                                      color:
-                                          cur == sk ? Tv.goldLight : Tv.text)),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text('S\'applique partout, écran TV compris.',
-                    style: Tv.label(12)),
-              ],
-            ),
-          ),
-        ),
-      );
+  Future<void> _chooseTheme() => showThemeSheet(context);
+  Future<void> _chooseSkin() => showBoardSkinSheet(context);
 
   @override
   Widget build(BuildContext context) {
@@ -459,7 +309,7 @@ class _HomePageState extends State<HomePage>
                   ),
                 ),
                 const SizedBox(height: 8),
-                // ─── Tuiles des jeux (4 + 3) ───
+                // ─── Tuiles (4 + 4) ───
                 Expanded(
                   child: Column(
                     children: [
@@ -545,6 +395,20 @@ class _HomePageState extends State<HomePage>
                             icon: Icons.account_tree,
                             onTap: () => _open(const TournamentsPage()),
                           ),
+                          ListenableBuilder(
+                            listenable: PlayerStore.instance,
+                            builder: (context, _) => _Tile(
+                              key: const ValueKey('tile-options'),
+                              tint: const Color(0xFF8A93A6),
+                              anim: _spin,
+                              art: TileArt.options,
+                              kicker:
+                                  '${PlayerStore.instance.players.length} JOUEUR${PlayerStore.instance.players.length > 1 ? 'S' : ''} · RÉGLAGES',
+                              title: 'OPTIONS',
+                              icon: Icons.tune,
+                              onTap: () => _open(const OptionsPage()),
+                            ),
+                          ),
                         ]),
                       ),
                     ],
@@ -583,7 +447,8 @@ class _Tile extends StatelessWidget {
   final Animation<double>? spin;
   final VoidCallback onTap;
   const _Tile(
-      {required this.tint,
+      {super.key,
+      required this.tint,
       required this.anim,
       this.art,
       required this.kicker,

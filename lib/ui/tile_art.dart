@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 /// Illustration animée d'une tuile de l'accueil.
-enum TileArt { cricket, match, practice, party, online, tournament }
+enum TileArt { cricket, match, practice, party, online, tournament, options }
 
 /// Dessine l'illustration dans le coin droit de la tuile ; [t] tourne de 0 à
 /// 1 en boucle (animation lente partagée par toutes les tuiles).
@@ -30,6 +30,19 @@ class TileArtPainter extends CustomPainter {
     final s = h * 0.92;
     final c = Offset(w - s * 0.42, h * 0.52);
     switch (art) {
+      case TileArt.options:
+        // Curseurs de réglage qui glissent + silhouettes de joueurs
+        for (var i = 0; i < 3; i++) {
+          final y = c.dy - s * 0.24 + i * s * 0.24;
+          final x0 = c.dx - s * 0.5, x1 = c.dx + s * 0.25;
+          canvas.drawLine(
+              Offset(x0, y), Offset(x1, y), _stroke(s * 0.03, 0.28));
+          final k = 0.5 + 0.42 * math.sin(a * 2 + i * 2.1);
+          final kx = x0 + (x1 - x0) * k;
+          canvas.drawLine(Offset(x0, y), Offset(kx, y), _stroke(s * 0.03, 0.6));
+          canvas.drawCircle(Offset(kx, y), s * 0.055,
+              Paint()..color = color.withValues(alpha: 0.75));
+        }
       case TileArt.cricket:
         // Les 3 marques du Cricket : / , X , Ⓧ
         final u = s * 0.13;
