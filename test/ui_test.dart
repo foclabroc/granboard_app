@@ -110,8 +110,10 @@ void main() {
     await tester.tap(find.text('SUIVANT'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 2));
+    expect(find.text('AU TOUR DE'), findsOneWidget); // encore là à 2 s
+    await tester.pump(const Duration(milliseconds: 1100));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('AU TOUR DE'), findsNothing);
+    expect(find.text('AU TOUR DE'), findsNothing); // parti après 3 s
     // Pas de bandeau en solo
     await tester.pumpWidget(app(GamePage(
       key: const ValueKey('solo'),

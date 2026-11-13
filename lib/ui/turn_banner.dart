@@ -64,7 +64,7 @@ class _Banner extends StatefulWidget {
 
 class _BannerState extends State<_Banner> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1500))
+      vsync: this, duration: const Duration(milliseconds: 3000))
     ..addStatusListener((s) {
       if (s == AnimationStatus.completed) widget.onDone();
     })
@@ -94,16 +94,17 @@ class _BannerState extends State<_Banner> with SingleTickerProviderStateMixin {
         animation: _c,
         builder: (context, child) {
           final t = _c.value;
-          // Entrée par la gauche (0 → 0,2), pause, sortie par la droite
-          final dx = t < 0.2
-              ? -1 + Curves.easeOutCubic.transform(t / 0.2)
-              : t > 0.8
-                  ? Curves.easeInCubic.transform((t - 0.8) / 0.2)
+          // 3 s : entrée par la gauche (0,3 s), pause, sortie par la droite
+          // (0,3 s)
+          final dx = t < 0.1
+              ? -1 + Curves.easeOutCubic.transform(t / 0.1)
+              : t > 0.9
+                  ? Curves.easeInCubic.transform((t - 0.9) / 0.1)
                   : 0.0;
-          final fade = t < 0.1
-              ? t / 0.1
-              : t > 0.85
-                  ? (1 - t) / 0.15
+          final fade = t < 0.05
+              ? t / 0.05
+              : t > 0.925
+                  ? (1 - t) / 0.075
                   : 1.0;
           return Stack(
             children: [
