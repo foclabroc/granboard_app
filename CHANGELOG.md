@@ -2,6 +2,7 @@
 
 ## v0.6.6
 
+- Vidéos des coups (T20, bull, double bull) et des récompenses en plein écran sur les écrans plus allongés que le 16:9 (plus de bandes noires sur les côtés)
 - **Paint** (fête) : chaque fléchette peint sa zone de la cible à la couleur du joueur, on prend les zones des autres, une zone touchée 2 fois est protégée ; le plus de zones gagne
 - **Bowling** (fête) : 10 frames, quilles = points ÷ 6 (T20 = strike), strikes et spares comptés comme au bowling, 300 au maximum
 - **Chambrage** de l'annonceur (réglage du son, activé par défaut) : petite phrase moqueuse sur un tour à moins de 20, un bust ou un tour de Cricket sans marque ; voix enregistrée (19 nouvelles annonces, dont « strike » et « spare »)

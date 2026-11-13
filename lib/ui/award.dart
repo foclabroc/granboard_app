@@ -226,16 +226,24 @@ class _AwardVideoState extends State<_AwardVideo> {
         child: AnimatedOpacity(
           opacity: _ready ? widget.opacity : 0,
           duration: const Duration(milliseconds: 150),
+          // Plein écran : la vidéo (16:9) remplit l'écran, rognée en haut et
+          // en bas sur un écran plus allongé (texte au centre, toujours vu)
           child: ColoredBox(
             color: Colors.black,
-            child: Center(
-              child: c == null || !_ready
-                  ? const SizedBox.shrink()
-                  : AspectRatio(
-                      aspectRatio: c.value.aspectRatio,
-                      child: VideoPlayer(c),
+            child: c == null || !_ready
+                ? const SizedBox.shrink()
+                : SizedBox.expand(
+                    child: ClipRect(
+                      child: FittedBox(
+                        fit: BoxFit.cover,
+                        child: SizedBox(
+                          width: c.value.size.width,
+                          height: c.value.size.height,
+                          child: VideoPlayer(c),
+                        ),
+                      ),
                     ),
-            ),
+                  ),
           ),
         ),
       ),
