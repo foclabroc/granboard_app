@@ -56,7 +56,7 @@ void main() {
         used.add(f);
       }
     }
-    expect(used.length, 6);
+    expect(used.length, 12); // 4 fonds × 3 coups
   });
 
   test('Chaque coup a ses animations dans assets/awards', () {

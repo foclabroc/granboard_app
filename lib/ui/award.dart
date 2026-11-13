@@ -79,7 +79,7 @@ enum HitClip {
   const HitClip(this.slug);
 
   /// Fonds disponibles (fichiers `assets/hits/<fond>_<slug>.mp4`).
-  static const styles = ['fire', 'ring'];
+  static const styles = ['flame', 'sparks', 'ring', 'nova'];
 
   String randomAsset([Random? random]) {
     final s = styles[(random ?? Award._random).nextInt(styles.length)];

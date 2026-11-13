@@ -6,6 +6,7 @@
 - Partie abandonnée : l'écran TV quitte la partie tout de suite (avant : il y restait jusqu'au retour à l'accueil)
 - Musique des menus : l'écran TV / la tablette joue le même morceau que le téléphone ; quand le son est ajouté au téléphone, le morceau repart au début sur les deux
 - Vidéos des récompenses (Ton 80, Hat Trick…) plus nettes : refaites en 1280 × 720 depuis les originaux, moins compressées (16 → 44 Mo)
+- Vidéos des coups (Triple 20, Bull, Double Bull) refaites en 1280 × 720 avec 4 nouveaux fonds (flammes, étincelles rouges, anneau bleu, explosion bleue), même son qu'avant
 - Écran TV : manche et code collés à droite de la barre du haut, règles affichées en entier quand il y a la place
 
 ## v0.6.9
