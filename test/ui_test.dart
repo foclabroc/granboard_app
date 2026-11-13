@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:granboard_proto/board_service.dart';
 import 'package:granboard_proto/game/cricket.dart';
+import 'package:granboard_proto/game/match.dart';
+import 'package:granboard_proto/game/practice.dart';
 import 'package:granboard_proto/game/x01.dart';
 import 'package:granboard_proto/granboard.dart';
 import 'package:granboard_proto/media.dart';
@@ -132,11 +134,13 @@ void main() {
       expect(find.text('NOUVELLE PARTIE'), findsNothing);
       expect(find.text('ENTRAÎN.'), findsNothing);
       await tester.tap(find.byType(RulesButton));
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
       expect(find.textContaining('RÈGLES · '), findsOneWidget);
+      expect(find.text('BUT'), findsWidgets);
       expect(tester.takeException(), isNull);
-      await tester.tap(find.text('OK'));
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.byKey(const ValueKey('sheet-close')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('RÈGLES · '), findsNothing);
     }
     await tester.pumpWidget(app(GamePage(
       settings: const X01Settings(startScore: 301, roundLimit: 10),
@@ -144,13 +148,31 @@ void main() {
     )));
     await tester.pump(const Duration(seconds: 2));
     await tester.tap(find.byTooltip('Règles'));
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('RÈGLES · 301'), findsOneWidget);
-    expect(find.textContaining('Double Out'), findsOneWidget);
-    expect(find.textContaining('Limite de 10 manches'), findsOneWidget);
+    expect(find.textContaining('doit être un double'), findsOneWidget);
+    expect(find.text('LIMITE DE MANCHES'), findsOneWidget);
+    expect(find.textContaining('Après 10 manches'), findsOneWidget);
     expect(tester.takeException(), isNull);
-    await tester.tap(find.text('OK'));
+    await tester.tap(find.byKey(const ValueKey('sheet-close')));
     await tester.pump(const Duration(seconds: 2));
+  });
+
+  test('Règles détaillées pour tous les jeux et toutes les variantes', () {
+    for (final k in PracticeKind.values) {
+      final r = practiceRules(PracticeSettings(k));
+      expect(r, startsWith('# BUT'), reason: k.name);
+      expect(r.split('\n').length, greaterThan(4), reason: k.name);
+    }
+    for (final v in CricketVariant.values) {
+      for (final teams in [false, true]) {
+        final r = cricketRules(CricketSettings(variant: v, teams: teams));
+        expect(r, startsWith('# BUT'), reason: v.name);
+      }
+    }
+    expect(x01Rules(const X01Settings(freeze: true)), contains('GELÉE'));
+    expect(matchFullRules(const MatchSettings()), contains('LEGS DE CRICKET'));
   });
 
   testWidgets('Réglages et joueurs s\'affichent', (tester) async {
@@ -330,21 +352,34 @@ void main() {
       'id': p.id,
       'pseudo': 'Rang',
       'color': 1,
-      'g80': {'ppr': 43.42, 'mpr': 1.88, 'r01': 3.68, 'rcr': 5.4, 'rating': 4.54},
-      'g100': {'ppr': 40.1, 'mpr': 1.7, 'r01': 3.02, 'rcr': 4.5, 'rating': 3.76},
+      'g80': {
+        'ppr': 43.42,
+        'mpr': 1.88,
+        'r01': 3.68,
+        'rcr': 5.4,
+        'rating': 4.54
+      },
+      'g100': {
+        'ppr': 40.1,
+        'mpr': 1.7,
+        'r01': 3.02,
+        'rcr': 4.5,
+        'rating': 3.76
+      },
       's01': [
         for (var i = 0; i < 12; i++) {'d': '2026-11-01', 'v': 30 + i * 2}
       ],
       'scr': [
-        for (var i = 0; i < 30; i++) {'d': '2026-11-01', 'v': 1.5 + (i % 5) * 0.2}
+        for (var i = 0; i < 30; i++)
+          {'d': '2026-11-01', 'v': 1.5 + (i % 5) * 0.2}
       ],
       'practice': {
         'countUp': {'games': 3, 'best': 447, 'avg': 380.5},
         'halfIt': {'games': 1, 'best': 120, 'avg': 120},
       },
     };
-    await tester.pumpWidget(app(PlayerStatsPage(
-        id: p.key, name: p.name, color: kPlayerColors[1])));
+    await tester.pumpWidget(
+        app(PlayerStatsPage(id: p.key, name: p.name, color: kPlayerColors[1])));
     await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 200)));
     await tester.pump(const Duration(milliseconds: 500));

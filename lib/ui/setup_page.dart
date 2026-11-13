@@ -306,11 +306,9 @@ class _SetupPageState extends State<SetupPage> {
 
   /// Règles du jeu choisi, avec les réglages en cours.
   String get _rulesText => _practiceOn
-      ? _pInfo.help
+      ? practiceRules(_practice)
       : _matchOn
-          ? '${matchRules(_match)}\n\n'
-              '${_match.x01.name.toUpperCase()}\n${x01Rules(_match.x01)}\n\n'
-              'CRICKET\n${cricketRules(_match.cricket)}'
+          ? matchFullRules(_match)
           : _cricketOn
               ? cricketRules(_cricket)
               : x01Rules(_settings);

@@ -764,40 +764,44 @@ class _NetPill extends StatelessWidget {
         final n = store.pending.length;
         if (!off && n == 0) return const SizedBox.shrink();
         final color = off ? Tv.red : Tv.gold;
-        final text =
-            off ? (n > 0 ? 'HORS LIGNE · $n' : 'HORS LIGNE') : '$n À ENVOYER';
+        final text = off
+            ? (n > 0 ? 'Hors ligne · $n en attente' : 'Hors ligne')
+            : '$n à envoyer';
         return Padding(
           padding: const EdgeInsets.only(left: 8),
-          child: InkWell(
-            key: const ValueKey('net-pill'),
-            borderRadius: BorderRadius.circular(18),
-            onTap: () {
-              store.flush();
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(off
-                      ? 'Pas d\'internet : tu peux jouer quand même. '
-                          '${n == 0 ? 'Les parties seront envoyées' : n == 1 ? '1 partie en attente, envoyée' : '$n parties en attente, envoyées'} '
-                          'au serveur dès le retour du réseau.'
-                      : 'Envoi de ${plural(n, 'partie', 'parties')} au serveur…')));
-            },
-            child: Container(
-              height: 36,
-              padding: const EdgeInsets.symmetric(horizontal: 9),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: color.withValues(alpha: 0.55)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(off ? Icons.cloud_off : Icons.cloud_upload,
-                      size: 18, color: color),
-                  if (n > 0) ...[
-                    const SizedBox(width: 4),
-                    Text('$n', style: Tv.title(14)),
+          child: Tooltip(
+            message: text,
+            child: InkWell(
+              key: const ValueKey('net-pill'),
+              borderRadius: BorderRadius.circular(18),
+              onTap: () {
+                store.flush();
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(off
+                        ? 'Pas d\'internet : tu peux jouer quand même. '
+                            '${n == 0 ? 'Les parties seront envoyées' : n == 1 ? '1 partie en attente, envoyée' : '$n parties en attente, envoyées'} '
+                            'au serveur dès le retour du réseau.'
+                        : 'Envoi de ${plural(n, 'partie', 'parties')} au serveur…')));
+              },
+              child: Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 9),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: color.withValues(alpha: 0.55)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(off ? Icons.cloud_off : Icons.cloud_upload,
+                        size: 18, color: color),
+                    if (n > 0) ...[
+                      const SizedBox(width: 4),
+                      Text('$n', style: Tv.title(14)),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),

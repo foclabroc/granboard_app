@@ -2,6 +2,7 @@
 
 ## v0.6.6
 
+- **Règles détaillées pour tous les jeux** (01, Cricket et ses variantes, Match, 17 entraînements, 16 jeux de fête), adaptées aux réglages choisis, dans une fenêtre qui défile avec des intertitres
 - **Reprise d'une partie coupée** : la partie est gardée sur le téléphone après chaque fléchette ; si l'appli se ferme (batterie, Android, plantage), elle est proposée au lancement suivant (REPRENDRE / ABANDONNER), aussi pour un match de tournoi à la maison
 - **Hors ligne** : pastille rouge dans l'accueil quand le serveur ne répond pas (avec le nombre de parties en attente), renvoi automatique dès le retour du réseau, message clair dans les classements
 - **Écran TV sans internet** : le téléphone retrouve la TV ou la tablette sur le Wi-Fi de la maison et lui envoie la partie directement ; sans internet au démarrage, l'écran fait son propre code
