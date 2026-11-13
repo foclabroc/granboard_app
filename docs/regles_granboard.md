@@ -46,3 +46,8 @@ Résumés des pages officielles ; « ? » = non précisé (à confirmer avec foc
 - TREASURE HUNT : 1-4 joueurs, trésors/pièges derrière le numéro visé (coffres 100, diamant 1000, lingot ×2, crânes -100/-300/-500, grenade -1000, crâne bull = passe un tour, bouclier, couteau 300 et épée 600 volés) ; manches 3/6/9 ×2, 4/7/10 inversées. ?
 - TIC TAC TOE : 1-2, grille 3x3 de 9 numéros aléatoires, 4 marques pour prendre une case (T = 3), aligner 3 ; sinon plus de points ; options 8 MARK, 4x4.
 - BASEBALL : page inaccessible ; règle classique : 9 manches, manche n = numéro n, S1 D2 T3 runs.
+
+## Jeux ajoutés (pas sur GranDarts, règles choisies avec foclabroc, 13/11/2026)
+
+- LE CHAT ET LA SOURIS (fête, 2 joueurs) : 1er joueur = souris, 2e = chat ; tour 1 → 20 puis bull ; la souris part avec 3/5/7 cases d'avance (réglage, 5 par défaut), le chat du 1 ; S = 1 case, D = 2, T = 3 (pas au-delà du 20, bull obligatoire), plusieurs cases par tour possibles ; chat sur la case de la souris (ou au-delà) = attrapée, le chat gagne ; souris au bull = elle s'échappe ; 20 manches = la souris gagne.
+- CONTRE LA MONTRE (entraînement, 1 joueur ou plus) : finir 301/501/701 (Double Out ou Single Out) le plus vite possible ; chrono de chaque joueur pendant ses tours seulement (de « suivant », ou de la 1re fléchette au début, jusqu'à la dernière fléchette du tour) ; bust = retour au score du début de manche ; meilleur temps gagne ; 60 manches au plus ; meilleur temps gardé au serveur.
