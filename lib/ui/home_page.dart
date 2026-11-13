@@ -205,24 +205,31 @@ class _HomePageState extends State<HomePage>
                       ),
                       SizedBox(width: compact ? 6 : 12),
                       // Cible : pastille étroite à gauche (état + outils)
-                      Flexible(
-                        flex: 6,
-                        child: ConstrainedBox(
-                          constraints:
-                              BoxConstraints(maxWidth: compact ? 170 : 200),
-                          child: ListenableBuilder(
-                            listenable: board,
-                            builder: (context, _) => _BoardPill(
-                              board: board,
-                              onChoose: () => _open(const ConnectPage()),
-                              onDiagnostic: () => _open(const DiagnosticPage()),
-                              onCalibrate: () => _open(const CalibrationPage()),
+                      // (prend la place libre : les boutons restent à droite)
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                    maxWidth: compact ? 170 : 200),
+                                child: ListenableBuilder(
+                                  listenable: board,
+                                  builder: (context, _) => _BoardPill(
+                                    board: board,
+                                    onChoose: () => _open(const ConnectPage()),
+                                    onDiagnostic: () =>
+                                        _open(const DiagnosticPage()),
+                                    onCalibrate: () =>
+                                        _open(const CalibrationPage()),
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                            const _NetPill(),
+                          ],
                         ),
                       ),
-                      const _NetPill(),
-                      const Spacer(),
                       _BarButton(
                         key: const ValueKey('bar-stats'),
                         icon: const Icon(Icons.leaderboard, size: 24),
@@ -531,19 +538,29 @@ class _BarButton extends StatelessWidget {
       required this.onTap});
 
   @override
-  Widget build(BuildContext context) => InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(height: 28, child: Center(child: icon)),
-              const SizedBox(height: 2),
-              Text(label, style: Tv.label(10, color: Tv.text)),
-            ],
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(left: 6),
+        child: Material(
+          color: Tv.panel2.withValues(alpha: 0.85),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(color: Tv.gold.withValues(alpha: 0.45)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 3, 10, 2),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(height: 26, child: Center(child: icon)),
+                  const SizedBox(height: 1),
+                  Text(label, style: Tv.label(10, color: Tv.text)),
+                ],
+              ),
+            ),
           ),
         ),
       );
