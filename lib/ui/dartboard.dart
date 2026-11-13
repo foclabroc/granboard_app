@@ -668,11 +668,18 @@ class AnimatedDartboard extends StatefulWidget {
 
   /// Zone à viser pour finir (contour vert qui pulse).
   final List<DartHit> targets;
+
+  /// Numéros allumés en continu (Cricket : fermés par le joueur) et
+  /// numéros qui clignotent (Cricket : encore à fermer), sur l'anneau.
+  final Set<int> litNumbers;
+  final Set<int> aimNumbers;
   const AnimatedDartboard({
     super.key,
     required this.size,
     required this.hits,
     this.targets = const [],
+    this.litNumbers = const {},
+    this.aimNumbers = const {},
     this.bust = false,
     this.win = false,
     this.dartColor,
@@ -744,6 +751,8 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
                     painter: _HitsPainter(
                       hits: widget.hits,
                       targets: widget.targets,
+                      litNumbers: widget.litNumbers,
+                      aimNumbers: widget.aimNumbers,
                       impact: _impact.value,
                       pulse: _pulse.value,
                       flash: _flash.value,
@@ -777,9 +786,13 @@ class _HitsPainter extends CustomPainter {
   final double spin; // 0 → 1 en boucle
   final bool bust;
   final bool win;
+  final Set<int> litNumbers;
+  final Set<int> aimNumbers;
   _HitsPainter({
     required this.hits,
     this.targets = const [],
+    this.litNumbers = const {},
+    this.aimNumbers = const {},
     required this.impact,
     required this.pulse,
     required this.flash,
@@ -983,10 +996,14 @@ class _HitsPainter extends CustomPainter {
       final boost = last && impact < 1 ? (1 - impact) * 0.6 : 0.0;
       lit[h.number] = math.max(lit[h.number] ?? 0, 0.75 + 0.15 * pulse + boost);
     }
+    for (final n in litNumbers) {
+      lit[n] = math.max(lit[n] ?? 0, 0.9);
+    }
     final aim = {
       for (final t in targets)
-        if (!t.isBull) t.number
-    };
+        if (!t.isBull) t.number,
+      ...aimNumbers,
+    }..removeAll(lit.keys);
     final anyBull = hits.any((h) => h.isBull);
     final phase = spin * 20; // position de la lumière qui tourne
     for (var i = 0; i < 20; i++) {
@@ -1008,7 +1025,7 @@ class _HitsPainter extends CustomPainter {
         // un bull fait briller tout l'anneau un instant
         col = dartColor;
         on = impact < 1 ? 0.45 * (1 - impact) : 0;
-      } else if (hits.isEmpty) {
+      } else if (hits.isEmpty && litNumbers.isEmpty && aimNumbers.isEmpty) {
         // attente : une lumière douce fait le tour
         final d = ((i - phase) % 20 + 20) % 20;
         on = d < 1 ? 0.35 * (1 - d) : (d > 19 ? 0.35 * (d - 19) : 0);

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../audio.dart';
 import '../game/cricket.dart';
 import '../players.dart';
+import 'dartboard.dart';
 import 'game_fx.dart';
 import 'game_page.dart' show GamePage;
 import 'setup_page.dart' show kTeamColors, kTeamNames;
@@ -830,16 +831,32 @@ class _RightPanel extends StatelessWidget {
                   style: Tv.title(12, color: _statusOf(g).$2)),
             ),
           const SizedBox(height: 4),
+          // Petite cible (numéros fermés allumés, à fermer qui clignotent)
+          // puis les 3 fléchettes, qui gardent au moins la moitié de la place
           Expanded(
-            child: Column(
-              children: [
-                for (var i = 0; i < 3; i++)
-                  Expanded(
-                    child: _DartBox(
-                        dart: i < t.darts.length ? t.darts[i] : null,
-                        next: i == t.darts.length && !g.turnOver),
-                  ),
-              ],
+            child: LayoutBuilder(
+              builder: (context, c) {
+                final board =
+                    math.min(math.min(c.maxWidth, c.maxHeight * 0.5), 160.0);
+                return Column(
+                  children: [
+                    if (board >= 60)
+                      _MiniBoard(game: g, size: board.toDouble()),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          for (var i = 0; i < 3; i++)
+                            Expanded(
+                              child: _DartBox(
+                                  dart: i < t.darts.length ? t.darts[i] : null,
+                                  next: i == t.darts.length && !g.turnOver),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           if (actionBar != null) ...[
@@ -847,6 +864,48 @@ class _RightPanel extends StatelessWidget {
             actionBar!,
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Cible du panneau de droite (Cricket) : fléchettes du tour, numéros
+/// fermés par le joueur allumés à sa couleur, numéros à fermer qui
+/// clignotent.
+class _MiniBoard extends StatelessWidget {
+  final CricketGame game;
+  final double size;
+  const _MiniBoard({required this.game, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    final g = game;
+    final side = g.sideOf(g.current);
+    final lit = <int>{}, aim = <int>{};
+    for (var t = 0; t < g.targets.length; t++) {
+      final tg = g.targets[t];
+      final n = tg.number;
+      if (!tg.revealed || n < 1 || n > 20) continue;
+      if (g.closedBy(side, t)) {
+        lit.add(n);
+      } else if (!g.dead(t)) {
+        aim.add(n);
+      }
+    }
+    final color = PlayerStore.instance.colorOf(g.currentPlayer.id);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: AnimatedDartboard(
+        key: const ValueKey('cricket-board'),
+        size: size,
+        hits: [
+          for (final d in g.currentTurn.darts)
+            if (d.hit != null) d.hit!
+        ],
+        litNumbers: lit,
+        aimNumbers: aim,
+        dartColor: color,
+        win: g.finished,
       ),
     );
   }
