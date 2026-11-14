@@ -6,7 +6,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'wallpaper.dart';
 
 /// Animation du fond d'un thème.
-enum SkinFx { spotlight, grid, petals, embers, wallpaper }
+enum SkinFx {
+  spotlight,
+  grid,
+  petals,
+  embers,
+  wallpaper,
+  snow,
+  bokeh,
+  sunset,
+  bubbles,
+  stars,
+  carbon,
+}
 
 /// Thème de l'appli : couleurs + fond animé. Choisi dans l'accueil (⋮ ›
 /// Thème), mémorisé, envoyé aux écrans TV reliés.
@@ -126,7 +138,115 @@ class AppSkin {
     fx: SkinFx.wallpaper,
   );
 
-  static const all = [gold, neon, sakura, ember, wallpaper];
+  static const ice = AppSkin(
+    id: 'ice',
+    name: 'Glace',
+    bg: Color(0xFF050B12),
+    panel: Color(0xFF0D1824),
+    panel2: Color(0xFF15243A),
+    line: Color(0xFF24405C),
+    accent: Color(0xFF8FE3FF),
+    accentLight: Color(0xFFE0F7FF),
+    accentDark: Color(0xFF2C7FA0),
+    glow: Color(0xFF4C7DFF),
+    muted: Color(0xFF8FA6BC),
+    panelColors: [Color(0xFF16273B), Color(0xFF08111C)],
+    fx: SkinFx.snow,
+  );
+
+  static const pub = AppSkin(
+    id: 'pub',
+    name: 'Pub',
+    bg: Color(0xFF06100B),
+    panel: Color(0xFF0F1D15),
+    panel2: Color(0xFF16291E),
+    line: Color(0xFF27442F),
+    accent: Color(0xFFD9B44A),
+    accentLight: Color(0xFFF4DB8E),
+    accentDark: Color(0xFF7E6220),
+    glow: Color(0xFF1FA35A),
+    muted: Color(0xFF94A898),
+    panelColors: [Color(0xFF1B3122), Color(0xFF0A140E)],
+    fx: SkinFx.bokeh,
+  );
+
+  static const synthwave = AppSkin(
+    id: 'synthwave',
+    name: 'Synthwave',
+    bg: Color(0xFF0B0418),
+    panel: Color(0xFF180B2E),
+    panel2: Color(0xFF241242),
+    line: Color(0xFF3D2266),
+    accent: Color(0xFFFF6AD5),
+    accentLight: Color(0xFFFFB8EC),
+    accentDark: Color(0xFF9B1F7E),
+    glow: Color(0xFFFF9E2C),
+    muted: Color(0xFFA394C4),
+    panelColors: [Color(0xFF2A1450), Color(0xFF110726)],
+    fx: SkinFx.sunset,
+  );
+
+  static const abyss = AppSkin(
+    id: 'abyss',
+    name: 'Abysses',
+    bg: Color(0xFF020A12),
+    panel: Color(0xFF061826),
+    panel2: Color(0xFF0A2336),
+    line: Color(0xFF12405A),
+    accent: Color(0xFF2FD0C0),
+    accentLight: Color(0xFF9DF2E8),
+    accentDark: Color(0xFF0D7A70),
+    glow: Color(0xFF1E5BFF),
+    muted: Color(0xFF86A7B5),
+    panelColors: [Color(0xFF0B2A3D), Color(0xFF041019)],
+    fx: SkinFx.bubbles,
+  );
+
+  static const galaxy = AppSkin(
+    id: 'galaxy',
+    name: 'Galaxie',
+    bg: Color(0xFF04030C),
+    panel: Color(0xFF0F0C22),
+    panel2: Color(0xFF181433),
+    line: Color(0xFF2C2655),
+    accent: Color(0xFFB48CFF),
+    accentLight: Color(0xFFE2D4FF),
+    accentDark: Color(0xFF5B3BB0),
+    glow: Color(0xFF3FA9FF),
+    muted: Color(0xFF9A95B8),
+    panelColors: [Color(0xFF1D1840), Color(0xFF0A0819)],
+    fx: SkinFx.stars,
+  );
+
+  static const carbon = AppSkin(
+    id: 'carbon',
+    name: 'Carbone',
+    bg: Color(0xFF08080A),
+    panel: Color(0xFF141417),
+    panel2: Color(0xFF1D1D21),
+    line: Color(0xFF2E2E34),
+    accent: Color(0xFFFF3B3B),
+    accentLight: Color(0xFFFF9A8F),
+    accentDark: Color(0xFF8F1414),
+    glow: Color(0xFF6B6B78),
+    muted: Color(0xFF8E8E98),
+    panelColors: [Color(0xFF202024), Color(0xFF0D0D10)],
+    fx: SkinFx.carbon,
+  );
+
+  static const all = [
+    gold,
+    neon,
+    sakura,
+    ember,
+    ice,
+    pub,
+    synthwave,
+    abyss,
+    galaxy,
+    carbon,
+    wallpaper,
+  ];
 
   static AppSkin byId(Object? id) =>
       all.firstWhere((s) => s.id == id, orElse: () => gold);
@@ -654,6 +774,178 @@ class _SkinPainter extends CustomPainter {
                     .withValues(alpha: (1 - p) * (0.25 + 0.5 * _r(i, 4)))
                 ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5));
         }
+      case SkinFx.snow:
+        // Flocons qui tombent en dérivant (les gros plus vite, plus flous)
+        for (var i = 0; i < 46; i++) {
+          final depth = _r(i, 3);
+          final speed = 0.6 + depth * 1.8;
+          final y = ((_r(i, 1) + t.value * speed * 2) % 1) * (h + 20) - 10;
+          final x = (_r(i, 2) * w + 26 * math.sin(a * 3 + i)) % w;
+          canvas.drawCircle(
+              Offset(x, y),
+              1 + 2.6 * depth,
+              Paint()
+                ..color = skin.accentLight
+                    .withValues(alpha: 0.15 + 0.4 * (1 - depth * 0.5))
+                ..maskFilter =
+                    MaskFilter.blur(BlurStyle.normal, 0.5 + 1.5 * depth));
+        }
+      case SkinFx.bokeh:
+        // Lumières de bar floues qui flottent et respirent
+        for (var i = 0; i < 16; i++) {
+          final x = w * _r(i, 1) + 40 * math.sin(a + i * 1.7);
+          final y = h * _r(i, 2) + 30 * math.cos(a * 1.3 + i);
+          final rad = w * (0.03 + 0.06 * _r(i, 3));
+          final pulse = 0.5 + 0.5 * math.sin(a * 2 + i * 2.3);
+          final c = switch (i % 3) {
+            0 => skin.accent,
+            1 => skin.glow,
+            _ => skin.accentLight,
+          };
+          canvas.drawCircle(
+              Offset(x, y),
+              rad,
+              Paint()
+                ..color = c.withValues(alpha: 0.05 + 0.09 * pulse)
+                ..maskFilter = MaskFilter.blur(BlurStyle.normal, rad * 0.25));
+        }
+      case SkinFx.sunset:
+        // Soleil rayé sur l'horizon + sol quadrillé qui avance
+        final horizon = h * 0.58;
+        final sunR = h * 0.28;
+        final sun =
+            Rect.fromCircle(center: Offset(w / 2, horizon), radius: sunR);
+        canvas.save();
+        canvas.clipRect(Rect.fromLTRB(0, 0, w, horizon));
+        canvas.drawCircle(
+            sun.center,
+            sunR,
+            Paint()
+              ..shader = LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  skin.glow.withValues(alpha: 0.55),
+                  skin.accent.withValues(alpha: 0.45),
+                ],
+              ).createShader(sun));
+        // bandes qui défilent dans le bas du soleil (dans le soleil seulement)
+        canvas.clipPath(Path()..addOval(sun));
+        final band = (t.value * 8) % 1;
+        for (var i = 0; i < 6; i++) {
+          final y = horizon - sunR * 0.55 + (i + band) * sunR * 0.1;
+          canvas.drawRect(Rect.fromLTRB(0, y, w, y + 2.0 + i * 1.4),
+              Paint()..color = skin.bg);
+        }
+        canvas.restore();
+        final gl = Paint()
+          ..color = skin.accent.withValues(alpha: 0.22)
+          ..strokeWidth = 1;
+        for (var i = -14; i <= 14; i++) {
+          canvas.drawLine(Offset(w / 2 + i * w * 0.02, horizon),
+              Offset(w / 2 + i * w * 0.18, h), gl);
+        }
+        final shift = (t.value * 14) % 1;
+        for (var i = 0; i < 8; i++) {
+          final z = (i + shift) / 8;
+          final y = horizon + (h - horizon) * z * z;
+          canvas.drawLine(
+              Offset(0, y),
+              Offset(w, y),
+              Paint()
+                ..color = skin.accent.withValues(alpha: 0.06 + 0.2 * z)
+                ..strokeWidth = 1);
+        }
+      case SkinFx.bubbles:
+        // Bulles qui remontent en ondulant + rais de lumière
+        for (var i = 0; i < 3; i++) {
+          final x = w * (0.2 + 0.32 * i) + 30 * math.sin(a + i);
+          canvas.drawPath(
+              Path()
+                ..moveTo(x - w * 0.03, 0)
+                ..lineTo(x + w * 0.03, 0)
+                ..lineTo(x + w * 0.12, h)
+                ..lineTo(x - w * 0.02, h)
+                ..close(),
+              Paint()
+                ..shader = LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    skin.accentLight.withValues(alpha: 0.07),
+                    skin.accentLight.withValues(alpha: 0),
+                  ],
+                ).createShader(Offset.zero & size));
+        }
+        for (var i = 0; i < 30; i++) {
+          final speed = 1 + (i % 3);
+          final p = (_r(i, 1) + t.value * speed * 1.5) % 1;
+          final y = h + 12 - p * (h + 24);
+          final x = _r(i, 2) * w + 14 * math.sin(a * speed * 3 + i);
+          final rad = 2 + 6 * _r(i, 3);
+          canvas.drawCircle(
+              Offset(x, y),
+              rad,
+              Paint()
+                ..color = skin.accentLight.withValues(alpha: 0.10 + 0.2 * p)
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 1.2);
+          canvas.drawCircle(Offset(x - rad * 0.35, y - rad * 0.35), rad * 0.22,
+              Paint()..color = Colors.white.withValues(alpha: 0.15 + 0.2 * p));
+        }
+      case SkinFx.stars:
+        // Étoiles qui scintillent + étoile filante de temps en temps
+        for (var i = 0; i < 90; i++) {
+          final tw = 0.5 + 0.5 * math.sin(a * (2 + i % 5) + i * 1.3);
+          final x = _r(i, 1) * w + 6 * math.sin(a + i);
+          final y = _r(i, 2) * h;
+          canvas.drawCircle(
+              Offset(x, y),
+              0.6 + 1.4 * _r(i, 3),
+              Paint()
+                ..color = (i % 7 == 0 ? skin.accentLight : Colors.white)
+                    .withValues(alpha: 0.15 + 0.6 * tw * _r(i, 4)));
+        }
+        final fall = (t.value * 5) % 1;
+        if (fall < 0.18) {
+          final q = fall / 0.18;
+          final start = Offset(
+              w * (0.15 + 0.5 * ((t.value * 5).floor() % 3) / 3), h * 0.08);
+          final head = start + Offset(w * 0.35, h * 0.3) * q;
+          canvas.drawLine(
+              head - Offset(w * 0.08, h * 0.07),
+              head,
+              Paint()
+                ..shader = LinearGradient(colors: [
+                  Colors.white.withValues(alpha: 0),
+                  Colors.white.withValues(alpha: 0.8 * (1 - q)),
+                ]).createShader(
+                    Rect.fromPoints(head - Offset(w * 0.08, h * 0.07), head))
+                ..strokeWidth = 2
+                ..strokeCap = StrokeCap.round);
+        }
+      case SkinFx.carbon:
+        // Trame fibre de carbone + reflet qui balaie en diagonale
+        const step = 14.0;
+        final weave = Paint()..color = Colors.white.withValues(alpha: 0.025);
+        for (var y = 0.0; y < h; y += step) {
+          for (var x = ((y / step).floor().isEven ? 0.0 : step);
+              x < w;
+              x += step * 2) {
+            canvas.drawRect(Rect.fromLTWH(x, y, step, step * 0.5), weave);
+          }
+        }
+        final sweep = ((t.value * 3) % 1) * (w + h) * 1.4 - h;
+        canvas.drawPath(
+            Path()
+              ..moveTo(sweep, 0)
+              ..lineTo(sweep + w * 0.12, 0)
+              ..lineTo(sweep + w * 0.12 - h, h)
+              ..lineTo(sweep - h, h)
+              ..close(),
+            Paint()
+              ..color = skin.accentLight.withValues(alpha: 0.05)
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20));
     }
     // Bords assombris : le contenu reste lisible
     canvas.drawRect(
