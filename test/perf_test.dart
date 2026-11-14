@@ -29,4 +29,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.binding.hasScheduledFrame, isFalse);
   });
+
+  testWidgets('Animations complètes rallumées puis coupées en direct',
+      (tester) async {
+    Perf.lite = true;
+    await tester.pumpWidget(MaterialApp(
+        theme: Tv.theme(),
+        home: Center(
+            child: AnimatedDartboard(
+                size: 300, hits: const [], skin: BoardSkin.byId('real')))));
+    await tester.pumpAndSettle();
+    expect(tester.binding.hasScheduledFrame, isFalse);
+    Perf.lite = false; // le téléphone demande les animations complètes
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.binding.hasScheduledFrame, isTrue);
+    Perf.lite = true;
+    await tester.pumpAndSettle();
+    expect(tester.binding.hasScheduledFrame, isFalse);
+  });
 }

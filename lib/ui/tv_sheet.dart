@@ -201,6 +201,18 @@ class _TvSheetState extends State<_TvSheet> {
               const TvSection('Le son sort sur (un ou plusieurs)',
                   padding: EdgeInsets.only(top: 16, bottom: 8)),
               const SoundTargetPicker(),
+              SwitchListTile(
+                key: const ValueKey('tv-anim'),
+                contentPadding: EdgeInsets.zero,
+                title: Text('Animations complètes sur l\'écran',
+                    style: Tv.title(17)),
+                subtitle: const Text(
+                    'Fond animé, cible qui pulse et anneau de LED. Coupé : '
+                    'plus fluide sur une TV peu puissante (les fléchettes, '
+                    'vidéos et bandeaux restent animés).'),
+                value: link.fullAnim,
+                onChanged: (v) => link.setFullAnim(v),
+              ),
               if (link.camScreens.isNotEmpty) const CamPanel(),
             ] else ...[
               const SizedBox(height: 12),

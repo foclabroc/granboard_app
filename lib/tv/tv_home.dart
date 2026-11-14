@@ -122,6 +122,9 @@ class _TvHomeState extends State<TvHome> {
     }
     if (s?['wall'] is String) Wallpaper.instance.applyFromPhone(s!['wall']);
     if (s?['calls'] is bool) AudioService.instance.dartCalls = s!['calls'];
+    // animations complètes ou allégées (choix du téléphone ; allégées tant
+    // qu'aucun téléphone n'a rien dit)
+    if (s?['anim'] is bool) Perf.lite = !(s!['anim'] as bool);
     if (s?['tease'] is bool) AudioService.instance.teasing = s!['tease'];
     if (s?['pron'] is Map) {
       AudioService.instance.pronunciations

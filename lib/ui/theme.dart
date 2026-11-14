@@ -256,7 +256,11 @@ class AppSkin {
 /// fond fixe, cible sans animation continue (LED, reflet, zones qui
 /// pulsent) ; les animations d'un coup (fléchette, bust, victoire) restent.
 class Perf {
-  static bool lite = false;
+  /// Réglé depuis le téléphone (fenêtre TV › « Animations complètes ») ;
+  /// les animations en cours s'arrêtent ou reprennent aussitôt.
+  static final liteNotifier = ValueNotifier<bool>(false);
+  static bool get lite => liteNotifier.value;
+  static set lite(bool v) => liteNotifier.value = v;
 }
 
 /// Palette de l'appli, selon le thème choisi ([skin]). Les noms « gold… »
@@ -575,12 +579,22 @@ class _SkinBackgroundState extends State<SkinBackground>
   void initState() {
     super.initState();
     // Écran TV : fond fixe (redessiné seulement s'il change)
-    if (SkinBackground.animate && !Perf.lite) _c.repeat();
-    if (Perf.lite) _c.value = 0.15;
+    _applyPerf();
+    Perf.liteNotifier.addListener(_applyPerf);
+  }
+
+  void _applyPerf() {
+    if (Perf.lite) {
+      _c.stop();
+      _c.value = 0.15;
+    } else if (SkinBackground.animate && !_c.isAnimating) {
+      _c.repeat();
+    }
   }
 
   @override
   void dispose() {
+    Perf.liteNotifier.removeListener(_applyPerf);
     _c.dispose();
     super.dispose();
   }

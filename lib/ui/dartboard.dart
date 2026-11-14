@@ -758,19 +758,33 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
   late final _impact = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 650), value: 1);
   // Écran TV (Perf.lite) : pas d'animation continue, seulement les coups
-  late final _pulse = Perf.lite
-      ? AnimationController(
-          vsync: this, duration: const Duration(milliseconds: 1400), value: 0.6)
-      : (AnimationController(
-          vsync: this, duration: const Duration(milliseconds: 1400))
-        ..repeat(reverse: true));
+  late final _pulse = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1400), value: 0.6);
   late final _flash = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 900));
   // Anneau de LED et reflet qui tournent (cible réaliste)
-  late final _spin = Perf.lite
-      ? AnimationController(vsync: this, duration: const Duration(seconds: 6))
-      : (AnimationController(vsync: this, duration: const Duration(seconds: 6))
-        ..repeat());
+  late final _spin =
+      AnimationController(vsync: this, duration: const Duration(seconds: 6));
+
+  @override
+  void initState() {
+    super.initState();
+    _applyPerf();
+    Perf.liteNotifier.addListener(_applyPerf);
+  }
+
+  /// Animations continues (zones qui pulsent, LED, reflet) seulement hors
+  /// [Perf.lite].
+  void _applyPerf() {
+    if (Perf.lite) {
+      _pulse.stop();
+      _pulse.value = 0.6;
+      _spin.stop();
+    } else {
+      if (!_pulse.isAnimating) _pulse.repeat(reverse: true);
+      if (!_spin.isAnimating) _spin.repeat();
+    }
+  }
 
   @override
   void didUpdateWidget(AnimatedDartboard old) {
@@ -782,6 +796,7 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
 
   @override
   void dispose() {
+    Perf.liteNotifier.removeListener(_applyPerf);
     _impact.dispose();
     _pulse.dispose();
     _flash.dispose();

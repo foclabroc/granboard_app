@@ -11,7 +11,7 @@
 - Medley : chaque leg a son propre jeu (301, 501, 701, 901 ou Cricket), par exemple 301 - Cricket - 501 ; les règles 01 (début, fin, bull) restent communes
 - Cricket (vue classique) : en bas, une case par joueur à sa couleur au lieu d'une bande sur toute la largeur ; celle du joueur en cours plus vive, bordée de blanc et lumineuse
 - Cricket (vue en lignes) : trait fin aussi entre le nom et le 20, et entre le bull et les points
-- Écran TV plus fluide : fond du thème fixe et cible sans animation continue (anneau de LED, reflet, zones qui pulsent) ; les animations des coups (fléchette, bust, victoire), les vidéos et le bandeau restent
+- Écran TV plus fluide : animations allégées par défaut (fond du thème fixe, cible sans anneau de LED, reflet ni zones qui pulsent ; les fléchettes, bust, victoire, vidéos et bandeaux restent animés) ; interrupteur « Animations complètes sur l'écran » dans la fenêtre TV du téléphone
 - Android TV : la bannière de l'appli affiche FOCLA BOARD (elle disait encore GRAN BOARD)
 
 ## v0.6.10

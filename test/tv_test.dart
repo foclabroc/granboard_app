@@ -359,4 +359,21 @@ void main() {
     await TvLink.instance.unlinkAll();
     tv.dispose();
   });
+
+  test('Animations de l\'écran : allégées par défaut, complètes sur demande',
+      () async {
+    final tv = TvClient(realtime: false);
+    await tv.start();
+    await TvLink.instance.link(tv.code!);
+    await settle();
+    await tv.fetch();
+    expect(tv.state?['anim'], isFalse);
+    await TvLink.instance.setFullAnim(true);
+    await settle();
+    await tv.fetch();
+    expect(tv.state?['anim'], isTrue);
+    await TvLink.instance.setFullAnim(false);
+    await TvLink.instance.unlinkAll();
+    tv.dispose();
+  });
 }

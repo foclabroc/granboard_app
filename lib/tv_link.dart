@@ -64,6 +64,16 @@ class TvLink extends ChangeNotifier {
   /// (jamais vide).
   final Set<String> soundOn = {phone};
 
+  /// Animations complètes sur les écrans (fond animé, cible qui pulse) ;
+  /// faux = allégées, plus fluide sur une TV peu puissante.
+  bool fullAnim = false;
+
+  Future<void> setFullAnim(bool v) async {
+    fullAnim = v;
+    _resend();
+    await _save();
+  }
+
   bool soundsOn(String target) => soundOn.contains(target);
 
   void _setSound(Iterable<String> targets) {
@@ -93,6 +103,7 @@ class TvLink extends ChangeNotifier {
           screens.add(TvScreen.fromJson(Map<String, dynamic>.from(s as Map)));
         }
         // Avant la 0.6.3 : un seul appareil (texte)
+        fullAnim = j['anim'] as bool? ?? false;
         final snd = j['sound'];
         _setSound(
             snd is List ? snd.map((e) => '$e') : [snd is String ? snd : phone]);
@@ -125,6 +136,7 @@ class TvLink extends ChangeNotifier {
         jsonEncode({
           'screens': [for (final s in screens) s.toJson()],
           'sound': soundOn.toList(),
+          'anim': fullAnim,
         }));
   }
 
@@ -375,6 +387,7 @@ class TvLink extends ChangeNotifier {
         'cricket': CricketStyle.current.value,
         'theme': Tv.skin.value.id,
         'calls': AudioService.instance.dartCalls,
+        'anim': fullAnim,
         'tease': AudioService.instance.teasing,
         'pron': AudioService.instance.pronunciations,
         'wall': Wallpaper.instance.forTv,
