@@ -51,6 +51,11 @@ class TvLink extends ChangeNotifier {
     AudioService.instance.musicStarts.addListener(() {
       if (screens.isNotEmpty) _resend();
     });
+    // Vue du Cricket changée (bouton VUE) : les écrans changent tout de
+    // suite, sans attendre la fléchette suivante
+    CricketStyle.current.addListener(() {
+      if (screens.isNotEmpty) _resend();
+    });
   }
   static final instance = TvLink._();
 

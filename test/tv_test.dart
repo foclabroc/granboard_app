@@ -11,6 +11,7 @@ import 'package:granboard_proto/server.dart';
 import 'package:granboard_proto/tv/tv_client.dart';
 import 'package:granboard_proto/tv/tv_home.dart';
 import 'package:granboard_proto/tv_link.dart';
+import 'package:granboard_proto/ui/cricket_view.dart';
 import 'package:granboard_proto/ui/game_page.dart';
 import 'package:granboard_proto/ui/award.dart';
 import 'package:granboard_proto/ui/theme.dart';
@@ -175,6 +176,8 @@ void main() {
     expect(find.text('DERNIÈRES PARTIES'), findsOneWidget);
     expect(find.text('501 DOUBLE OUT'), findsOneWidget);
     expect(find.text('55,5 MOY'), findsOneWidget);
+    // tablette en mode écran : on peut revenir en mode téléphone d'ici
+    expect(find.byKey(const ValueKey('lobby-phone-mode')), findsOneWidget);
 
     final g = X01Game(const X01Settings(startScore: 301, roundLimit: 1), const [
       X01Player(id: '1', name: 'Foc'),
@@ -373,6 +376,23 @@ void main() {
     await tv.fetch();
     expect(tv.state?['anim'], isTrue);
     await TvLink.instance.setFullAnim(false);
+    await TvLink.instance.unlinkAll();
+    tv.dispose();
+  });
+
+  test('Vue du Cricket changée : renvoyée tout de suite aux écrans',
+      () async {
+    final tv = TvClient(realtime: false);
+    await tv.start();
+    await TvLink.instance.link(tv.code!);
+    await settle();
+    await CricketStyle.choose(CricketStyle.classic);
+    await settle();
+    await CricketStyle.toggle();
+    await settle();
+    await tv.fetch();
+    expect(tv.state?['cricket'], CricketStyle.columns);
+    await CricketStyle.choose(CricketStyle.classic);
     await TvLink.instance.unlinkAll();
     tv.dispose();
   });

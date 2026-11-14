@@ -5,6 +5,9 @@
 - Vidéos sur la TV : « format accepté mais décodeur en échec » sur la TCL. Sur Android TV, les vidéos passent maintenant par le décodeur logiciel (le matériel en secours), et si un décodeur ne démarre pas, le suivant est essayé au lieu d'abandonner (copie locale de `video_player_android` dans `packages/`)
 - Message d'erreur vidéo plus précis (nom du décodeur et cause), si ça échoue encore
 - L'annonce du joueur suivant attend la fin de « il reste … » (4 s au plus) au lieu de la couper (joueur virtuel, bouton « suivant » appuyé vite) ; elle saute si le joueur a déjà lancé
+- Cricket : la vue (classique / lignes) change tout de suite sur la TV, sans attendre la fléchette suivante
+- Choix des joueurs : bouton « Tout vider »
+- Tablette en mode écran : bouton « Mode téléphone » aussi sur l'écran d'attente (une fois reliée, l'écran du code n'apparaissait plus)
 
 ## v0.6.11
 

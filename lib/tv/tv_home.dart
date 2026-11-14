@@ -174,7 +174,8 @@ class _TvHomeState extends State<TvHome> {
             for (final i in (s?['ids'] as List?) ?? const [])
               if (i is num) i.toInt()
           ],
-          client: client);
+          client: client,
+          onPhoneMode: widget.onPhoneMode);
     } else {
       body = _CodeScreen(
           client: client,
@@ -340,7 +341,12 @@ class _Lobby extends StatelessWidget {
   final String host;
   final List<int> ids;
   final TvClient client;
-  const _Lobby({required this.host, required this.ids, required this.client});
+  final VoidCallback? onPhoneMode; // tablette : revenir en mode téléphone
+  const _Lobby(
+      {required this.host,
+      required this.ids,
+      required this.client,
+      this.onPhoneMode});
 
   @override
   Widget build(BuildContext context) {
@@ -393,6 +399,17 @@ class _Lobby extends StatelessWidget {
           ),
         ),
         Positioned(right: 16, bottom: 10, child: _Corner(client: client)),
+        if (onPhoneMode != null)
+          Positioned(
+            left: 8,
+            bottom: 0,
+            child: TextButton.icon(
+              key: const ValueKey('lobby-phone-mode'),
+              onPressed: onPhoneMode,
+              icon: const Icon(Icons.smartphone, size: 16),
+              label: Text('MODE TÉLÉPHONE', style: Tv.label(13)),
+            ),
+          ),
       ],
     );
   }

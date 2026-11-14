@@ -64,6 +64,23 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Joueurs : « Tout vider » retire tous les joueurs choisis',
+      (tester) async {
+    await open(tester, 'x01');
+    // le profil principal est coché d'office ; on ajoute un joueur virtuel
+    expect(find.text('JOUEURS 1/8'), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('add-bot')));
+    await tester.tap(find.byKey(const ValueKey('add-bot')));
+    await tester.pump();
+    expect(find.text('JOUEURS 2/8'), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('players-clear')));
+    await tester.tap(find.byKey(const ValueKey('players-clear')));
+    await tester.pump();
+    expect(find.text('JOUEURS 0/8'), findsOneWidget);
+    expect(find.byKey(const ValueKey('players-clear')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Toutes les tuiles s\'affichent sans débordement',
       (tester) async {
     for (final k in ['x01', 'cricket', 'match', 'practice', 'party']) {

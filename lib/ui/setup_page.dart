@@ -443,6 +443,12 @@ class _SetupPageState extends State<SetupPage> {
     }
   }
 
+  /// Retire tous les joueurs choisis.
+  void _clearPlayers() => setState(() {
+        _selected.clear();
+        _team.clear();
+      });
+
   void _select(String id) {
     setState(() {
       _selected.add(id);
@@ -673,6 +679,14 @@ class _SetupPageState extends State<SetupPage> {
                                 label: const Text('Ajouter un joueur'),
                                 onPressed: _newPlayer,
                               ),
+                              if (_selected.isNotEmpty)
+                                ActionChip(
+                                  key: const ValueKey('players-clear'),
+                                  visualDensity: VisualDensity.compact,
+                                  avatar: const Icon(Icons.clear_all, size: 18),
+                                  label: const Text('Tout vider'),
+                                  onPressed: _clearPlayers,
+                                ),
                             ],
                           ),
                         ),
@@ -1200,6 +1214,14 @@ class _SetupPageState extends State<SetupPage> {
                                 label: const Text('Ajouter un joueur'),
                                 onPressed: _newPlayer,
                               ),
+                              if (_selected.isNotEmpty)
+                                ActionChip(
+                                  key: const ValueKey('players-clear'),
+                                  visualDensity: VisualDensity.compact,
+                                  avatar: const Icon(Icons.clear_all, size: 18),
+                                  label: const Text('Tout vider'),
+                                  onPressed: _clearPlayers,
+                                ),
                             ],
                           ),
                           const SetupNote('Invités et bots jouent sans '
