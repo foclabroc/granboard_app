@@ -12,6 +12,7 @@
 - Cricket (vue classique) : en bas, une case par joueur à sa couleur au lieu d'une bande sur toute la largeur ; celle du joueur en cours plus vive, bordée de blanc et lumineuse
 - Cricket (vue en lignes) : trait fin aussi entre le nom et le 20, et entre le bull et les points
 - Écran TV plus fluide : animations allégées par défaut (fond du thème fixe, cible sans anneau de LED, reflet ni zones qui pulsent ; les fléchettes, bust, victoire, vidéos et bandeaux restent animés) ; interrupteur « Animations complètes sur l'écran » dans la fenêtre TV du téléphone
+- Son du joueur « Malcolm » (extrait fourni par foclabroc)
 - Android TV : la bannière de l'appli affiche FOCLA BOARD (elle disait encore GRAN BOARD)
 
 ## v0.6.10

@@ -31,6 +31,7 @@ const kTurnSounds = {
   'victoire': 'Victoire',
   'demon': 'Démon',
   'non': 'Non !',
+  'malcolm': 'Malcolm',
 };
 
 /// Avatars fournis (assets/avatars/<id>.jpg, 256 × 256). Choisir un avatar
