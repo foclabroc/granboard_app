@@ -117,4 +117,35 @@ void main() {
     expect(m.betweenLegs, isFalse);
     expect(m.legWinsOf(0), 0);
   });
+
+  test('Medley : score de départ choisi leg par leg (301, Cricket, 501)', () {
+    const st = MatchSettings(
+      legs: 3,
+      pattern: [LegKind.x01, LegKind.cricket, LegKind.x01],
+      x01: X01Settings(startScore: 301),
+      cricket: CricketSettings(seed: 4),
+      starts: [301, 0, 501],
+    );
+    expect(st.patternLabel, '301-CR-501');
+    final m = MatchGame(st, two);
+    expect((m.leg as X01Game).settings.startScore, 301);
+    winX01Leg(m);
+    m.next();
+    expect(m.leg, isA<CricketGame>());
+    // l'autre joueur gagne le Cricket : 1-1, leg 3 en 501
+    winCricketLeg(m);
+    m.next();
+    final leg3 = m.leg as X01Game;
+    expect(leg3.settings.startScore, 501);
+    expect(leg3.stateOf(0).remaining, 501);
+    // TV / jeu à distance : le JSON garde les scores de chaque leg
+    final copy = MatchGame.fromJson(
+        jsonDecode(jsonEncode(m.toJson())) as Map<String, dynamic>);
+    expect((copy.leg as X01Game).settings.startScore, 501);
+    expect(copy.settings.patternLabel, '301-CR-501');
+    // ancien JSON sans « starts » : tous les legs au score des règles 01
+    final old = MatchSettings.fromJson(
+        {'legs': 3, 'pattern': ['x01', 'cricket', 'x01'], 'x01': {'start': 701}});
+    expect(old.patternLabel, '701-CR-701');
+  });
 }

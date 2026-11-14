@@ -8,6 +8,7 @@
 - Nouvelles fléchettes sur la cible : vues de face, 4 ailettes fines à la couleur du joueur avec contour sombre, numéro 1/2/3 au centre (toutes les cibles, téléphone et TV)
 - 6 nouveaux thèmes avec leur fond animé : Glace (neige), Pub (lumières de bar floues), Synthwave (soleil rayé + sol quadrillé), Abysses (bulles et rais de lumière), Galaxie (étoiles qui scintillent + étoile filante), Carbone (fibre de carbone + reflet)
 - Accueil : tuiles dans un nouvel ordre (01, Cricket, Party, Tournois / Medley, Entraînement, En ligne, Options) ; Fête s'appelle Party et Match s'appelle Medley (accueil, réglages, titres, résultats, annonce de début « Medley en N legs » enregistrée)
+- Medley : chaque leg a son propre jeu (301, 501, 701, 901 ou Cricket), par exemple 301 - Cricket - 501 ; les règles 01 (début, fin, bull) restent communes
 - Android TV : la bannière de l'appli affiche FOCLA BOARD (elle disait encore GRAN BOARD)
 
 ## v0.6.10

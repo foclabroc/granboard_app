@@ -70,6 +70,17 @@ class X01Settings {
     this.doubles = false,
   });
 
+  /// Mêmes règles, autre score de départ (legs d'un Medley).
+  X01Settings withStart(int start) => X01Settings(
+        startScore: start,
+        inRule: inRule,
+        outRule: outRule,
+        bullMode: bullMode,
+        roundLimit: roundLimit,
+        freeze: freeze,
+        doubles: doubles,
+      );
+
   /// Jeu en équipes (Freeze ou double).
   bool get teamPlay => freeze || doubles;
 

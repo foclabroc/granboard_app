@@ -73,6 +73,17 @@ class _SetupPageState extends State<SetupPage> {
   // Match
   int _mLegs = 3;
   List<LegKind> _mPattern = MatchSettings.alternate(13);
+
+  /// Score de départ de chaque leg de 01 du Medley.
+  List<int> _mStarts = List.filled(13, 501);
+
+  /// Jeu du leg [i] : son score de départ, ou 0 pour le Cricket.
+  int _legGame(int i) => _mPattern[i] == LegKind.x01 ? _mStarts[i] : 0;
+  void _setLegGame(int i, int v) => setState(() {
+        _mPattern[i] = v == 0 ? LegKind.cricket : LegKind.x01;
+        if (v != 0) _mStarts[i] = v;
+      });
+  String _legText(int v) => v == 0 ? 'Cricket' : '$v';
   final List<String> _selected = [];
   final Map<String, int> _team = {};
 
@@ -168,6 +179,13 @@ class _SetupPageState extends State<SetupPage> {
       for (var i = 0; i < 13; i++)
         i < mp.length ? mp[i] : MatchSettings.alternate(13)[i]
     ];
+    final ms = [for (final v in (j['mstarts'] as List? ?? const [])) v];
+    _mStarts = [
+      for (var i = 0; i < 13; i++)
+        i < ms.length && ms[i] is int && kStartScores.contains(ms[i])
+            ? ms[i] as int
+            : _start
+    ];
   }
 
   /// Jeu et règles en cours (sans les joueurs) : favoris.
@@ -190,6 +208,7 @@ class _SetupPageState extends State<SetupPage> {
         'ptarget': _pTarget,
         'popt': _pOptions.toList(),
         'mpattern': [for (final k in _mPattern) k.name],
+        'mstarts': _mStarts,
       };
 
   /// Aucun joueur choisi (premier lancement…) : le profil principal est
@@ -233,6 +252,7 @@ class _SetupPageState extends State<SetupPage> {
           'ptarget': _pTarget,
           'popt': _pOptions.toList(),
           'mpattern': [for (final k in _mPattern) k.name],
+        'mstarts': _mStarts,
           'players': _selected,
           'teams': _team,
         }));
@@ -295,6 +315,7 @@ class _SetupPageState extends State<SetupPage> {
   MatchSettings get _match => MatchSettings(
         legs: _mLegs,
         pattern: _mPattern.take(_mLegs).toList(),
+        starts: _mStarts.take(_mLegs).toList(),
         x01: X01Settings(
             startScore: _start, inRule: _in, outRule: _out, bullMode: _bull),
         cricket: CricketSettings(
@@ -744,7 +765,9 @@ class _SetupPageState extends State<SetupPage> {
       ];
       return parts.join(' · ');
     }
-    if (_matchOn) return 'Medley $_mLegs legs · $_start ${_out.label}';
+    if (_matchOn) {
+      return 'Medley $_mLegs legs · ${_match.patternLabel} · ${_out.label}';
+    }
     if (_cricketOn) {
       return '${_cricket.name}${_cLimit == null ? '' : ' · $_cLimit manches'}';
     }
@@ -1005,21 +1028,17 @@ class _SetupPageState extends State<SetupPage> {
     if (_matchOn) {
       return [
         for (var i = 0; i < _mLegs; i++)
-          SetupItem(
-            label: 'Leg ${i + 1}',
-            value: _mPattern[i] == LegKind.x01 ? '$_start' : 'Cricket',
-            onTap: () => setState(() => _mPattern[i] =
-                _mPattern[i] == LegKind.x01 ? LegKind.cricket : LegKind.x01),
-          ),
+          SetupPick<int>(
+              key: ValueKey('mleg-$i'),
+              label: 'Leg ${i + 1}',
+              value: _legGame(i),
+              values: const [...kStartScores, 0],
+              text: _legText,
+              onChanged: (v) => _setLegGame(i, v)),
         const SetupNote(
-            'Touche un leg pour passer de 01 à Cricket et inversement. '
+            'Touche un leg pour choisir son jeu : 301, 501, 701, 901 ou '
+            'Cricket. Les règles ci-dessous valent pour tous les legs de 01. '
             'Cricket : règles Standard, 20 manches.'),
-        SetupPick<int>(
-            label: 'Legs 01',
-            value: _start,
-            values: kStartScores,
-            text: (n) => '$n',
-            onChanged: (v) => setState(() => _start = v)),
         ...x01,
       ];
     }
@@ -1626,16 +1645,19 @@ class _SetupPageState extends State<SetupPage> {
                   avatar: CircleAvatar(
                       backgroundColor: Tv.panel2,
                       child: Text('${i + 1}', style: Tv.label(11))),
-                  label: Text(
-                      _mPattern[i] == LegKind.x01 ? '$_start' : 'CRICKET',
+                  label: Text(_legText(_legGame(i)).toUpperCase(),
                       style: Tv.title(15,
                           color: _mPattern[i] == LegKind.x01
                               ? Tv.goldLight
                               : Tv.green)),
-                  onPressed: () => setState(() => _mPattern[i] =
-                      _mPattern[i] == LegKind.x01
-                          ? LegKind.cricket
-                          : LegKind.x01),
+                  // 301 → 501 → 701 → 901 → Cricket → 301…
+                  onPressed: () {
+                    const order = [...kStartScores, 0];
+                    _setLegGame(
+                        i,
+                        order[(order.indexOf(_legGame(i)) + 1) %
+                            order.length]);
+                  },
                 ),
             ],
           ),
@@ -1649,24 +1671,26 @@ class _SetupPageState extends State<SetupPage> {
       ];
 
   List<Widget> _x01Options({bool match = false}) => [
-        TvSection(match ? 'Legs 01' : 'Mode',
+        TvSection(match ? 'Règles des legs 01' : 'Mode',
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Wrap(
-            spacing: 8,
-            children: [
-              for (final s in kStartScores)
-                ChoiceChip(
-                  label: Text('$s',
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
-                  selected: _start == s,
-                  onSelected: (_) => setState(() => _start = s),
-                ),
-            ],
+        // Medley : score de départ choisi leg par leg
+        if (!match)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 8,
+              children: [
+                for (final s in kStartScores)
+                  ChoiceChip(
+                    label: Text('$s',
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
+                    selected: _start == s,
+                    onSelected: (_) => setState(() => _start = s),
+                  ),
+              ],
+            ),
           ),
-        ),
         if (!match && !_online && !widget.tournament)
           SwitchListTile(
             title: Text('Freeze (équipes)', style: Tv.title(18)),

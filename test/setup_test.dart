@@ -110,4 +110,29 @@ void main() {
     ]);
     expect(errors, isEmpty, reason: errors.join('\n'));
   });
+
+  testWidgets('Medley : chaque leg a son jeu (301, Cricket, 501…)',
+      (tester) async {
+    await open(tester, 'match');
+    // Par défaut : 501, Cricket, 501
+    expect(find.textContaining(RegExp('501-CR-501', caseSensitive: false)), findsWidgets);
+    // Leg 1 en 301
+    await tester.tap(find.byKey(const ValueKey('mleg-0')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('301').last);
+    await tester.pumpAndSettle();
+    // Leg 2 en 701 (il était en Cricket)
+    await tester.tap(find.byKey(const ValueKey('mleg-1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('701').last);
+    await tester.pumpAndSettle();
+    expect(find.textContaining(RegExp('301-701-501', caseSensitive: false)), findsWidgets);
+    // Leg 3 en Cricket
+    await tester.tap(find.byKey(const ValueKey('mleg-2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cricket').last);
+    await tester.pumpAndSettle();
+    expect(find.textContaining(RegExp('301-701-CR', caseSensitive: false)), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
 }

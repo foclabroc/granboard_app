@@ -22,12 +22,24 @@ class MatchSettings {
   final X01Settings x01;
   final CricketSettings cricket;
 
+  /// Score de départ de chaque leg de 01 (301, 501…) ; manquant = celui de
+  /// [x01].
+  final List<int> starts;
+
   const MatchSettings({
     this.legs = 3,
     this.pattern = const [LegKind.x01, LegKind.cricket, LegKind.x01],
     this.x01 = const X01Settings(),
     this.cricket = const CricketSettings(),
+    this.starts = const [],
   });
+
+  /// Score de départ du leg [leg] (s'il est en 01).
+  int startOf(int leg) =>
+      leg < starts.length && starts[leg] > 0 ? starts[leg] : x01.startScore;
+
+  /// Règles 01 du leg [leg] (score de départ du leg).
+  X01Settings x01For(int leg) => x01.withStart(startOf(leg));
 
   /// 01, Cricket, 01, Cricket… pour [legs] legs.
   static List<LegKind> alternate(int legs) =>
@@ -40,12 +52,13 @@ class MatchSettings {
 
   String get patternLabel => [
         for (var i = 0; i < legs; i++)
-          kindOf(i) == LegKind.x01 ? '${x01.startScore}' : 'CR'
+          kindOf(i) == LegKind.x01 ? '${startOf(i)}' : 'CR'
       ].join('-');
 
   Map<String, dynamic> toJson() => {
         'legs': legs,
         'pattern': [for (var i = 0; i < legs; i++) kindOf(i).name],
+        'starts': [for (var i = 0; i < legs; i++) startOf(i)],
         'x01': x01.toJson(),
         'cricket': cricket.toJson(),
       };
@@ -61,6 +74,10 @@ class MatchSettings {
             Map<String, dynamic>.from(j['x01'] as Map? ?? const {})),
         cricket: CricketSettings.fromJson(
             Map<String, dynamic>.from(j['cricket'] as Map? ?? const {})),
+        starts: [
+          for (final s in (j['starts'] as List? ?? const []))
+            (s as num).toInt()
+        ],
       );
 }
 
@@ -212,7 +229,7 @@ class MatchGame implements DartsGame {
     final n = players.length;
     final order = [for (var i = 0; i < n; i++) players[(i + k) % n]];
     legs.add(switch (settings.kindOf(k)) {
-      LegKind.x01 => X01Game(settings.x01, order),
+      LegKind.x01 => X01Game(settings.x01For(k), order),
       LegKind.cricket => CricketGame(
           settings.cricket.withSeed(settings.cricket.seed + k), order),
     });

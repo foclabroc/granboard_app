@@ -234,8 +234,12 @@ String matchRules(MatchSettings s) => [
 
 String _matchFull(MatchSettings s) => [
       matchRules(s),
-      '# LEGS DE ${s.x01.name.toUpperCase()}',
-      x01Rules(s.x01).replaceAll('# ', '## '),
+      '# LEGS DE 01',
+      x01Rules(s.x01For(
+              [for (var i = 0; i < s.legs; i++) i].firstWhere(
+                  (i) => s.kindOf(i) == LegKind.x01,
+                  orElse: () => 0)))
+          .replaceAll('# ', '## '),
       '# LEGS DE CRICKET',
       cricketRules(s.cricket).replaceAll('# ', '## '),
     ].join('\n');
