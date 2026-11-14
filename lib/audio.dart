@@ -288,7 +288,7 @@ class AudioService extends ChangeNotifier {
 
   /// Effet sonore (plusieurs peuvent se superposer).
   void play(Sfx s) {
-    if (_muted || !effects || _pool.isEmpty) return;
+    if (_muted || _background || !effects || _pool.isEmpty) return;
     final p = _pool[_poolIndex];
     _poolIndex = (_poolIndex + 1) % _pool.length;
     () async {
@@ -374,7 +374,7 @@ class AudioService extends ChangeNotifier {
   final said = <String>[];
 
   void say(String text) {
-    if (_muted || !voice) return;
+    if (_muted || _background || !voice) return;
     said.add(text);
     if (said.length > 50) said.removeAt(0);
     final tts = _tts;
@@ -420,10 +420,25 @@ class AudioService extends ChangeNotifier {
     });
   }
 
+  /// Appli passée en arrière-plan (bouton Accueil) : plus aucun son ;
+  /// la musique reprend au retour.
+  bool _background = false;
+  bool get background => _background;
+  set background(bool v) {
+    if (_background == v) return;
+    _background = v;
+    if (v) {
+      _music?.pause().catchError((_) {});
+      _stopVoice();
+    } else if (_musicWanted) {
+      startMusic();
+    }
+  }
+
   void startMusic() {
     _musicWanted = true;
     final m = _music;
-    if (_muted || !music || m == null) return;
+    if (_muted || _background || !music || m == null) return;
     if (m.state == PlayerState.playing) return;
     if (m.state == PlayerState.paused) {
       m.resume().catchError((_) {});
@@ -434,7 +449,7 @@ class AudioService extends ChangeNotifier {
 
   void _playTrack() {
     final m = _music;
-    if (m == null) return;
+    if (m == null || _background) return;
     final name = _order[_track % _order.length];
     musicStarts.value++;
     () async {

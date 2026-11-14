@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.15
+
+- Bouton Accueil : plus aucun son quand l'appli passe en arrière-plan (musique en pause, reprise au retour) ; sur Android TV l'appli se ferme au lieu de tourner cachée derrière l'accueil de la TV
+
 ## v0.6.14
 
 - Fin de partie : les résultats s'ouvrent tout seuls (moins d'une seconde après la dernière fléchette), plus besoin de toucher « Résultats »

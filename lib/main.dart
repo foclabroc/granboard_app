@@ -12,6 +12,7 @@ import 'players.dart';
 import 'tv/screen_cam.dart';
 import 'tv/tv_home.dart';
 import 'tv_link.dart';
+import 'ui/award.dart' show AwardPlayer;
 import 'ui/cricket_view.dart' show CricketStyle;
 import 'ui/dartboard.dart' show BoardSkin;
 import 'ui/home_page.dart';
@@ -90,6 +91,32 @@ class GranBoardApp extends StatefulWidget {
 
 class GranBoardAppState extends State<GranBoardApp> {
   late bool tv = widget.tv;
+
+  /// Bouton Accueil : plus de son en arrière-plan ; sur Android TV l'appli
+  /// se ferme (elle ne tourne pas cachée derrière l'accueil de la TV).
+  late final AppLifecycleListener _life = AppLifecycleListener(
+    onStateChange: (state) {
+      if (state == AppLifecycleState.paused) {
+        AudioService.instance.background = true;
+        AwardPlayer.stop();
+        if (widget.androidTv) SystemNavigator.pop();
+      } else if (state == AppLifecycleState.resumed) {
+        AudioService.instance.background = false;
+      }
+    },
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _life; // écoute dès le départ
+  }
+
+  @override
+  void dispose() {
+    _life.dispose();
+    super.dispose();
+  }
 
   /// Bascule téléphone ↔ écran TV (mémorisé).
   Future<void> setTvMode(bool on) async {

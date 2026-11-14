@@ -157,6 +157,15 @@ void main() {
     expect(audio.said, ['raté']);
   });
 
+  test('Arrière-plan : plus aucune annonce, reprise au retour', () {
+    audio.background = true;
+    audio.say('triple 20');
+    expect(audio.said, isEmpty);
+    audio.background = false;
+    audio.say('triple 20');
+    expect(audio.said, ['triple 20']);
+  });
+
   testWidgets('01 : « il te reste 40, double 20 »', (tester) async {
     final g = X01Game(const X01Settings(startScore: 101), two);
     g.throwDart(const DartHit(20, 3, Ring.triple));
