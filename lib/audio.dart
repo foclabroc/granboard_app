@@ -405,7 +405,10 @@ class AudioService extends ChangeNotifier {
     musicStarts.value++;
     () async {
       try {
-        await m.play(AssetSource('music/$name'), volume: musicVolume);
+        // position 0 obligatoire : sur Android, relancer le morceau déjà
+        // chargé ne le reprend pas au début (même fichier = ignoré)
+        await m.play(AssetSource('music/$name'),
+            volume: musicVolume, position: Duration.zero);
       } catch (_) {}
     }();
   }

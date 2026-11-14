@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.11
+
+- Musique des menus : quand le son est ajouté à un appareil, le morceau repart bien au début sur tous (l'écran continuait là où il en était : Android ignore la relance du même fichier)
+- Android TV : la bannière de l'appli affiche FOCLA BOARD (elle disait encore GRAN BOARD)
+
 ## v0.6.10
 
 - Bandeau « AU TOUR DE » aussi pour le tout premier joueur de la partie (téléphone et écran TV)
