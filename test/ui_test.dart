@@ -87,6 +87,45 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
   });
 
+  testWidgets('Option AUTO : joueur suivant 5 s après les 3 fléchettes',
+      (tester) async {
+    await phone(tester);
+    await AutoNext.set(true);
+    addTearDown(() => AutoNext.set(false));
+    final page = GamePage(
+      settings: const X01Settings(startScore: 301),
+      players: four.take(2).toList(),
+    );
+    await tester.pumpWidget(app(page));
+    await tester.pump(const Duration(seconds: 1));
+    final state = tester.state(find.byType(GamePage)) as dynamic;
+    for (var i = 0; i < 3; i++) {
+      BoardService.instance
+          .injectFrame(GranBoardDecoder.frameFor(5, Ring.singleOuter)!.codeUnits);
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    expect(find.byKey(const ValueKey('auto-next')), findsOneWidget);
+    expect(find.textContaining('JOUEUR SUIVANT DANS'), findsOneWidget);
+    expect((state.game as X01Game).current, 0);
+    await tester.pump(const Duration(seconds: 3));
+    expect((state.game as X01Game).current, 0);
+    await tester.pump(const Duration(seconds: 3));
+    expect((state.game as X01Game).current, 1, reason: 'suivant tout seul');
+    expect(find.textContaining('JOUEUR SUIVANT DANS'), findsNothing);
+
+    // coupé : on attend « Suivant »
+    await AutoNext.set(false);
+    for (var i = 0; i < 3; i++) {
+      BoardService.instance
+          .injectFrame(GranBoardDecoder.frameFor(5, Ring.singleOuter)!.codeUnits);
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    await tester.pump(const Duration(seconds: 7));
+    expect((state.game as X01Game).current, 1);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 2));
+  });
+
   testWidgets('Bandeau « au tour de » après Suivant', (tester) async {
     await phone(tester);
     TurnBanner.enabled = true;

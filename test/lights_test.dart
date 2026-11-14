@@ -65,6 +65,9 @@ void main() {
     expect(BoardLights.targetsOf(c)..sort(), [15, 16, 17, 18, 19],
         reason: 'le 20 est fermé par tous');
 
+    // 501 : pas de fin possible, le 20 reste allumé
+    expect(BoardLights.targetsOf(X01Game(const X01Settings(), two)), [20]);
+
     final x = X01Game(const X01Settings(startScore: 101), two);
     expect(BoardLights.targetsOf(x), [17], reason: 'T17 puis bull');
     x.throwDart(const DartHit(20, 3, Ring.triple)); // reste 41
@@ -99,6 +102,26 @@ void main() {
     expect(lights.sent.any((b) => b[0] == 0x03 && b[10] == 25), isTrue,
         reason: 'T20 : 3 clignotements en face du 20');
     expect(sentNumbers([15, 16, 17, 18, 19]), isTrue);
+
+    // après le clignotement de la touche, guides et contour renvoyés (la
+    // cible les efface pendant son animation)
+    final before = lights.sent.length;
+    await tester.pump(BoardLights.reassertDelay);
+    await tester.pump(const Duration(milliseconds: 300));
+    final again = lights.sent.sublist(before);
+    expect(again.any((b) => b.length == 16 && b[0] == 0x14), isTrue);
+    expect(again.any((b) => b.length == 20 && b[19] == 5), isFalse);
+    expect(again.any((b) => b.length == 20 && b[18] == 5), isTrue,
+        reason: '19 encore à viser');
+
+    // 3 fléchettes : les guides restent allumés jusqu'au joueur suivant
+    for (var i = 0; i < 2; i++) {
+      BoardService.instance
+          .injectFrame(GranBoardDecoder.frameFor(19, Ring.triple)!.codeUnits);
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+    await tester.pump(const Duration(seconds: 2));
+    expect(lights.sent.where((b) => b.length == 20).last.contains(5), isTrue);
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));

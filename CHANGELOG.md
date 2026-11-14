@@ -2,6 +2,8 @@
 
 ## v0.6.15
 
+- Option AUTO (bouton en haut de chaque partie, gardée sur le téléphone) : joueur suivant tout seul 5 s après les 3 fléchettes, avec un compte à rebours (le toucher coupe AUTO) ; attend la fin d'une vidéo de récompense
+- Lumières de la 3s : les numéros à viser et le contour sont renvoyés après chaque fléchette (l'animation de la cible les effaçait), restent allumés après les 3 fléchettes jusqu'au joueur suivant, et en 01 sans fin possible le 20 est allumé
 - Bouton Accueil : plus aucun son quand l'appli passe en arrière-plan (musique en pause, reprise au retour) ; sur Android TV l'appli se ferme au lieu de tourner cachée derrière l'accueil de la TV
 
 ## v0.6.14

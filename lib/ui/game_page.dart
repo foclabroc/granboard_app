@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../audio.dart';
 import '../board_lights.dart';
@@ -38,6 +39,25 @@ import '../tournament.dart';
 
 /// Partie en cours (01 / Freeze avec [settings] + [players], ou [game] déjà
 /// prêt : Cricket…).
+/// Option « AUTO » : joueur suivant tout seul 5 s après les 3 fléchettes
+/// (réglage du téléphone, bouton AUTO en haut de chaque partie).
+class AutoNext {
+  static const delay = Duration(seconds: 5);
+  static const _pref = 'auto_next_v1';
+  static final on = ValueNotifier<bool>(false);
+
+  static Future<void> load() async {
+    final p = await SharedPreferences.getInstance();
+    on.value = p.getBool(_pref) ?? false;
+  }
+
+  static Future<void> set(bool v) async {
+    on.value = v;
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(_pref, v);
+  }
+}
+
 class GamePage extends StatefulWidget {
   final X01Settings? settings;
   final List<X01Player>? players;
@@ -86,6 +106,7 @@ class _GamePageState extends State<GamePage> {
   void initState() {
     super.initState();
     _sub = BoardService.instance.events.listen(_onEvent);
+    AutoNext.on.addListener(_onAutoChanged);
     PlayerStore.instance.setGameColors([for (final p in game.players) p.id]);
     audio.stopMusic();
     MediaStore.instance.ensure(game.players.map((p) => p.id));
@@ -108,6 +129,8 @@ class _GamePageState extends State<GamePage> {
   @override
   void dispose() {
     _botTimer?.cancel();
+    _autoTimer?.cancel();
+    AutoNext.on.removeListener(_onAutoChanged);
     AwardPlayer.stop();
     TurnBanner.hide();
     BoardLights.instance.clear();
@@ -211,6 +234,63 @@ class _GamePageState extends State<GamePage> {
     _pushTv();
     _reportTournament();
     _autoResults();
+    _scheduleAutoNext();
+  }
+
+  // ─── Joueur suivant automatique ───
+
+  Timer? _autoTimer;
+
+  /// Journal au moment où le compte à rebours a démarré (null = aucun).
+  int? _autoFor;
+
+  bool get _autoWanted {
+    final g = game;
+    return AutoNext.on.value &&
+        !g.finished &&
+        g.turnOver &&
+        !(g is MatchGame && g.betweenLegs) &&
+        !_botTurn &&
+        _canAct;
+  }
+
+  void _scheduleAutoNext() {
+    final len = game.actionLog.length;
+    if (!_autoWanted) {
+      _cancelAutoNext();
+      return;
+    }
+    if (_autoFor == len) return;
+    _autoTimer?.cancel();
+    setState(() => _autoFor = len);
+    _autoTimer = Timer(AutoNext.delay, () => _autoFire(len));
+  }
+
+  /// Option AUTO changée en cours de manche.
+  void _onAutoChanged() {
+    if (mounted) _scheduleAutoNext();
+  }
+
+  void _cancelAutoNext() {
+    _autoTimer?.cancel();
+    _autoTimer = null;
+    if (_autoFor != null && mounted) setState(() => _autoFor = null);
+  }
+
+  void _autoFire(int len) {
+    if (!mounted) return;
+    if (game.actionLog.length != len || !_autoWanted) {
+      _cancelAutoNext();
+      return;
+    }
+    // une vidéo plein écran joue : on attend qu'elle finisse
+    if (AwardPlayer.active) {
+      _autoTimer = Timer(const Duration(milliseconds: 500), () => _autoFire(len));
+      return;
+    }
+    _autoTimer = null;
+    _autoFor = null;
+    _next();
   }
 
   bool _resultsSoon = false;
@@ -278,6 +358,7 @@ class _GamePageState extends State<GamePage> {
     _pushTv();
     _reportTournament();
     _autoResults();
+    _scheduleAutoNext();
   }
 
   void _onEvent(BoardEvent e) {
@@ -549,6 +630,22 @@ class _GamePageState extends State<GamePage> {
                 ],
               ),
             ),
+            ValueListenableBuilder<bool>(
+              valueListenable: AutoNext.on,
+              builder: (context, on, _) => Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: FilterChip(
+                  key: const ValueKey('auto-next'),
+                  visualDensity: VisualDensity.compact,
+                  selected: on,
+                  showCheckmark: false,
+                  avatar: Icon(on ? Icons.timer : Icons.timer_off, size: 16),
+                  label: const Text('AUTO'),
+                  tooltip: 'Joueur suivant tout seul 5 s après les 3 fléchettes',
+                  onSelected: AutoNext.set,
+                ),
+              ),
+            ),
             IconButton(
               tooltip: 'Règles',
               icon: const Icon(Icons.help_outline),
@@ -579,6 +676,16 @@ class _GamePageState extends State<GamePage> {
                     child: gameView(game, _splash,
                         actionBar: actionBar, onChangeTarget: _changeTarget),
                   ),
+                  if (_autoFor != null)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 2,
+                      child: Center(
+                          child: _AutoNextPill(
+                              key: ValueKey('auto-pill-$_autoFor'),
+                              onCancel: () => AutoNext.set(false))),
+                    ),
                   if (_video != null)
                     Positioned.fill(
                       child: VideoBubble(
@@ -589,6 +696,37 @@ class _GamePageState extends State<GamePage> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Compte à rebours du joueur suivant automatique (toucher = option AUTO
+/// coupée).
+class _AutoNextPill extends StatelessWidget {
+  final VoidCallback onCancel;
+  const _AutoNextPill({super.key, required this.onCancel});
+
+  @override
+  Widget build(BuildContext context) {
+    final secs = AutoNext.delay.inSeconds.toDouble();
+    return GestureDetector(
+      onTap: onCancel,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.75),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Tv.gold),
+        ),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: secs, end: 0),
+          duration: AutoNext.delay,
+          builder: (context, v, _) => Text(
+            'JOUEUR SUIVANT DANS ${v.ceil()} S · TOUCHER POUR COUPER AUTO',
+            style: Tv.label(12, color: Tv.gold),
+          ),
         ),
       ),
     );

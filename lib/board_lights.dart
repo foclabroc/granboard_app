@@ -52,6 +52,12 @@ class BoardLights {
   Color? _ring;
   List<int> _numbers = const [];
 
+  /// Renvoi du contour et des numéros après le clignotement d'une touche :
+  /// la cible efface ses lumières pendant son animation, les guides ne
+  /// revenaient pas (envoyés seulement quand ils changent).
+  Timer? _reassert;
+  static const reassertDelay = Duration(milliseconds: 1500);
+
   Future<void> load() async {
     final p = await SharedPreferences.getInstance();
     enabled = p.getBool(_prefOn) ?? true;
@@ -182,15 +188,36 @@ class BoardLights {
       }
     }
     state(game, color);
+    _reassert?.cancel();
+    if (!enabled && !numbers) return;
+    _reassert = Timer(reassertDelay, () {
+      if (!_active) return;
+      final ring = _ring, nums = _numbers;
+      if (enabled && ring != null) {
+        _ring = null;
+        _setRing(ring);
+      }
+      if (numbers && nums.isNotEmpty) {
+        _numbers = const [];
+        _setNumbers(nums);
+      }
+    });
   }
 
-  /// État continu : contour à la couleur du joueur en cours, numéros à viser.
+  /// État continu : contour à la couleur du joueur en cours, numéros à viser
+  /// (gardés allumés après les 3 fléchettes, jusqu'au joueur suivant).
   void state(DartsGame game, Color color) {
     if (!_active) return;
     if (enabled) {
       _setRing(color);
     }
-    if (numbers) _setNumbers(game.finished ? const [] : targetsOf(game));
+    if (!numbers) return;
+    final leg = game is MatchGame ? game.leg : game;
+    if (game.finished) {
+      _setNumbers(const []);
+    } else if (!leg.turnOver) {
+      _setNumbers(targetsOf(game));
+    }
   }
 
   /// Essai depuis les réglages : vague, 20-19-18 allumés, puis tout s'éteint.
@@ -210,6 +237,7 @@ class BoardLights {
 
   /// Fin de partie (page quittée) : tout s'éteint.
   void clear() {
+    _reassert?.cancel();
     if (!_active) return;
     if (_ring != null) _ringOff();
     _setNumbers(const []);
@@ -227,6 +255,8 @@ class BoardLights {
           final n =
               int.tryParse(opts.first.first.replaceFirst(RegExp('^[DT]'), ''));
           if (n != null) out.add(n);
+        } else {
+          out.add(20); // pas de fin possible : le 20, comme d'habitude
         }
       case CricketGame c:
         final side = c.sideOf(c.current);

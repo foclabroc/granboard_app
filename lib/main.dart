@@ -15,6 +15,7 @@ import 'tv_link.dart';
 import 'ui/award.dart' show AwardPlayer;
 import 'ui/cricket_view.dart' show CricketStyle;
 import 'ui/dartboard.dart' show BoardSkin;
+import 'ui/game_page.dart' show AutoNext;
 import 'ui/home_page.dart';
 import 'ui/theme.dart';
 import 'ui/wallpaper.dart';
@@ -66,6 +67,7 @@ Future<void> main() async {
     if (!tv) PlayerStore.instance.load(),
   ]);
   TvLink.enabled = !tv;
+  if (!tv) await AutoNext.load();
   if (!tv) await TvLink.instance.load();
   // Jamais de mise en veille de l'écran tant que l'appli est ouverte
   WakelockPlus.enable().catchError((_) {});
