@@ -5,6 +5,7 @@
 - Musique des menus : quand le son est ajouté à un appareil, le morceau repart bien au début sur tous (l'écran continuait là où il en était : Android ignore la relance du même fichier)
 - Vidéos (récompenses et coups) réencodées au format H.264 « Main » niveau 3.1, plus simple à lire pour les TV (erreur MediaCodecVideoRenderer sur la TCL)
 - Écran TV : message d'erreur vidéo raccourci à l'essentiel (cause, caméra en cours), une seule fois par soirée pour la même erreur
+- Nouvelles fléchettes sur la cible : vues de face, 4 ailettes fines à la couleur du joueur avec contour sombre, numéro 1/2/3 au centre (toutes les cibles, téléphone et TV)
 - Android TV : la bannière de l'appli affiche FOCLA BOARD (elle disait encore GRAN BOARD)
 
 ## v0.6.10

@@ -941,48 +941,12 @@ class _HitsPainter extends CustomPainter {
             ..strokeWidth = r * 0.025 * (1 - t) + 1);
     }
 
-    if (realistic) {
-      // Fléchettes en 3D : les plus anciennes d'abord (la dernière par-dessus)
-      for (var k = 0; k < hits.length; k++) {
-        final last = k == hits.length - 1;
-        _dart3d(canvas, dartPoint(c, r, hits[k], k + 1), r, k,
-            last ? impact.clamp(0.0, 1.0) : 1.0);
-      }
-    }
-    // Fléchettes plantées (vues de face : empennage en croix)
-    for (var k = 0; k < (realistic ? 0 : hits.length); k++) {
+    // Fléchettes plantées, vues de face (ailettes fines numérotées) : les
+    // plus anciennes d'abord, la dernière par-dessus
+    for (var k = 0; k < hits.length; k++) {
       final last = k == hits.length - 1;
-      final p = dartPoint(c, r, hits[k], k + 1);
-      // La dernière arrive de loin : plus grosse puis se plante
-      final t = last ? Curves.easeIn.transform(impact.clamp(0, 1)) : 1.0;
-      final scale = 1 + (1 - t) * 1.6;
-      final s = r * 0.085 * scale;
-      final shadowOff = const Offset(1, 1) * r * 0.03 * scale;
-      canvas.drawCircle(p + shadowOff, s * 0.9,
-          Paint()..color = Colors.black.withValues(alpha: 0.45));
-      final flight = Paint()..color = dartColor;
-      for (var q = 0; q < 4; q++) {
-        final a = math.pi / 4 + q * math.pi / 2;
-        final dir = Offset(math.cos(a), math.sin(a));
-        final side = Offset(-dir.dy, dir.dx);
-        canvas.drawPath(
-            Path()
-              ..moveTo(p.dx, p.dy)
-              ..lineTo((p + dir * s + side * s * 0.35).dx,
-                  (p + dir * s + side * s * 0.35).dy)
-              ..lineTo((p + dir * s - side * s * 0.35).dx,
-                  (p + dir * s - side * s * 0.35).dy)
-              ..close(),
-            flight);
-      }
-      canvas.drawCircle(p, s * 0.28, Paint()..color = Colors.black);
-      canvas.drawCircle(
-          p,
-          s * 0.28,
-          Paint()
-            ..color = Colors.white
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = math.max(1, s * 0.08));
+      _dartFace(canvas, dartPoint(c, r, hits[k], k + 1), r, k,
+          last ? impact.clamp(0.0, 1.0) : 1.0);
     }
 
     // Éclair plein écran (bust en rouge, victoire en or)
@@ -1155,114 +1119,66 @@ class _HitsPainter extends CustomPainter {
     }
   }
 
-  /// Fléchette vue un peu de côté : pointe dans la cible, fût en métal,
-  /// tige et empennage à la couleur du joueur, ombre portée. [t] = arrivée
-  /// (0 → 1) : elle grossit puis se plante en vibrant.
-  void _dart3d(Canvas canvas, Offset p, double r, int k, double t) {
+  /// Fléchette vue de face : 4 ailettes fines à la couleur du joueur
+  /// (contour sombre), numéro de la fléchette au centre, ombre portée.
+  /// [t] = arrivée (0 → 1) : elle arrive en grand puis se plante en
+  /// tremblant.
+  void _dartFace(Canvas canvas, Offset p, double r, int k, double t) {
     final arrive = Curves.easeIn.transform(t);
-    final scale = 1 + (1 - arrive) * 1.4;
-    // Vibration après l'impact
-    final wob = t < 1 ? 0.22 * math.sin(t * 22) * (1 - t) : 0.0;
-    final ang = -1.05 + (k - 1) * 0.12 + wob; // vers le haut à droite
-    final d = Offset(math.cos(ang), math.sin(ang));
-    final side = Offset(-d.dy, d.dx);
-    final len = r * 0.25 * scale;
-    Offset at(double f, [double w = 0]) => p + d * len * f + side * w;
-
-    // Ombre sur la cible (lumière en haut à gauche)
-    const sh = Offset(0.75, 0.55);
-    canvas.drawPath(
-        Path()
-          ..moveTo(p.dx, p.dy)
-          ..lineTo((p + sh * len * 0.75 + Offset(-sh.dy, sh.dx) * r * 0.05).dx,
-              (p + sh * len * 0.75 + Offset(-sh.dy, sh.dx) * r * 0.05).dy)
-          ..lineTo((p + sh * len * 0.75 - Offset(-sh.dy, sh.dx) * r * 0.05).dx,
-              (p + sh * len * 0.75 - Offset(-sh.dy, sh.dx) * r * 0.05).dy)
-          ..close(),
+    // taille mini pour les petites cibles (Cricket)
+    final s = math.max(r * 0.16, 14.0) * (1 + (1 - arrive) * 1.4);
+    final wob = t < 1 ? 0.25 * math.sin(t * 22) * (1 - t) : 0.0;
+    // Ombre (lumière en haut à gauche)
+    canvas.drawCircle(
+        p + Offset(s * 0.35, s * 0.35),
+        s * 0.85,
         Paint()
-          ..color = Colors.black.withValues(alpha: 0.38 * arrive)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.025));
-    // Trou d'entrée
-    canvas.drawCircle(p, r * 0.014, Paint()..color = Colors.black);
-
-    // Fût en métal (effilé côté pointe)
-    final bw0 = r * 0.022 * scale, bw1 = r * 0.04 * scale;
-    final barrel = Path()
-      ..moveTo(at(0.04, bw0).dx, at(0.04, bw0).dy)
-      ..lineTo(at(0.42, bw1).dx, at(0.42, bw1).dy)
-      ..lineTo(at(0.42, -bw1).dx, at(0.42, -bw1).dy)
-      ..lineTo(at(0.04, -bw0).dx, at(0.04, -bw0).dy)
+          ..color = Colors.black.withValues(alpha: 0.45 * arrive)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, s * 0.3));
+    canvas.save();
+    canvas.translate(p.dx, p.dy);
+    canvas.rotate(math.pi / 4 + k * 0.35 + wob);
+    final wing = Path()
+      ..moveTo(s * 0.1, 0)
+      ..lineTo(s * 0.5, s * 0.125)
+      ..lineTo(s, s * 0.1)
+      ..lineTo(s, -s * 0.1)
+      ..lineTo(s * 0.5, -s * 0.125)
       ..close();
-    canvas.drawPath(
-        barrel,
-        Paint()
-          ..shader = const LinearGradient(
-            colors: [
-              Color(0xFF3B3F46),
-              Color(0xFFDDE2E8),
-              Color(0xFF8A9099),
-              Color(0xFF2B2E33),
-            ],
-            stops: [0, 0.35, 0.6, 1],
-          ).createShader(Rect.fromPoints(at(0.2, bw1), at(0.2, -bw1))));
-    // Moletage
-    final knurl = Paint()
-      ..color = Colors.black.withValues(alpha: 0.35)
-      ..strokeWidth = math.max(0.6, r * 0.004);
-    for (var q = 0; q < 6; q++) {
-      final f = 0.12 + q * 0.05;
-      final w = bw0 + (bw1 - bw0) * (f - 0.04) / 0.38;
-      canvas.drawLine(at(f, w), at(f, -w), knurl);
+    final fill = Paint()
+      ..shader = LinearGradient(colors: [
+        Color.lerp(dartColor, Colors.black, 0.4)!,
+        dartColor,
+        Color.lerp(dartColor, Colors.white, 0.3)!,
+      ]).createShader(Rect.fromLTRB(0, 0, s, 1));
+    final edge = Paint()
+      ..color = Colors.black.withValues(alpha: 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1.2, s * 0.06)
+      ..strokeJoin = StrokeJoin.round;
+    for (var q = 0; q < 4; q++) {
+      canvas.drawPath(wing, fill);
+      canvas.drawPath(wing, edge);
+      canvas.rotate(math.pi / 2);
     }
-    // Pointe visible avant l'impact
-    if (arrive < 1) {
-      canvas.drawLine(
-          at(0.04),
-          at(-0.1 * (1 - arrive)),
-          Paint()
-            ..color = const Color(0xFFB8BEC6)
-            ..strokeWidth = bw0 * 0.6);
-    }
-    // Tige
-    final sw = r * 0.016 * scale;
-    canvas.drawPath(
-        Path()
-          ..moveTo(at(0.42, sw).dx, at(0.42, sw).dy)
-          ..lineTo(at(0.7, sw).dx, at(0.7, sw).dy)
-          ..lineTo(at(0.7, -sw).dx, at(0.7, -sw).dy)
-          ..lineTo(at(0.42, -sw).dx, at(0.42, -sw).dy)
-          ..close(),
-        Paint()..color = Color.lerp(dartColor, Colors.black, 0.45)!);
-    // Empennage : une ailette de face (large), l'autre de profil (fine)
-    final fw = r * 0.07 * scale;
-    final flight = Path()
-      ..moveTo(at(0.6).dx, at(0.6).dy)
-      ..lineTo(at(0.8, fw).dx, at(0.8, fw).dy)
-      ..lineTo(at(1.0, fw * 0.85).dx, at(1.0, fw * 0.85).dy)
-      ..lineTo(at(1.0, -fw * 0.85).dx, at(1.0, -fw * 0.85).dy)
-      ..lineTo(at(0.8, -fw).dx, at(0.8, -fw).dy)
-      ..close();
-    canvas.drawPath(
-        flight,
-        Paint()
-          ..shader = LinearGradient(colors: [
-            Color.lerp(dartColor, Colors.white, 0.35)!,
-            dartColor,
-            Color.lerp(dartColor, Colors.black, 0.35)!,
-          ]).createShader(Rect.fromPoints(at(0.8, fw), at(0.8, -fw))));
-    canvas.drawPath(
-        flight,
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.5)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = math.max(0.8, r * 0.005));
-    // Ailette de profil (trait foncé au milieu)
-    canvas.drawLine(
-        at(0.62),
-        at(1.0),
-        Paint()
-          ..color = Color.lerp(dartColor, Colors.black, 0.55)!
-          ..strokeWidth = math.max(1, r * 0.012 * scale));
+    canvas.restore();
+    // Centre : pastille numérotée
+    canvas.drawCircle(p, s * 0.3, Paint()..color = Colors.white);
+    canvas.drawCircle(
+        p, s * 0.25, Paint()..color = Color.lerp(dartColor, Colors.black, 0.3)!);
+    final tp = TextPainter(
+      text: TextSpan(
+        text: '${k + 1}',
+        style: TextStyle(
+            fontFamily: Tv.font,
+            fontWeight: FontWeight.w800,
+            fontSize: s * 0.38,
+            color: Colors.white,
+            height: 1),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, p - Offset(tp.width / 2, tp.height / 2));
   }
 
   /// Paint : zones à la couleur de leur joueur, bord blanc si protégées.
