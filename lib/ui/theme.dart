@@ -252,6 +252,13 @@ class AppSkin {
       all.firstWhere((s) => s.id == id, orElse: () => gold);
 }
 
+/// Économie d'animations pour les appareils peu puissants (écran TV) :
+/// fond fixe, cible sans animation continue (LED, reflet, zones qui
+/// pulsent) ; les animations d'un coup (fléchette, bust, victoire) restent.
+class Perf {
+  static bool lite = false;
+}
+
 /// Palette de l'appli, selon le thème choisi ([skin]). Les noms « gold… »
 /// désignent la couleur d'accent du thème (or dans le thème d'origine).
 class Tv {
@@ -567,7 +574,9 @@ class _SkinBackgroundState extends State<SkinBackground>
   @override
   void initState() {
     super.initState();
-    if (SkinBackground.animate) _c.repeat();
+    // Écran TV : fond fixe (redessiné seulement s'il change)
+    if (SkinBackground.animate && !Perf.lite) _c.repeat();
+    if (Perf.lite) _c.value = 0.15;
   }
 
   @override

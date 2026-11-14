@@ -757,15 +757,20 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
   // Démarre « fini » : les fléchettes déjà là sont plantées
   late final _impact = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 650), value: 1);
-  late final _pulse = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1400))
-    ..repeat(reverse: true);
+  // Écran TV (Perf.lite) : pas d'animation continue, seulement les coups
+  late final _pulse = Perf.lite
+      ? AnimationController(
+          vsync: this, duration: const Duration(milliseconds: 1400), value: 0.6)
+      : (AnimationController(
+          vsync: this, duration: const Duration(milliseconds: 1400))
+        ..repeat(reverse: true));
   late final _flash = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 900));
   // Anneau de LED et reflet qui tournent (cible réaliste)
-  late final _spin =
-      AnimationController(vsync: this, duration: const Duration(seconds: 6))
-        ..repeat();
+  late final _spin = Perf.lite
+      ? AnimationController(vsync: this, duration: const Duration(seconds: 6))
+      : (AnimationController(vsync: this, duration: const Duration(seconds: 6))
+        ..repeat());
 
   @override
   void didUpdateWidget(AnimatedDartboard old) {

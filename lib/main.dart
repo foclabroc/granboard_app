@@ -51,6 +51,8 @@ Future<void> main() async {
   final androidTv = await isAndroidTv();
   final tv = androidTv || await detectTv();
   AudioService.instance.tvDevice = tv;
+  // Écran TV (souvent peu puissant) : animations continues coupées
+  Perf.lite = tv;
   await Future.wait([
     AudioService.instance.init(),
     BoardSkin.load(),
