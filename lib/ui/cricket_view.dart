@@ -380,7 +380,8 @@ class _ColumnsArena extends StatelessWidget {
                 SizedBox(
                   width: nameW - (active ? 0 : inset),
                   child: Padding(
-                    padding: const EdgeInsets.only(left: 6),
+                    // marge à droite : le nom ne touche pas le trait du 20
+                    padding: const EdgeInsets.only(left: 6, right: 10),
                     child: Row(
                       children: [
                         for (final i in members)
