@@ -554,7 +554,8 @@ class _TargetLines extends CustomPainter {
       ..color = Colors.white.withValues(alpha: 0.14)
       ..strokeWidth = 1;
     final cell = (size.width - left - right) / count;
-    for (var k = 1; k < count; k++) {
+    // Aussi entre le nom et le 1er numéro, et entre le bull et les points
+    for (var k = 0; k <= count; k++) {
       final x = (left + cell * k).roundToDouble() + 0.5;
       canvas.drawLine(Offset(x, 4), Offset(x, size.height - 2), p);
     }
@@ -973,35 +974,58 @@ class _PlayersBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final g = game;
     final cur = g.sideOf(g.current);
-    final curColor = sideColor(g, cur);
     return LayoutBuilder(builder: (context, c) {
       final h = c.maxHeight;
       final av = (h * 0.34).clamp(18.0, 34.0);
-      return Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.transparent,
-              curColor.withValues(alpha: 0.35),
-              curColor.withValues(alpha: 0.85),
-            ],
-            stops: const [0, 0.45, 1],
-          ),
-        ),
-        child: Row(
-          children: [
-            for (final s in g.sides)
-              Expanded(
-                child: Builder(builder: (context) {
-                  final active = s == cur && !g.finished;
-                  final won = g.winners.any((i) => g.sideOf(i) == s);
-                  final score = g.variant.scoring
-                      ? '${g.scoreOf(s)}'
-                      : '${g.closedMarks(s)}';
-                  return Opacity(
-                    opacity: active || g.finished ? 1 : 0.75,
+      // Une case par joueur (ou équipe) à sa couleur ; celle du joueur en
+      // cours plus vive, bordée et lumineuse
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final s in g.sides)
+            Expanded(
+              child: Builder(builder: (context) {
+                final active = s == cur && !g.finished;
+                final won = g.winners.any((i) => g.sideOf(i) == s);
+                final color = sideColor(g, s);
+                final score = g.variant.scoring
+                    ? '${g.scoreOf(s)}'
+                    : '${g.closedMarks(s)}';
+                final shown = active ? g.current : g.membersOf(s).first;
+                final name = g.membersOf(s).length > 1 && !active
+                    ? [for (final i in g.membersOf(s)) g.players[i].name]
+                        .join(' · ')
+                    : g.players[shown].name;
+                return Container(
+                  key: ValueKey('pbar-$s'),
+                  margin: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                  decoration: BoxDecoration(
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(14)),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        color.withValues(alpha: active ? 0.18 : 0.05),
+                        color.withValues(alpha: active ? 0.7 : 0.25),
+                      ],
+                    ),
+                    border: Border.all(
+                        color: active
+                            ? Colors.white.withValues(alpha: 0.85)
+                            : color.withValues(alpha: 0.45),
+                        width: active ? 2 : 1),
+                    boxShadow: active
+                        ? [
+                            BoxShadow(
+                                color: color.withValues(alpha: 0.55),
+                                blurRadius: 16,
+                                spreadRadius: 1)
+                          ]
+                        : null,
+                  ),
+                  child: Opacity(
+                    opacity: active || g.finished ? 1 : 0.8,
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.bottomCenter,
@@ -1045,16 +1069,13 @@ class _PlayersBar extends StatelessWidget {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (active) ...[
-                                    Text(g.currentPlayer.name,
-                                        style: Tv.title(18)),
-                                    const SizedBox(width: 6),
-                                  ],
-                                  RankChip(
-                                      active
-                                          ? g.currentPlayer.id
-                                          : g.players[g.membersOf(s).first].id,
-                                      size: 14),
+                                  Text(name,
+                                      style: Tv.title(18,
+                                          color: active
+                                              ? Colors.white
+                                              : Tv.text.withValues(alpha: 0.8))),
+                                  const SizedBox(width: 6),
+                                  RankChip(g.players[shown].id, size: 14),
                                 ],
                               ),
                             ),
@@ -1062,11 +1083,11 @@ class _PlayersBar extends StatelessWidget {
                         ],
                       ),
                     ),
-                  );
-                }),
-              ),
-          ],
-        ),
+                  ),
+                );
+              }),
+            ),
+        ],
       );
     });
   }

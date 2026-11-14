@@ -1126,7 +1126,7 @@ class _HitsPainter extends CustomPainter {
   void _dartFace(Canvas canvas, Offset p, double r, int k, double t) {
     final arrive = Curves.easeIn.transform(t);
     // taille mini pour les petites cibles (Cricket)
-    final s = math.max(r * 0.16, 14.0) * (1 + (1 - arrive) * 1.4);
+    final s = math.max(r * 0.16, 9.0) * (1 + (1 - arrive) * 1.4);
     final wob = t < 1 ? 0.25 * math.sin(t * 22) * (1 - t) : 0.0;
     // Ombre (lumière en haut à gauche)
     canvas.drawCircle(
