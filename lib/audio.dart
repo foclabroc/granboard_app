@@ -123,7 +123,13 @@ class AudioService extends ChangeNotifier {
 
   /// Musique des menus : les morceaux s'enchaînent, dans un ordre tiré au
   /// hasard à chaque lancement.
-  static const kMenuTracks = ['menu1.ogg', 'menu2.ogg', 'menu3.ogg'];
+  static const kMenuTracks = [
+    'menu1.ogg',
+    'menu2.ogg',
+    'menu3.ogg',
+    'menu4.ogg',
+    'menu5.ogg',
+  ];
   final _order = [...kMenuTracks]..shuffle(Random());
   int _track = 0;
 
