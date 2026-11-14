@@ -600,6 +600,15 @@ String videoErrorSummary(String e, {bool camera = false}) {
       when !parts.any((p) => p.contains(m[0]!))) {
     parts.add(m[0]!);
   }
+  // Dernière cause donnée par le lecteur (copie locale de video_player_android)
+  final causes = e.split(' | cause: ');
+  if (causes.length > 1) {
+    var c = causes.last.trim().replaceFirst(RegExp(r'^[\w.$]+(Exception|Error): '), '');
+    if (c.length > 110) c = '${c.substring(0, 110)}…';
+    if (c.isNotEmpty && !parts.any((p) => c.contains(p) || p.contains(c))) {
+      parts.add(c);
+    }
+  }
   if (camera) parts.add('caméra en cours');
   if (parts.isEmpty) {
     // la cause est en général à la fin du message

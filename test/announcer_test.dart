@@ -137,6 +137,26 @@ void main() {
     await close(tester);
   });
 
+  testWidgets('Annonce du tour : attend la fin de l\'annonce en cours',
+      (tester) async {
+    // « il reste … » encore à dire quand « suivant » arrive (joueur virtuel)
+    audio.sayLater('20, Il reste 241', 1000);
+    audio.turnCue('Bob, à toi');
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(audio.said, isEmpty);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(audio.said, ['20, Il reste 241']);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(audio.said, ['20, Il reste 241', 'Bob, à toi']);
+    // le joueur a lancé avant : l'annonce du tour saute
+    audio.said.clear();
+    audio.sayLater('raté', 500);
+    audio.turnCue('Ana, à toi');
+    audio.cancelCue();
+    await tester.pump(const Duration(seconds: 2));
+    expect(audio.said, ['raté']);
+  });
+
   testWidgets('01 : « il te reste 40, double 20 »', (tester) async {
     final g = X01Game(const X01Settings(startScore: 101), two);
     g.throwDart(const DartHit(20, 3, Ring.triple));

@@ -302,17 +302,26 @@ class AudioService extends ChangeNotifier {
 
   /// Son du tour d'un joueur (son fourni ou voix enregistrée), puis
   /// l'annonce une fois le son fini. Sans son perso : « suivant » + annonce.
+  ///
+  /// Attend d'abord que l'annonce en cours soit finie (4 s au plus) : le
+  /// « il reste … » de la 3e fléchette n'est plus coupé quand « suivant »
+  /// arrive vite (joueur virtuel, bouton de la cible).
   void turnCue(String text,
       {String sound = '', Uint8List? voice, int ms = 250, bool next = true}) {
-    final c = _cue;
-    final custom = sound.isNotEmpty && (sound != 'voice' || voice != null);
-    if (_muted || !effects || c == null || !custom) {
-      if (next) play(Sfx.next);
-      sayLater(text, ms);
-      return;
-    }
     final id = ++_cueId;
     () async {
+      for (var i = 0; talking && i < 40; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        if (id != _cueId) return;
+      }
+      if (id != _cueId) return;
+      final c = _cue;
+      final custom = sound.isNotEmpty && (sound != 'voice' || voice != null);
+      if (_muted || !effects || c == null || !custom) {
+        if (next) play(Sfx.next);
+        sayLater(text, ms);
+        return;
+      }
       try {
         await c.stop();
         final done = c.onPlayerComplete.first;
@@ -343,7 +352,16 @@ class AudioService extends ChangeNotifier {
     }();
   }
 
+  /// Annonce du tour pas encore jouée annulée (le joueur a déjà lancé).
+  void cancelCue() => _cueId++;
+
+  /// Une annonce est en cours ou va partir (`sayLater`).
+  bool get talking => _later > 0 || _speakingId != 0;
+  int _later = 0;
+  int _speakingId = 0;
+
   void _stopVoice() {
+    _speakingId = 0;
     _sayId++;
     _speaker?.stop().catchError((_) {});
     _tts?.stop().catchError((_) => 0);
@@ -363,24 +381,29 @@ class AudioService extends ChangeNotifier {
     final sp = _speaker;
     final parts = sp == null ? null : _bank?.plan(text, names);
     final id = ++_sayId;
+    _speakingId = id;
     () async {
       try {
-        await sp?.stop();
-        await tts?.stop();
-      } catch (_) {}
-      for (final p in parts ?? [VoicePart.tts(text)]) {
-        if (id != _sayId || _muted || !voice) return;
         try {
-          if (p.clip != null) {
-            final done = sp!.onPlayerComplete.first;
-            await sp.play(AssetSource('voice/${p.clip}'), volume: 1.0);
-            await done.timeout(const Duration(seconds: 6));
-          } else if (tts != null) {
-            await tts
-                .speak(_isName(p.text!) ? spokenName(p.text!) : p.text!)
-                .timeout(const Duration(seconds: 8));
-          }
+          await sp?.stop();
+          await tts?.stop();
         } catch (_) {}
+        for (final p in parts ?? [VoicePart.tts(text)]) {
+          if (id != _sayId || _muted || !voice) return;
+          try {
+            if (p.clip != null) {
+              final done = sp!.onPlayerComplete.first;
+              await sp.play(AssetSource('voice/${p.clip}'), volume: 1.0);
+              await done.timeout(const Duration(seconds: 6));
+            } else if (tts != null) {
+              await tts
+                  .speak(_isName(p.text!) ? spokenName(p.text!) : p.text!)
+                  .timeout(const Duration(seconds: 8));
+            }
+          } catch (_) {}
+        }
+      } finally {
+        if (_speakingId == id) _speakingId = 0;
       }
     }();
   }
@@ -389,8 +412,13 @@ class AudioService extends ChangeNotifier {
       names.any((n) => n.trim().toLowerCase() == t.trim().toLowerCase());
 
   /// Annonce après un court délai (laisse le bruitage se jouer).
-  void sayLater(String text, [int ms = 350]) =>
-      Timer(Duration(milliseconds: ms), () => say(text));
+  void sayLater(String text, [int ms = 350]) {
+    _later++;
+    Timer(Duration(milliseconds: ms), () {
+      _later--;
+      say(text);
+    });
+  }
 
   void startMusic() {
     _musicWanted = true;

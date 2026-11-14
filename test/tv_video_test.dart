@@ -143,6 +143,16 @@ void main() {
             'Format(…), format_supported=NO_EXCEEDS_CAPABILITIES'),
         'vidéo trop lourde pour le décodeur · Decoder init failed: '
         'OMX.MTK.VIDEO.DECODER.AVC');
+    // causes ajoutées par la copie locale du lecteur
+    expect(
+        videoErrorSummary('Video player had error ExoPlaybackException: '
+            'MediaCodecVideoRenderer error, index=0, format_supported=YES | '
+            'cause: androidx.media3.exoplayer.mediacodec.MediaCodecRenderer'
+            '\$DecoderInitializationException: Decoder init failed: '
+            'OMX.MTK.VIDEO.DECODER.AVC, Format(1, null) | cause: '
+            'android.media.MediaCodec\$CodecException: Error 0xfffffff4'),
+        'format accepté mais décodeur en échec · Decoder init failed: '
+        'OMX.MTK.VIDEO.DECODER.AVC · Error 0xfffffff4');
     // inconnu : la fin du message (où est la cause)
     final long = 'x' * 300 + 'CAUSE';
     expect(videoErrorSummary(long), endsWith('CAUSE'));

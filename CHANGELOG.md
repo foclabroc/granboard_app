@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.12
+
+- Vidéos sur la TV : « format accepté mais décodeur en échec » sur la TCL. Sur Android TV, les vidéos passent maintenant par le décodeur logiciel (le matériel en secours), et si un décodeur ne démarre pas, le suivant est essayé au lieu d'abandonner (copie locale de `video_player_android` dans `packages/`)
+- Message d'erreur vidéo plus précis (nom du décodeur et cause), si ça échoue encore
+- L'annonce du joueur suivant attend la fin de « il reste … » (4 s au plus) au lieu de la couper (joueur virtuel, bouton « suivant » appuyé vite) ; elle saute si le joueur a déjà lancé
+
 ## v0.6.11
 
 - Musique des menus : quand le son est ajouté à un appareil, le morceau repart bien au début sur tous (l'écran continuait là où il en était : Android ignore la relance du même fichier)

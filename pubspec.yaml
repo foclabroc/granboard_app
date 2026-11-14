@@ -1,7 +1,7 @@
 name: granboard_proto
 description: Appli de flechettes pour cible GranBoard
 publish_to: 'none'
-version: 0.6.11+21
+version: 0.6.12+22
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -31,6 +31,11 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+
+# Copie locale : décodeur logiciel sur Android TV (voir packages/video_player_android)
+dependency_overrides:
+  video_player_android:
+    path: packages/video_player_android
 
 flutter:
   uses-material-design: true

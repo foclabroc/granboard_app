@@ -210,6 +210,8 @@ class GameFx {
   void afterAnyDart(DartsGame game, DartHit? hit, {bool outerRing = false}) {
     AwardPlayer.stop();
     TurnBanner.hide();
+    // le joueur a déjà lancé : son annonce de tour, si elle attendait, saute
+    audio.cancelCue();
     _names(game);
     _clip = AwardPlayer.enabled ? HitClip.of(hit) : null;
     _afterDart(game, hit, outerRing: outerRing);
