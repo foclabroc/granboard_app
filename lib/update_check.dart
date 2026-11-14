@@ -15,7 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Version de l'application (identique au pubspec.yaml, sans le « +N »).
-const kAppVersion = '0.6.13';
+const kAppVersion = '0.6.14';
 
 const _apiLatest =
     'https://api.github.com/repos/foclabroc/granboard_app/releases/latest';
