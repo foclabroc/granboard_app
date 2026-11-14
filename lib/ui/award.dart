@@ -206,7 +206,9 @@ class _AwardVideoState extends State<_AwardVideo> {
       await c.setVolume(audio.muted || !audio.effects ? 0 : 1);
       c.addListener(_watch);
       await c.play();
-      if (mounted) setState(() => _ready = true);
+      // Affichée seulement quand la lecture avance vraiment (_watch) : sur
+      // certaines TV le décodeur échoue juste après le départ, l'écran
+      // devenait noir un instant (comme une coupure)
     } catch (e) {
       AwardPlayer.onError?.call('$e');
       _fail();
@@ -222,6 +224,12 @@ class _AwardVideoState extends State<_AwardVideo> {
         _fail();
         return;
       }
+    }
+    if (!_ready &&
+        !_closing &&
+        !v.hasError &&
+        v.position >= const Duration(milliseconds: 80)) {
+      if (mounted) setState(() => _ready = true);
     }
     if (v.hasError ||
         (v.duration > Duration.zero &&

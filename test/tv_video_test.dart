@@ -131,6 +131,27 @@ void main() {
     expect(n, 3); // son doublon, si
   });
 
+  test('Wi-Fi : seul l\'appareil qui pilote (d\'après le serveur) est écouté',
+      () {
+    final tv = TvClient(realtime: false);
+    // la partie du téléphone qui pilote, par le serveur puis le Wi-Fi
+    tv.debugApplyState({'screen': 'game', 'at': 100, 'src': 'tel'});
+    tv.debugApplyState({'screen': 'game', 'at': 101, 'src': 'tel'}, lan: true);
+    // un 2e appareil qui croit encore piloter l'écran : ignoré
+    tv.debugApplyState({'screen': 'lobby', 'at': 500, 'src': 'tab'}, lan: true);
+    expect(tv.state!['screen'], 'game');
+    expect(tv.state!['at'], 101);
+    // relié par le serveur, il devient celui qu'on écoute
+    tv.debugApplyState({'screen': 'lobby', 'at': 600, 'src': 'tab'});
+    expect(tv.state!['screen'], 'lobby');
+    tv.debugApplyState({'screen': 'game', 'at': 700, 'src': 'tel'}, lan: true);
+    expect(tv.state!['screen'], 'lobby');
+    // serveur injoignable : le Wi-Fi seul fait foi
+    tv.error = 'hors ligne';
+    tv.debugApplyState({'screen': 'game', 'at': 800, 'src': 'tel'}, lan: true);
+    expect(tv.state!['screen'], 'game');
+  });
+
   test('Erreur vidéo : l\'essentiel du message d\'ExoPlayer', () {
     const e = 'PlatformException(VideoError, Video player had error '
         'or: MediaCodecVideoRenderer error, index=0, format=Format(1, null, '

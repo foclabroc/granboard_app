@@ -59,23 +59,44 @@ class TvClient extends ChangeNotifier implements CamPort {
     _schedulePoll();
     if (realtime) _connect();
     if (realtime && Lan.enabled) {
-      _lan =
-          LanServer(code: () => code, name: deviceName, onState: _applyState);
+      _lan = LanServer(
+          code: () => code,
+          name: deviceName,
+          onState: (st) => _applyState(st, lan: true));
       await _lan!.start();
     }
   }
 
   int _lastAt = 0;
+
+  /// Appareil qui pilote, d'après le dernier état venu du serveur (seul
+  /// l'appareil relié en dernier peut y écrire).
+  String? _hostSrc;
   String? _lastSrc;
 
   /// Nouvel état (serveur ou Wi-Fi) : le plus récent gagne (`at` = heure
   /// d'envoi du téléphone). Le même envoi arrive souvent 2 fois (serveur
   /// ET Wi-Fi) : le 2e est ignoré (sinon la partie était reconstruite sans
   /// effets : ni bandeau, ni vidéo).
-  void _applyState(Map<String, dynamic> s) {
+  ///
+  /// Sur le Wi-Fi, n'importe quel appareil qui croit encore piloter cet
+  /// écran peut envoyer (pas de clé) : on n'y écoute que l'appareil qui
+  /// pilote d'après le serveur ([_hostSrc]), sauf si le serveur ne répond
+  /// pas. Sans ça, la partie et l'écran d'attente d'un 2e appareil
+  /// s'affichaient en alternance.
+  void _applyState(Map<String, dynamic> s, {bool lan = false}) {
     final at = (s['at'] as num?)?.toInt() ?? 0;
     // Autre téléphone (ou téléphone redémarré) : son horloge peut retarder
     final src = s['src'] as String?;
+    if (lan &&
+        src != null &&
+        _hostSrc != null &&
+        src != _hostSrc &&
+        !lanOnly &&
+        error == null) {
+      return;
+    }
+    if (!lan && src != null) _hostSrc = src;
     if (src != null && src != _lastSrc) {
       _lastSrc = src;
       _lastAt = 0;
@@ -157,7 +178,8 @@ class TvClient extends ChangeNotifier implements CamPort {
   @visibleForTesting
 
   /// Tests : état reçu comme par le serveur ou le Wi-Fi.
-  void debugApplyState(Map<String, dynamic> s) => _applyState(s);
+  void debugApplyState(Map<String, dynamic> s, {bool lan = false}) =>
+      _applyState(s, lan: lan);
 
   void debugSetState(String roomCode, Map<String, dynamic>? s) {
     code = roomCode;

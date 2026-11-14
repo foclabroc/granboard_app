@@ -59,6 +59,10 @@ class TvLink extends ChangeNotifier {
   }
   static final instance = TvLink._();
 
+  /// Faux quand l'appli sert d'écran (tablette en mode écran, TV) : elle
+  /// ne pilote plus rien, même si des écrans restent dans ses réglages.
+  static bool enabled = true;
+
   static const _prefKey = 'tv_link_v2';
   static const _prefOld = 'tv_link_v1';
   static const phone = 'phone';
@@ -371,6 +375,7 @@ class TvLink extends ChangeNotifier {
   final String _src = '${math.Random().nextInt(1 << 32)}';
 
   void _push(Map<String, dynamic> state) {
+    if (!enabled) return;
     _last = state;
     // heure d'envoi : l'écran garde le plus récent (serveur ou Wi-Fi) et
     // ignore un doublon (même heure) → toujours croissante, même pour 2

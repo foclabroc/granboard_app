@@ -64,6 +64,7 @@ Future<void> main() async {
     if (!tv) BoardLights.instance.load(),
     if (!tv) PlayerStore.instance.load(),
   ]);
+  TvLink.enabled = !tv;
   if (!tv) await TvLink.instance.load();
   // Jamais de mise en veille de l'écran tant que l'appli est ouverte
   WakelockPlus.enable().catchError((_) {});
@@ -94,6 +95,7 @@ class GranBoardAppState extends State<GranBoardApp> {
   Future<void> setTvMode(bool on) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(kPrefTvMode, on);
+    TvLink.enabled = !on;
     if (!on) {
       await Future.wait([
         BoardService.instance.init(),
