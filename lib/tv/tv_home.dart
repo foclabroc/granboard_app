@@ -46,10 +46,16 @@ class _TvHomeState extends State<TvHome> {
   String? _videoError;
   Timer? _videoErrorTimer;
 
+  final _videoErrorsShown = <String>{};
+
   void _onVideoError(String e) {
     if (!mounted) return;
+    final msg = videoErrorSummary(e, camera: _cam.role != null);
+    // Une seule fois par soirée pour la même erreur (le son du coup est
+    // joué quand même)
+    if (!_videoErrorsShown.add(msg)) return;
     _videoErrorTimer?.cancel();
-    setState(() => _videoError = e);
+    setState(() => _videoError = msg);
     _videoErrorTimer = Timer(const Duration(seconds: 8), () {
       if (mounted) setState(() => _videoError = null);
     });
@@ -198,7 +204,7 @@ class _TvHomeState extends State<TvHome> {
                           border: Border.all(color: Tv.red),
                         ),
                         child: Text('VIDÉO IMPOSSIBLE SUR CET ÉCRAN : $e',
-                            maxLines: 2,
+                            maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                             style: Tv.label(13, color: Tv.text)),
                       ),
@@ -567,4 +573,34 @@ String canonicalJson(Object? v) {
         _ => x,
       };
   return jsonEncode(sort(v));
+}
+
+/// Erreur du lecteur vidéo en clair : l'essentiel d'un long message
+/// d'ExoPlayer (décodeur, format accepté ou non), et si la caméra d'un autre
+/// écran tourne en même temps (elle occupe le décodeur vidéo de la TV).
+String videoErrorSummary(String e, {bool camera = false}) {
+  final parts = <String>[];
+  if (RegExp(r'format_supported=(\w+)').firstMatch(e) case final m?) {
+    parts.add(switch (m[1]) {
+      'YES' => 'format accepté mais décodeur en échec',
+      'NO_EXCEEDS_CAPABILITIES' => 'vidéo trop lourde pour le décodeur',
+      'NO_UNSUPPORTED_TYPE' || 'NO' => 'format refusé',
+      _ => 'format ${m[1]}',
+    });
+  }
+  if (RegExp(r'(Decoder init failed|decoder failed|Decoder failed)[^,)]*')
+          .firstMatch(e)
+      case final m?) {
+    parts.add(m[0]!);
+  }
+  if (RegExp(r'(OMX|c2)\.[\w.]+').firstMatch(e) case final m?
+      when !parts.any((p) => p.contains(m[0]!))) {
+    parts.add(m[0]!);
+  }
+  if (camera) parts.add('caméra en cours');
+  if (parts.isEmpty) {
+    // la cause est en général à la fin du message
+    return e.length > 160 ? '…${e.substring(e.length - 160)}' : e;
+  }
+  return parts.join(' · ');
 }

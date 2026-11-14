@@ -130,4 +130,21 @@ void main() {
     tv.debugApplyState({'screen': 'lobby', 'at': 50, 'src': 'ami'});
     expect(n, 3); // son doublon, si
   });
+
+  test('Erreur vidéo : l\'essentiel du message d\'ExoPlayer', () {
+    const e = 'PlatformException(VideoError, Video player had error '
+        'or: MediaCodecVideoRenderer error, index=0, format=Format(1, null, '
+        'video/mp4, video/avc, avc1.640028, 4500000, und, [1280, 720, 30.0, '
+        'ColorInfo(BT709, Limited range, SDR SMPTE 170M, false, 8bit Luma, '
+        '8bit Chroma)], [-1, -1]), format_supported=YES, null, null)';
+    expect(videoErrorSummary(e, camera: true),
+        'format accepté mais décodeur en échec · caméra en cours');
+    expect(videoErrorSummary('Decoder init failed: OMX.MTK.VIDEO.DECODER.AVC, '
+            'Format(…), format_supported=NO_EXCEEDS_CAPABILITIES'),
+        'vidéo trop lourde pour le décodeur · Decoder init failed: '
+        'OMX.MTK.VIDEO.DECODER.AVC');
+    // inconnu : la fin du message (où est la cause)
+    final long = 'x' * 300 + 'CAUSE';
+    expect(videoErrorSummary(long), endsWith('CAUSE'));
+  });
 }

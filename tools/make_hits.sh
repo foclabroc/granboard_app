@@ -24,6 +24,6 @@ make() { # style slug
     [bg][sh]overlay=format=auto[b1];[b1][gl]overlay=format=auto[b2];
     [t]fade=t=in:st=0:d=0.08:alpha=1[tt];
     [b2][tt]overlay=format=auto,fade=t=out:st=1.15:d=0.35,format=yuv420p[v]" \
-   -map "[v]" -map 1:a -c:v libx264 -preset veryfast -crf 21 -maxrate 4500k -bufsize 9000k -profile:v high -level 4.0 -pix_fmt yuv420p -c:a copy -t 1.5 -movflags +faststart $OUT/${st}_$sl.mp4
+   -map "[v]" -map 1:a -c:v libx264 -preset veryfast -crf 21 -maxrate 4500k -bufsize 9000k -profile:v main -level 3.1 -pix_fmt yuv420p -c:a copy -t 1.5 -movflags +faststart $OUT/${st}_$sl.mp4
 }
 for st in "$@"; do for sl in t20 bull dbull; do make $st $sl; done; done
