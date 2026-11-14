@@ -218,7 +218,7 @@ String cricketRules(CricketSettings s) {
 /// Règles d'un match (sans celles des legs).
 String matchRules(MatchSettings s) => [
       '# BUT',
-      'Gagner ${s.winsNeeded} legs avant les autres (match en ${s.legs} legs).',
+      'Gagner ${s.winsNeeded} legs avant les autres (medley en ${s.legs} legs).',
       '# DÉROULEMENT',
       '- Chaque leg est une partie complète de 01 ou de Cricket, dans l\'ordre '
           'choisi : ${s.patternLabel} (CR = Cricket).',
@@ -801,7 +801,7 @@ String practiceRules(PracticeSettings s) {
 /// Nom et règles de la partie en cours (pour un match : le match, puis les
 /// legs).
 (String, String) rulesOf(DartsGame game) => switch (game) {
-      MatchGame m => ('Match ${m.settings.legs} legs', _matchFull(m.settings)),
+      MatchGame m => ('Medley ${m.settings.legs} legs', _matchFull(m.settings)),
       PracticeGame g => (
           kPracticeInfo[g.settings.kind]!.name,
           practiceRules(g.settings)

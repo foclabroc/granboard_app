@@ -130,6 +130,7 @@ for a in range(0, 8):
         add(f'{a} à {b}')
 for n in range(3, 14):
     add(f'Match en {n} legs. Leg 1,', f'Match en {n} lègue. Lègue 1,')
+    add(f'Medley en {n} legs. Leg 1,', f'Mèdlé en {n} lègue. Lègue 1,')
 for n in range(1, 14):
     add(f'Leg {n},', f'Lègue {n},')
 

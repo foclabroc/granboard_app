@@ -120,7 +120,7 @@ class MatchGame implements DartsGame {
   @override
   String get kind => 'match';
   @override
-  String get title => 'Match · leg $legNumber/${settings.legs} · ${leg.title}';
+  String get title => 'Medley · leg $legNumber/${settings.legs} · ${leg.title}';
   @override
   String get rulesLabel => [
         for (var i = 0; i < players.length; i++)

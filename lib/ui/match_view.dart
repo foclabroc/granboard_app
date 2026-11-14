@@ -33,7 +33,7 @@ class _MatchResultsPageState extends State<MatchResultsPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(ok
-              ? 'Match enregistré sur le serveur'
+              ? 'Medley enregistré sur le serveur'
               : 'Hors ligne : le match sera envoyé plus tard')));
     });
   }
@@ -89,8 +89,8 @@ class _MatchResultsPageState extends State<MatchResultsPage> {
                   Center(
                       child: Text(
                           m.finished
-                              ? 'MATCH EN ${m.legNumber} LEGS'
-                              : 'MATCH ARRÊTÉ',
+                              ? 'MEDLEY EN ${m.legNumber} LEGS'
+                              : 'MEDLEY ARRÊTÉ',
                           style: Tv.label(13))),
                   const SizedBox(height: 6),
                   for (final (rank, i) in order.indexed)

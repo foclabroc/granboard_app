@@ -309,11 +309,34 @@ class _HomePageState extends State<HomePage>
                                 _open(const SetupPage(kind: 'cricket')),
                           ),
                           _Tile(
+                            tint: const Color(0xFFB45CFF),
+                            anim: _spin,
+                            art: TileArt.party,
+                            kicker: '$_partyCount JEUX',
+                            title: 'PARTY',
+                            icon: Icons.celebration,
+                            onTap: () => _open(const SetupPage(kind: 'party')),
+                          ),
+                          _Tile(
+                            tint: const Color(0xFFFF9F1C),
+                            anim: _spin,
+                            art: TileArt.tournament,
+                            kicker: 'ÉLIMINATION · EN LIGNE',
+                            title: 'TOURNOIS',
+                            icon: Icons.account_tree,
+                            onTap: () => _open(const TournamentsPage()),
+                          ),
+                        ]),
+                      ),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: _row([
+                          _Tile(
                             tint: const Color(0xFFFF4D4D),
                             anim: _spin,
                             art: TileArt.match,
                             kicker: '01 + CRICKET',
-                            title: 'MATCH',
+                            title: 'MEDLEY',
                             icon: Icons.emoji_events,
                             onTap: () => _open(const SetupPage(kind: 'match')),
                           ),
@@ -326,20 +349,6 @@ class _HomePageState extends State<HomePage>
                             icon: Icons.fitness_center,
                             onTap: () =>
                                 _open(const SetupPage(kind: 'practice')),
-                          ),
-                        ]),
-                      ),
-                      const SizedBox(height: 10),
-                      Expanded(
-                        child: _row([
-                          _Tile(
-                            tint: const Color(0xFFB45CFF),
-                            anim: _spin,
-                            art: TileArt.party,
-                            kicker: '$_partyCount JEUX',
-                            title: 'FÊTE',
-                            icon: Icons.celebration,
-                            onTap: () => _open(const SetupPage(kind: 'party')),
                           ),
                           ListenableBuilder(
                             listenable: _online,
@@ -359,15 +368,6 @@ class _HomePageState extends State<HomePage>
                                 onTap: () => _open(const OnlinePage()),
                               );
                             },
-                          ),
-                          _Tile(
-                            tint: const Color(0xFFFF9F1C),
-                            anim: _spin,
-                            art: TileArt.tournament,
-                            kicker: 'ÉLIMINATION · EN LIGNE',
-                            title: 'TOURNOIS',
-                            icon: Icons.account_tree,
-                            onTap: () => _open(const TournamentsPage()),
                           ),
                           ListenableBuilder(
                             listenable: PlayerStore.instance,

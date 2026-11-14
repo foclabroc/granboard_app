@@ -79,6 +79,7 @@ void main() {
     expect(plan('Fin de la partie. Victoire de Équipe A : Foc et Sophie.'),
         '#|#|Foc|#|Sophie');
     expect(plan('Match en 5 legs. Leg 1, 501. Foc, à toi.'), '#|#|Foc|#');
+    expect(plan('Medley en 5 legs. Leg 1, 501. Foc, à toi.'), '#|#|Foc|#');
     expect(plan('Leg 3, Cricket. Sophie, à toi.'), '#|#|Sophie|#');
     expect(plan('Leg pour Foc ! 2 à 1.'), '#|Foc|#');
     expect(plan('Jeu, set et match ! Victoire de Sophie !'), '#|Sophie');

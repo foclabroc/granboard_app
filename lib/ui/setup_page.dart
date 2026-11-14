@@ -87,9 +87,9 @@ class _SetupPageState extends State<SetupPage> {
 
   String get _familyName => switch (_kind) {
         'cricket' => 'CRICKET',
-        'match' => 'MATCH',
+        'match' => 'MEDLEY',
         'practice' => 'ENTRAÎNEMENT',
-        'party' => 'FÊTE',
+        'party' => 'PARTY',
         _ => '01',
       };
 
@@ -311,7 +311,7 @@ class _SetupPageState extends State<SetupPage> {
   String get _gameName => _practiceOn
       ? _pInfo.name
       : _matchOn
-          ? 'Match $_mLegs legs'
+          ? 'Medley $_mLegs legs'
           : _cricketOn
               ? _cricket.name
               : _settings.name;
@@ -559,10 +559,10 @@ class _SetupPageState extends State<SetupPage> {
                         for (final (v, l) in [
                           ('x01', '01'),
                           ('cricket', 'CRICKET'),
-                          if (!_double) ('match', 'MATCH'),
+                          if (!_double) ('match', 'MEDLEY'),
                           if (!widget.tournament && !_double) ...[
                             ('practice', 'ENTRAÎN.'),
-                            ('party', 'FÊTE'),
+                            ('party', 'PARTY'),
                           ],
                         ])
                           ButtonSegment(
@@ -744,7 +744,7 @@ class _SetupPageState extends State<SetupPage> {
       ];
       return parts.join(' · ');
     }
-    if (_matchOn) return 'Match $_mLegs legs · $_start ${_out.label}';
+    if (_matchOn) return 'Medley $_mLegs legs · $_start ${_out.label}';
     if (_cricketOn) {
       return '${_cricket.name}${_cLimit == null ? '' : ' · $_cLimit manches'}';
     }
@@ -1081,10 +1081,10 @@ class _SetupPageState extends State<SetupPage> {
                                   for (final (v, l) in [
                                     ('x01', '01'),
                                     ('cricket', 'CRICKET'),
-                                    ('match', 'MATCH'),
+                                    ('match', 'MEDLEY'),
                                     if (!widget.tournament) ...[
                                       ('practice', 'ENTRAÎN.'),
-                                      ('party', 'FÊTE'),
+                                      ('party', 'PARTY'),
                                     ],
                                   ])
                                     ChoiceChip(
@@ -1491,7 +1491,7 @@ class _SetupPageState extends State<SetupPage> {
     final rounds = _pRounds ?? info.defaultRounds;
     final goal = _pGoal ?? info.defaultGoal;
     return [
-      TvSection(_partyOn ? 'Jeu de fête' : 'Jeu d\'entraînement',
+      TvSection(_partyOn ? 'Jeu de party' : 'Jeu d\'entraînement',
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8)),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),

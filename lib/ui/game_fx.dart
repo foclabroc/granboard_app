@@ -180,7 +180,7 @@ class GameFx {
   void start(DartsGame game) {
     _names(game);
     final title = game is MatchGame
-        ? 'Match en ${game.settings.legs} legs. Leg 1, ${game.leg.title}'
+        ? 'Medley en ${game.settings.legs} legs. Leg 1, ${game.leg.title}'
         : game.title;
     _turn(game, '$title. ${game.currentPlayer.name}, à toi.', 400, false);
     // Bandeau du 1er joueur aussi (après la 1re image : la page n'est pas

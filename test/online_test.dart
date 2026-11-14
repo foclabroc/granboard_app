@@ -387,8 +387,8 @@ void main() {
     await tester.tap(find.text('go'));
     await tester.pumpAndSettle();
     expect(find.text('DÉFIER SOPHIE EN DOUBLE'), findsOneWidget);
-    expect(find.text('MATCH'), findsNothing);
-    expect(find.text('FÊTE'), findsNothing);
+    expect(find.text('MEDLEY'), findsNothing);
+    expect(find.text('PARTY'), findsNothing);
     expect(find.text('SON ÉQUIPIER'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('MOI'));
