@@ -76,10 +76,10 @@ void main() {
       await tester.tap(find.text('SUIVANT'));
       await tester.pump();
     }
-    await tester.pump(const Duration(seconds: 2));
+    // Partie finie : les résultats s'ouvrent tout seuls
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('RÉSULTATS'), findsOneWidget);
-
-    await tester.tap(find.text('RÉSULTATS'));
+    expect(find.textContaining('LIMITE DE 1 MANCHE'), findsNothing);
     for (var i = 0; i < 5; i++) {
       await tester.pump(const Duration(milliseconds: 400));
     }

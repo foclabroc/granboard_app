@@ -2,6 +2,7 @@
 
 ## v0.6.13
 
+- Fin de partie : les résultats s'ouvrent tout seuls (moins d'une seconde après la dernière fléchette), plus besoin de toucher « Résultats »
 - Écran TV qui alterne entre la partie et l'écran d'attente (et cible de l'écran d'attente qui change sans arrêt) : un 2e appareil qui croyait encore piloter l'écran (tablette passée en mode écran, ancien téléphone) lui envoyait son écran d'attente par le Wi-Fi. L'écran n'écoute plus sur le Wi-Fi que l'appareil qui le pilote d'après le serveur (tous si le serveur ne répond pas), et une appli en mode écran n'envoie plus rien
 - Écran TV qui « saute » comme une coupure : la vidéo d'un coup (T20, bull) ou d'une récompense posait un voile noir dès son départ, même quand le décodeur de la TV échouait juste après. Elle ne s'affiche plus que quand la lecture avance vraiment ; sinon rien ne change à l'écran (le son habituel est joué)
 

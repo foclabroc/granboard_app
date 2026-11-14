@@ -210,6 +210,23 @@ class _GamePageState extends State<GamePage> {
     _room?.push(game.actionLog);
     _pushTv();
     _reportTournament();
+    _autoResults();
+  }
+
+  bool _resultsSoon = false;
+
+  /// Partie finie : les résultats s'ouvrent tout seuls (le temps de voir la
+  /// dernière fléchette). Pas si une fenêtre est ouverte par-dessus, ni si
+  /// la fin a été annulée entre-temps.
+  void _autoResults() {
+    if (!game.finished || _resultsSoon || _closed) return;
+    _resultsSoon = true;
+    Timer(const Duration(milliseconds: 900), () {
+      _resultsSoon = false;
+      if (!mounted || !game.finished || _closed) return;
+      if (ModalRoute.of(context)?.isCurrent != true) return;
+      _results();
+    });
   }
 
   bool _tnSent = false;
@@ -260,6 +277,7 @@ class _GamePageState extends State<GamePage> {
     });
     _pushTv();
     _reportTournament();
+    _autoResults();
   }
 
   void _onEvent(BoardEvent e) {
