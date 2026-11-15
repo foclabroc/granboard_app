@@ -164,6 +164,23 @@ class AudioService extends ChangeNotifier {
   /// arrière-plan : sur une Android TV, la synthèse vocale met plusieurs
   /// secondes à démarrer et ne doit pas retarder le premier écran.
   Future<void> init() async {
+    await _readSettings();
+    unawaited(_initEngines());
+  }
+
+  /// Réglages relus (sauvegarde du compte reprise) : la musique suit.
+  Future<void> reloadSettings() async {
+    await _readSettings();
+    final m = _music;
+    if (music && _musicWanted) {
+      m?.setVolume(musicVolume).catchError((_) {});
+      if (m?.state != PlayerState.playing) startMusic();
+    } else if (!music) {
+      m?.stop().catchError((_) {});
+    }
+  }
+
+  Future<void> _readSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final v = prefs.getStringList(_prefKey);
@@ -182,7 +199,6 @@ class AudioService extends ChangeNotifier {
           ..addAll((jsonDecode(pr) as Map).cast<String, String>());
       }
     } catch (_) {}
-    unawaited(_initEngines());
   }
 
   Future<void> _initEngines() async {

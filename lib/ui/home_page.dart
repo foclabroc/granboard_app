@@ -12,6 +12,7 @@ import '../online/online.dart';
 import '../format.dart';
 import '../players.dart';
 import '../server.dart';
+import '../settings_sync.dart';
 import '../tv_link.dart';
 import 'calibration_page.dart';
 import 'connect_page.dart';
@@ -61,6 +62,9 @@ class _HomePageState extends State<HomePage>
     _loadStart();
     // Jeu en ligne : défis reçus (affichés par-dessus tout écran)
     _online.addListener(_onOnline);
+    // Réglages gardés sur le compte : proposés sur un nouveau téléphone
+    PlayerStore.instance.addListener(_offerSettings);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _offerSettings());
     // Premier lancement : profil principal
     final store = PlayerStore.instance;
     if (!store.welcomed && store.players.isEmpty) {
@@ -82,6 +86,48 @@ class _HomePageState extends State<HomePage>
 
   final _online = OnlineService.instance;
   int? _shownInvite;
+
+  bool _settingsAsked = false;
+
+  /// Profil principal sur un téléphone pas encore lié à ses réglages : s'il
+  /// a une sauvegarde, on propose de la reprendre.
+  Future<void> _offerSettings() async {
+    final sync = SettingsSync.instance;
+    if (_settingsAsked || !sync.hasAccount || sync.linked) return;
+    _settingsAsked = true;
+    try {
+      final saved = await sync.check();
+      if (saved == null || !mounted) return;
+      final yes = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: Text('Tes réglages', style: Tv.title(22)),
+          content: const Text(
+              'Ton compte a des réglages sauvegardés (thème, cible, sons, '
+              'favoris, fond d\'écran…). Les reprendre sur cet appareil ?'),
+          actions: [
+            TextButton(
+                key: const ValueKey('settings-no'),
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('NON, GARDER CEUX D\'ICI')),
+            FilledButton(
+                key: const ValueKey('settings-yes'),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('REPRENDRE')),
+          ],
+        ),
+      );
+      if (yes == true) {
+        await sync.apply(saved);
+      } else {
+        await sync.decline();
+      }
+    } catch (_) {
+    } finally {
+      _settingsAsked = false;
+    }
+  }
 
   Future<void> _offerResume() async {
     final saved = await GameSave.load();
@@ -148,6 +194,7 @@ class _HomePageState extends State<HomePage>
   @override
   void dispose() {
     _online.removeListener(_onOnline);
+    PlayerStore.instance.removeListener(_offerSettings);
     _spin.dispose();
     super.dispose();
   }

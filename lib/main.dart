@@ -11,6 +11,7 @@ import 'online/online.dart';
 import 'players.dart';
 import 'tv/screen_cam.dart';
 import 'tv/tv_home.dart';
+import 'settings_sync.dart';
 import 'tv_link.dart';
 import 'ui/award.dart' show AwardPlayer;
 import 'ui/cricket_view.dart' show CricketStyle;
@@ -69,6 +70,7 @@ Future<void> main() async {
   TvLink.enabled = !tv;
   if (!tv) await AutoNext.load();
   if (!tv) await TvLink.instance.load();
+  if (!tv) await SettingsSync.instance.load();
   // Jamais de mise en veille de l'écran tant que l'appli est ouverte
   WakelockPlus.enable().catchError((_) {});
   runApp(GranBoardApp(tv: tv, androidTv: androidTv));
@@ -101,6 +103,8 @@ class GranBoardAppState extends State<GranBoardApp> {
       if (state == AppLifecycleState.paused) {
         AudioService.instance.background = true;
         AwardPlayer.stop();
+        // Réglages changés : gardés sur le compte du profil principal
+        if (!tv) SettingsSync.instance.save();
         if (widget.androidTv) SystemNavigator.pop();
       } else if (state == AppLifecycleState.resumed) {
         AudioService.instance.background = false;

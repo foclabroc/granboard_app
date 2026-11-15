@@ -30,6 +30,7 @@ class FakeServer {
     final next = ms.firstWhere((m) => m['r'] == r + 1 && m['s'] == sl ~/ 2);
     next[sl.isEven ? 'a' : 'b'] = w;
   }
+  final settings = <int, Map<String, dynamic>>{}; // réglages des comptes
   bool offline = false;
   final tvSignals = <Map<String, dynamic>>[];
   final tvRooms =
@@ -110,6 +111,18 @@ class FakeServer {
         m['sound'] = b['p_sound'];
         if (b['p_voice'] != null) m['voice'] = b['p_voice'];
         return m['v'] = (m['v'] as int) + 1;
+      case 'gb_settings_set':
+        final id = _auth(b['p_token']);
+        final st = settings[id] ??= {'v': 0, 'walls': <String, dynamic>{}};
+        st['data'] = b['p_data'];
+        if (b['p_walls'] != null) st['walls'] = b['p_walls'];
+        st['at'] = '2026-11-15T10:00:00Z';
+        return st['v'] = (st['v'] as int) + 1;
+      case 'gb_settings_get':
+        final st = settings[_auth(b['p_token'])];
+        if (st == null) return {'v': 0};
+        if (st['v'] == b['p_known']) return {'v': st['v'], 'at': st['at']};
+        return jsonDecode(jsonEncode(st));
       case 'gb_set_board':
         final id = _auth(b['p_token']);
         final m = media[id] ??= {'v': 0, 'sound': ''};

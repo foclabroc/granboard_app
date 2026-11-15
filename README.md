@@ -76,6 +76,7 @@ Stats, rangs, classements, photos, sons, cibles des joueurs, écran TV, jeu en l
 9. `2026-11-13_double.sql`
 10. `2026-11-13_cible.sql`
 11. `2026-11-13_camera_ecran.sql`
+12. `2026-11-15_reglages.sql`
 
 `psql -U postgres -d postgres -f fichier.sql`
 

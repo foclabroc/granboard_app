@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../audio.dart';
 import '../board_service.dart';
 import '../players.dart';
+import '../server.dart';
+import '../settings_sync.dart';
 import '../tv_link.dart';
 import '../update_check.dart';
 import 'account_page.dart';
@@ -246,8 +248,13 @@ class _OptionsPanel extends StatelessWidget {
       title: 'OPTIONS',
       icon: Icons.tune,
       child: ListenableBuilder(
-        listenable: Listenable.merge(
-            [board, TvLink.instance, Tv.skin, BoardSkin.current]),
+        listenable: Listenable.merge([
+          board,
+          TvLink.instance,
+          Tv.skin,
+          BoardSkin.current,
+          SettingsSync.instance
+        ]),
         builder: (context, _) => ListView(
           padding: const EdgeInsets.symmetric(vertical: 4),
           children: [
@@ -318,6 +325,13 @@ class _OptionsPanel extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const DiagnosticPage())),
             ),
             const _Group('APPLI'),
+            _Item(
+              id: 'settings',
+              icon: Icons.cloud_sync,
+              title: 'Mes réglages sur mon compte',
+              value: settingsSyncLabel(),
+              onTap: () => showSettingsSyncSheet(context),
+            ),
             _Item(
               id: 'share',
               icon: Icons.qr_code_2,
@@ -543,3 +557,137 @@ Future<void> showBoardSkinSheet(BuildContext context) => showAppSheet(
         ),
       ),
     );
+
+/// État de la sauvegarde des réglages (ligne des options).
+String settingsSyncLabel() {
+  final sync = SettingsSync.instance;
+  if (!sync.hasAccount) return 'Pas de profil';
+  final at = sync.savedAt;
+  if (at == null) return sync.linked ? 'Pas encore envoyés' : 'Pas reliés';
+  String two(int n) => n.toString().padLeft(2, '0');
+  return 'Sauvegardés le ${two(at.day)}/${two(at.month)} à '
+      '${two(at.hour)}:${two(at.minute)}';
+}
+
+/// Réglages gardés sur le compte du profil principal : sauvegarder
+/// maintenant, ou reprendre ceux du compte.
+Future<void> showSettingsSyncSheet(BuildContext context) => showAppSheet(
+      context,
+      builder: (_) => const _SettingsSyncSheet(),
+    );
+
+class _SettingsSyncSheet extends StatefulWidget {
+  const _SettingsSyncSheet();
+
+  @override
+  State<_SettingsSyncSheet> createState() => _SettingsSyncSheetState();
+}
+
+class _SettingsSyncSheetState extends State<_SettingsSyncSheet> {
+  final sync = SettingsSync.instance;
+  String? _msg;
+  bool _error = false;
+
+  Future<void> _run(Future<String> Function() job) async {
+    setState(() {
+      _msg = null;
+      _error = false;
+    });
+    try {
+      final m = await job();
+      if (mounted) setState(() => _msg = m);
+    } on ApiError catch (e) {
+      if (mounted) {
+        setState(() {
+          _msg = e.offline ? 'Serveur injoignable : réessaie plus tard' : e.message;
+          _error = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _msg = 'Ça n\'a pas marché';
+          _error = true;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final owner = PlayerStore.instance.owner;
+    return ListenableBuilder(
+      listenable: sync,
+      builder: (context, _) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('MES RÉGLAGES SUR MON COMPTE', style: Tv.title(22)),
+            const SizedBox(height: 6),
+            Text(
+              !sync.hasAccount
+                  ? 'Il faut un profil principal (connecté) pour garder '
+                      'tes réglages.'
+                  : 'Thème, style de cible, sons, prononciations, favoris, '
+                      'réglages des parties, option AUTO, lumières et fond '
+                      'd\'écran (avec tes photos) sont gardés sur le compte '
+                      'de ${owner?.name ?? ''} : envoyés tout seuls quand tu '
+                      'quittes l\'appli, et proposés sur un nouvel appareil '
+                      'où tu te connectes.',
+              style: TextStyle(color: Tv.muted, height: 1.3),
+            ),
+            const SizedBox(height: 10),
+            if (sync.hasAccount)
+              Text(settingsSyncLabel().toUpperCase(),
+                  key: const ValueKey('settings-state'),
+                  style: Tv.label(13, color: Tv.gold)),
+            if (_msg != null) ...[
+              const SizedBox(height: 6),
+              Text(_msg!,
+                  key: const ValueKey('settings-msg'),
+                  style: TextStyle(color: _error ? Tv.red : Tv.green)),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    key: const ValueKey('settings-restore'),
+                    onPressed: !sync.hasAccount || sync.busy
+                        ? null
+                        : () => _run(() async => await sync.restore()
+                            ? 'Réglages du compte repris'
+                            : 'Aucune sauvegarde sur ce compte'),
+                    icon: const Icon(Icons.cloud_download),
+                    label: const Text('REPRENDRE CEUX DU COMPTE'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    key: const ValueKey('settings-save'),
+                    onPressed: !sync.hasAccount || sync.busy
+                        ? null
+                        : () => _run(() async {
+                              await sync.save(force: true);
+                              return 'Réglages sauvegardés';
+                            }),
+                    icon: sync.busy
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.cloud_upload),
+                    label: const Text('SAUVEGARDER MAINTENANT'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

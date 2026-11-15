@@ -50,6 +50,9 @@ class Wallpaper extends ChangeNotifier {
     return _dir;
   }
 
+  /// Dossier des photos du téléphone (null en test).
+  Future<Directory?> folder() => _folder();
+
   Future<void> load() async {
     try {
       final p = await SharedPreferences.getInstance();

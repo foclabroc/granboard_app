@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.16
+
+- Réglages gardés sur le compte du profil principal (Options › Mes réglages sur mon compte) : thème, style de cible, sons et annonceur, prononciations, favoris et derniers réglages des parties, vue du Cricket, option AUTO, lumières, fond d'écran et ses photos. Envoyés tout seuls quand on quitte l'appli ; sur un nouvel appareil où on se connecte, l'accueil propose de les reprendre. SQL `2026-11-15_reglages.sql`
+
 ## v0.6.15
 
 - Option AUTO (bouton en haut de chaque partie, gardée sur le téléphone) : joueur suivant tout seul 5 s après les 3 fléchettes, avec un compte à rebours (le toucher coupe AUTO) ; attend la fin d'une vidéo de récompense
