@@ -8,6 +8,7 @@ import '../players.dart';
 import 'dartboard.dart';
 import 'game_fx.dart';
 import 'game_page.dart' show GamePage;
+import 'grand_prix_view.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -33,6 +34,16 @@ class PracticeLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = game.currentTurn;
+    // Grand Prix : le circuit à la place de la cible et des scores
+    if (game.settings.kind == PracticeKind.grandPrix) {
+      return GrandPrixLayout(
+        game: game,
+        splashKey: splashKey,
+        actionBar: actionBar,
+        colorOf: (i) => _colorOf(game, i),
+        panel: _Panel(game: game, onChangeTarget: onChangeTarget),
+      );
+    }
     return Stack(
       children: [
         Row(

@@ -229,4 +229,46 @@ void main() {
       expect(g.stateOf(0).darts, 20);
     });
   });
+
+  group('Grand Prix', () {
+    PracticeGame game({int len = 9}) => PracticeGame(
+        PracticeSettings(PracticeKind.grandPrix, goal: len, seed: 42), two);
+
+    test('numéros différents, avance, turbo, tête-à-queue, arrivée', () {
+      final g = game();
+      final nums = grandPrixNumbers(g);
+      expect(nums.toSet().length, 2);
+      final a = nums[0], b = nums[1];
+      expect(g.targetLabel, 'TON NUMÉRO : $a');
+      g.throwDart(t(a)); // +3
+      g.throwDart(ib); // turbo +2
+      expect(g.stateOf(0).score, 5);
+      expect(g.currentTurn.note, 'TURBO !');
+      g.throwDart(d(b)); // B n'a pas bougé : rien
+      expect(g.stateOf(1).score, 0);
+      g.next();
+      g.throwDart(s(b));
+      g.throwDart(s(a)); // tête-à-queue pour A
+      expect(g.stateOf(0).score, 4);
+      expect(g.currentTurn.note, 'TÊTE-À-QUEUE POUR A');
+      g.next();
+      g.throwDart(t(a)); // 7
+      g.throwDart(t(a)); // 9 : arrivée
+      expect(g.finished, isTrue);
+      expect(g.winners, [0]);
+      // rejeu identique (écran TV)
+      final copy = PracticeGame.fromJson(g.toJson());
+      expect(copy.stateOf(0).score, 9);
+      expect(copy.winners, [0]);
+    });
+
+    test('prend la tête', () {
+      final g = game(len: 12);
+      final nums = grandPrixNumbers(g);
+      g.throwDart(s(nums[0]));
+      g.next();
+      g.throwDart(d(nums[1]));
+      expect(g.currentTurn.note, 'B PREND LA TÊTE !');
+    });
+  });
 }

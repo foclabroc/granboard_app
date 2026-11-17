@@ -238,6 +238,14 @@ add('spare !', 'Spère !')
 add('zone prise')
 add('protégée')
 
+# Grand Prix (v0.6.25)
+add('Grand Prix', 'Gran Pri')
+add('Turbo !')
+add('Tête-à-queue pour', 'Tête à queue pour')
+add('Drapeau à damier !')
+add('cases')
+add('ton numéro')
+
 
 def main():
     # --add : ne fabrique que les annonces absentes de index.json (les

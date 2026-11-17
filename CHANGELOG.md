@@ -2,6 +2,11 @@
 
 ## v0.6.24
 
+- Nouveau jeu de fête **Grand Prix** (2 à 6 joueurs, course en 9, 12 ou 15 cases) : chaque pilote tire au sort un numéro de la cible ; toucher son numéro fait avancer sa voiture (simple 1, double 2, triple 3), le bull donne un turbo (+2), toucher le numéro d'un adversaire le fait reculer d'une case (tête-à-queue). Le premier au drapeau à damier gagne (40 manches maxi).
+  - Piste vue de dessus avec une ligne par joueur (numéro, nom, position), cases numérotées depuis le départ, voitures de F1 qui accélèrent (flammes, traînée) ou partent en tête-à-queue (fumée), badge P1 pour le leader ; même écran sur la TV.
+  - Thème « Circuit » (asphalte, vibreurs rouge et blanc, traits de vitesse, damier).
+  - Annonces enregistrées : « Turbo ! », « Tête-à-queue pour … », « … prend la tête ! », « Drapeau à damier ! ».
+
 - Thème propre à chaque jeu (couleurs + fond animé), dans les réglages du jeu, pendant la partie, aux résultats et sur l'écran TV ; les menus gardent le thème choisi pour l'appli :
   - 01 « Arène » (rouge et or, anneaux d'une cible géante, projecteurs) ; Cricket « Ardoise » (tableau noir, marques à la craie) ; Medley « Duel » (deux camps bleu / violet) ; Entraînement « Mire » (viseur et radar turquoise) ; Party « Confettis » ;
   - jeux phares : Bowling (pistes en bois, quilles, boules qui roulent, néons), Golf « Green » (ciel, soleil, collines, drapeau, balle en vol), Football « Stade » (pelouse rayée, lignes, projecteurs, ballon qui roule), Le Chat et la Souris « Pattes » (le chat poursuit la souris, yeux qui brillent dans le noir), Paint « Atelier » (taches qui éclatent et coulent), Contre la montre « Chrono » (cadran lumineux, trotteuse avec traînée, damier).

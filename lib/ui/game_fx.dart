@@ -449,6 +449,7 @@ class GameFx {
       n.startsWith('TROP') ||
       n.startsWith('OVER') ||
       n.startsWith('LE MÉCHANT') ||
+      n.startsWith('TÊTE-À-QUEUE') ||
       n.startsWith('GRENADE') ||
       n.startsWith('CRÂNE') ||
       n.contains('ÉLIMINÉ');
@@ -457,6 +458,9 @@ class GameFx {
   static bool _bigNote(String n) =>
       n.startsWith('HAT') ||
       n.startsWith('STRIKE') ||
+      n.startsWith('TURBO') ||
+      n.startsWith('DRAPEAU') ||
+      n.contains('PREND LA TÊTE') ||
       n.startsWith('SPARE') ||
       n.startsWith('WHITE') ||
       n.startsWith('ARAIGNÉE') ||

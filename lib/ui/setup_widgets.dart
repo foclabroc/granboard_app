@@ -353,6 +353,7 @@ IconData practiceIcon(PracticeKind k) => switch (k) {
       PracticeKind.catMouse => Icons.pets,
       PracticeKind.paint => Icons.format_paint,
       PracticeKind.bowling => Icons.sports_baseball,
+      PracticeKind.grandPrix => Icons.sports_motorsports,
       PracticeKind.timeAttack => Icons.timer,
     };
 

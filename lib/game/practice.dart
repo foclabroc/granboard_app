@@ -54,6 +54,7 @@ enum PracticeKind {
   catMouse,
   paint,
   bowling,
+  grandPrix,
 }
 
 /// Réglages proposés pour chaque jeu.
@@ -262,6 +263,14 @@ const kPracticeInfo = <PracticeKind, PracticeInfo>{
   PracticeKind.bowling: PracticeInfo('Bowling',
       '10 frames, 2 fléchettes par frame pour faire tomber 10 quilles : quilles = points de la fléchette ÷ 6 (T20 = strike). Strike et spare comme au bowling (bonus des boules suivantes), 3e fléchette au 10e frame. 300 au maximum.',
       party: true, minPlayers: 1),
+  PracticeKind.grandPrix: PracticeInfo('Grand Prix',
+      'Chaque joueur a sa voiture, avec un numéro tiré au sort. Ton numéro : simple +1, double +2, triple +3 cases. Bull : turbo, +2. Le numéro d\'un adversaire : tête-à-queue, sa voiture recule d\'1 case. La première voiture à l\'arrivée gagne.',
+      goalLabel: 'Longueur',
+      goals: [9, 12, 15],
+      defaultGoal: 12,
+      party: true,
+      minPlayers: 2,
+      maxPlayers: 6),
   PracticeKind.timeAttack: PracticeInfo('Contre la montre',
       'Finis ton 01 le plus vite possible : le chrono tourne pendant tes tours (de « suivant » à ta dernière fléchette). Bust = retour au score de début de manche. Le meilleur temps gagne.',
       goalLabel: 'Départ',
@@ -771,6 +780,7 @@ abstract class PracticeRules {
         PracticeKind.catMouse => _CatMouse(s),
         PracticeKind.paint => _Paint(s),
         PracticeKind.bowling => _Bowling(s),
+        PracticeKind.grandPrix => _GrandPrix(s),
         PracticeKind.timeAttack => _TimeAttack(s),
       };
 
@@ -3249,4 +3259,110 @@ class _Bowling extends PracticeRules {
     final st = g.stateOf(p);
     return 'FRAME ${min(g.round, 10)}/10 · ${plural(st.hits, 'strike')}';
   }
+}
+
+// ─── Grand Prix ───
+
+/// Course de voitures : chaque joueur a un numéro (tiré au sort avec la
+/// graine) ; son numéro le fait avancer (simple 1, double 2, triple 3),
+/// le bull aussi (turbo, +2), le numéro d'un adversaire le fait reculer
+/// d'1 case (tête-à-queue). Score = case atteinte ; la première voiture à
+/// l'arrivée gagne. Dernier évènement dans `shared['gp']` (écran de course).
+class _GrandPrix extends PracticeRules {
+  _GrandPrix(super.s);
+
+  int get length => s.goalOrDefault;
+
+  int numberOf(PracticeGame g, int p) => _shuffled(s.seed * 7 + 3)[p % 20];
+
+  @override
+  bool get goalEndsGame => true;
+  @override
+  int? roundLimit(PracticeGame g) => 40;
+  @override
+  String rulesLabel(PracticeGame g) => '$length cases · bull = turbo';
+  @override
+  String target(PracticeGame g, int p) => 'TON NUMÉRO : ${numberOf(g, p)}';
+  @override
+  List<DartHit> zones(PracticeGame g, int p) => _numberZones(numberOf(g, p));
+  @override
+  String info(PracticeGame g, int p) =>
+      'N° ${numberOf(g, p)} · CASE ${g.stateOf(p).score}/$length';
+  @override
+  String scoreText(PracticeGame g, int p) => '${g.stateOf(p).score}/$length';
+
+  int? _leader(PracticeGame g) {
+    var best = -1, who = -1, tie = false;
+    for (var i = 0; i < g.players.length; i++) {
+      final v = g.stateOf(i).score;
+      if (v > best) {
+        best = v;
+        who = i;
+        tie = false;
+      } else if (v == best) {
+        tie = true;
+      }
+    }
+    return tie || best <= 0 ? null : who;
+  }
+
+  @override
+  void onDart(PracticeGame g, int p, PracticeTurn t, PracticeDart d) {
+    final h = d.hit;
+    if (h == null) return;
+    final st = g.stateOf(p);
+    final before = _leader(g);
+    final n = h.isBull ? 25 : h.number;
+    var gain = 0;
+    if (n == 25) {
+      gain = 2;
+      t.note = 'TURBO !';
+    } else if (n == numberOf(g, p)) {
+      gain = h.multiplier;
+    } else {
+      for (var o = 0; o < g.players.length; o++) {
+        if (o == p || numberOf(g, o) != n) continue;
+        final q = g.stateOf(o);
+        if (q.score > 0) {
+          q.score--;
+          g.shared['gp'] = {'spin': o, 'n': g.actionLog.length};
+          t.note = 'TÊTE-À-QUEUE POUR ${g.players[o].name.toUpperCase()}';
+        }
+      }
+      return;
+    }
+    d.ok = true;
+    d.points = gain;
+    st.score = min(length, st.score + gain);
+    g.shared['gp'] = {'boost': p, 'gain': gain, 'n': g.actionLog.length};
+    if (st.score >= length) {
+      st.done = true;
+      t.note = 'DRAPEAU À DAMIER !';
+      t.maxDarts = t.darts.length;
+      return;
+    }
+    final now = _leader(g);
+    if (now == p && before != p) {
+      t.note = '${g.players[p].name.toUpperCase()} PREND LA TÊTE !';
+    } else if (length - st.score <= 2 && gain > 0 && n != 25) {
+      t.note = 'PLUS QUE ${length - st.score} ${length - st.score > 1 ? 'CASES' : 'CASE'}';
+    }
+  }
+
+  @override
+  int compare(PracticeGame g, int a, int b) {
+    final d = g.stateOf(b).score.compareTo(g.stateOf(a).score);
+    if (d != 0) return d;
+    // à égalité de case : celui qui a fini (ou y est arrivé) avant
+    final ra = g.stateOf(a).doneRound ?? 1 << 20, rb = g.stateOf(b).doneRound ?? 1 << 20;
+    return ra.compareTo(rb);
+  }
+}
+
+/// Numéro de la voiture de chaque joueur (Grand Prix), dans l'ordre des
+/// joueurs ; vide pour un autre jeu.
+List<int> grandPrixNumbers(PracticeGame g) {
+  final r = g.rules;
+  if (r is! _GrandPrix) return const [];
+  return [for (var i = 0; i < g.players.length; i++) r.numberOf(g, i)];
 }

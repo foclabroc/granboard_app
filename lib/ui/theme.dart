@@ -30,6 +30,7 @@ enum SkinFx {
   paws,
   splats,
   clock,
+  circuit,
 }
 
 /// Thème de l'appli : couleurs + fond animé. Choisi dans l'accueil (⋮ ›
@@ -1613,6 +1614,57 @@ class _SkinPainter extends CustomPainter {
             if (((x / sq).floor() + row).isEven) {
               canvas.drawRect(Rect.fromLTWH(x, h - sq * (2 - row), sq, sq),
                   Paint()..color = Colors.white.withValues(alpha: 0.18));
+            }
+          }
+        }
+      case SkinFx.circuit:
+        // Grand Prix : bitume, vibreurs rouge / blanc en haut et en bas,
+        // lignes de vitesse, damier qui défile
+        canvas.drawRect(
+            Offset.zero & size,
+            Paint()
+              ..shader = LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [const Color(0xFF2A2D35).withValues(alpha: .9), const Color(0xFF1A1C22).withValues(alpha: .9)],
+              ).createShader(Offset.zero & size));
+        for (var i = 0; i < 400; i++) {
+          canvas.drawCircle(Offset(_r(i, 1) * w, _r(i, 2) * h), 0.8,
+              Paint()..color = Colors.white.withValues(alpha: 0.06 + 0.06 * _r(i, 3)));
+        }
+        const cw = 34.0;
+        final off = (t.value * 40 * cw) % (cw * 2);
+        for (final y in [0.0, h - 14]) {
+          for (var x = -cw * 2 + off; x < w; x += cw) {
+            canvas.drawRect(Rect.fromLTWH(x, y, cw, 14),
+                Paint()..color = (((x - off) / cw).round().isEven ? const Color(0xFFE8242C) : const Color(0xFFF5F5F5)).withValues(alpha: 0.75));
+          }
+        }
+        final dash = Paint()
+          ..color = Colors.white.withValues(alpha: 0.18)
+          ..strokeWidth = 3;
+        for (var row = 1; row < 4; row++) {
+          final y = h * row / 4;
+          for (var x = -60 + (t.value * 30 * 60) % 120; x < w; x += 120) {
+            canvas.drawLine(Offset(x, y), Offset(x + 60, y), dash);
+          }
+        }
+        for (var i = 0; i < 18; i++) {
+          final p = (_r(i, 1) + t.value * 9) % 1;
+          final y = h * (0.1 + 0.8 * _r(i, 2));
+          final x = w * (1.1 - p * 1.3);
+          canvas.drawLine(Offset(x, y), Offset(x + w * 0.14, y),
+              Paint()
+                ..color = Colors.white.withValues(alpha: 0.22)
+                ..strokeWidth = 2);
+        }
+        const sq = 16.0;
+        final fx0 = w * 0.86;
+        for (var yy = 14.0; yy < h - 14; yy += sq) {
+          for (var k = 0; k < 3; k++) {
+            if (((yy / sq).floor() + k).isEven) {
+              canvas.drawRect(Rect.fromLTWH(fx0 + k * sq, yy, sq, sq),
+                  Paint()..color = Colors.white.withValues(alpha: 0.22));
             }
           }
         }

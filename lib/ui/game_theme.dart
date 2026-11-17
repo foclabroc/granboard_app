@@ -202,9 +202,26 @@ class GameSkins {
     fx: SkinFx.clock,
   );
 
+  /// Grand Prix : circuit, vibreurs et damier, rouge course.
+  static const grandPrix = AppSkin(
+    id: 'g-gp',
+    name: 'Circuit',
+    bg: Color(0xFF0B0C10),
+    panel: Color(0xFF15171E),
+    panel2: Color(0xFF1E2129),
+    line: Color(0xFF30343F),
+    accent: Color(0xFFFF3B30),
+    accentLight: Color(0xFFFF8A80),
+    accentDark: Color(0xFF8E1410),
+    glow: Color(0xFFF2F2F2),
+    muted: Color(0xFFA0A6B2),
+    panelColors: [Color(0xFF1A1C24), Color(0xFF0C0D12)],
+    fx: SkinFx.circuit,
+  );
+
   static const all = [
     x01, cricket, match, practice, party, //
-    bowling, golf, football, catMouse, paint, timeAttack,
+    bowling, golf, football, catMouse, paint, timeAttack, grandPrix,
   ];
 
   /// Thème d'une famille de jeux ([kind] = x01 | cricket | match | practice
@@ -223,6 +240,8 @@ class GameSkins {
         return paint;
       case PracticeKind.timeAttack:
         return timeAttack;
+      case PracticeKind.grandPrix:
+        return grandPrix;
       default:
     }
     return switch (kind) {

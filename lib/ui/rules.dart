@@ -746,6 +746,25 @@ String practiceRules(PracticeSettings s) {
             'triple vaut autant qu\'un gros simple.',
         '- Égalité : les joueurs à égalité gagnent ensemble.',
       ],
+    PracticeKind.grandPrix => [
+        '# BUT',
+        'Être la première voiture à franchir la ligne d\'arrivée, '
+            '${s.goalOrDefault} cases plus loin.',
+        '# TA VOITURE',
+        '- Au départ, chaque joueur reçoit une voiture avec un numéro tiré '
+            'au sort (de 1 à 20, tous différents).',
+        '# AVANCER',
+        '- Ton numéro : simple = 1 case, double = 2 cases, triple = 3 cases.',
+        '- Bull (25 ou 50) : TURBO, 2 cases.',
+        '# GÊNER LES AUTRES',
+        '- Le numéro d\'un adversaire : TÊTE-À-QUEUE, sa voiture recule '
+            'd\'1 case (pas avant la ligne de départ).',
+        '- Les autres numéros ne font rien.',
+        '# FIN',
+        '- La première voiture qui atteint la case ${s.goalOrDefault} gagne '
+            'tout de suite : DRAPEAU À DAMIER.',
+        '- Après 40 manches, la voiture la plus avancée gagne.',
+      ],
     PracticeKind.bowling => [
         '# BUT',
         'Faire le plus gros score en 10 frames, comme au bowling (300 au '
