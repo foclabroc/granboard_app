@@ -230,6 +230,272 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  test('Amis : demande, acceptation, retrait, refus', () async {
+    await a.ping();
+    await b.ping();
+    await a.loadPeople();
+    final bob = a.people.firstWhere((p) => p.id == b.me!.id);
+    expect(bob.friend, '');
+    expect(bob.offline, isFalse);
+    await a.askFriend(bob);
+    expect(a.people.firstWhere((p) => p.id == b.me!.id).friend, 'sent');
+    await b.ping();
+    expect(b.asks.single.id, a.me!.id);
+    await b.loadPeople();
+    final ann = b.people.first; // demande reçue : en tête
+    expect(ann.id, a.me!.id);
+    expect(ann.friend, 'ask');
+    await b.answerFriend(ann, true);
+    expect(b.asks, isEmpty);
+    expect(b.people.firstWhere((p) => p.id == a.me!.id).isFriend, isTrue);
+    await a.loadPeople();
+    expect(a.people.firstWhere((p) => p.id == b.me!.id).isFriend, isTrue);
+    // retiré d'un côté = retiré des deux
+    await a.removeFriend(bob);
+    await b.loadPeople();
+    expect(b.people.firstWhere((p) => p.id == a.me!.id).friend, '');
+    // refus : la demande disparaît
+    await a.askFriend(bob);
+    await b.loadPeople();
+    await b.answerFriend(b.people.first, false);
+    await a.loadPeople();
+    expect(a.people.firstWhere((p) => p.id == b.me!.id).friend, '');
+    // deux demandes croisées = amis
+    await a.askFriend(bob);
+    await b.askFriend(ann);
+    expect(b.people.firstWhere((p) => p.id == a.me!.id).isFriend, isTrue);
+  });
+
+  test('Prévenir, ne pas déranger, bloquer, phrase, rendez-vous', () async {
+    await a.ping();
+    await b.ping();
+    await a.loadPeople();
+    final bob = a.people.single;
+    expect(bob.seen, isNotNull);
+    expect(bob.free, isTrue);
+
+    // « je veux jouer » laissé à Sophie
+    await a.want(bob);
+    expect(a.people.single.wanted, isTrue);
+    await b.ping();
+    expect(b.wants.single.id, a.me!.id);
+    await b.loadPeople();
+    expect(b.people.single.want, isTrue);
+    // un défi solde le mot laissé
+    final id = await b.challenge(b.people.single, game501());
+    await b.cancel(id);
+    await b.ping();
+    expect(b.wants, isEmpty);
+
+    // ne pas déranger : visible, mais pas de défi
+    await b.setDnd(true);
+    await a.loadPeople();
+    expect(a.people.single.dnd, isTrue);
+    expect(a.people.single.free, isFalse);
+    await expectLater(a.challenge(a.people.single, game501()),
+        throwsA(isA<ApiError>().having((e) => e.code, 'code', 'on_dnd')));
+    await b.setDnd(false);
+    await b.ping();
+    expect(b.dnd, isFalse);
+
+    // phrase du profil
+    await b.setMotto('  Le   bull ou rien ');
+    expect(b.motto, 'Le bull ou rien');
+    await a.loadPeople();
+    expect(a.people.single.motto, 'Le bull ou rien');
+
+    // rendez-vous proposé, accepté, retiré
+    final at = DateTime.now().add(const Duration(hours: 3));
+    await a.proposeDate(a.people.single, at);
+    expect(a.dates.single.mine, isTrue);
+    expect(a.dates.single.ok, isFalse);
+    await b.ping();
+    expect(b.dates.single.mine, isFalse);
+    expect(b.dates.single.at.difference(at).inSeconds.abs(), lessThan(2));
+    await b.answerDate(b.dates.single.id, true);
+    await a.ping();
+    expect(a.dates.single.ok, isTrue);
+    await a.answerDate(a.dates.single.id, false);
+    await b.ping();
+    expect(b.dates, isEmpty);
+
+    // bloquer : plus d'amitié ni de défi, et il me voit hors ligne
+    await a.askFriend(a.people.single);
+    await b.loadPeople();
+    await b.answerFriend(b.people.single, true);
+    expect(await a.friendIds(), {b.me!.id});
+    await b.block(b.people.single);
+    expect(b.people.single.blocked, isTrue);
+    expect(await a.friendIds(), isEmpty);
+    await a.loadPeople();
+    expect(a.people.single.offline, isTrue);
+    await expectLater(a.askFriend(a.people.single),
+        throwsA(isA<ApiError>().having((e) => e.code, 'code', 'on_blocked')));
+    await b.block(b.people.single, false);
+    await a.askFriend(a.people.single);
+    expect(a.people.single.friend, 'sent');
+  });
+
+  test('Bilan entre amis, partie regardée, revanche', () async {
+    final (ra, rb) = await rooms();
+    await a.loadPeople();
+    await a.askFriend(a.people.single);
+    await b.loadPeople();
+    await b.answerFriend(b.people.single, true);
+    await a.loadPeople();
+    expect(a.people.single.watchable, isTrue);
+    // un ami regarde la partie (ici Foc lui-même, pour le format)
+    final g = await a.watchGame(b.me!.id);
+    expect(g!['players'], hasLength(2));
+    // fin de partie : compté une seule fois
+    await GbServer.rpc('gb_on_result',
+        {'p_token': foc.token, 'p_room': ra.id, 'p_won': true});
+    await GbServer.rpc('gb_on_result',
+        {'p_token': sophie.token, 'p_room': rb.id, 'p_won': false});
+    await a.loadPeople();
+    expect((a.people.single.wins, a.people.single.losses), (1, 0));
+    await b.loadPeople();
+    expect((b.people.single.wins, b.people.single.losses), (0, 1));
+    await ra.leave();
+    await rb.leave();
+    expect(await a.watchGame(b.me!.id), isNull);
+
+    // revanche : même partie, journal vidé, l'autre commence
+    final again = OnlineResultsPage.rematchOf(
+        {...game501(), 'actions': ['d:20:3', 'n']})!;
+    expect(again['actions'], isEmpty);
+    expect((again['players'] as List).first['id'], sophie.key);
+    expect(OnlineResultsPage.rematchOf({...game501(), 'double': true}), isNull);
+    expect(OnlineResultsPage.rematchOf({...game501(), 'tn': {}}), isNull);
+    expect(agoText(DateTime(2026, 11, 15, 10), DateTime(2026, 11, 15, 12)),
+        'il y a 2 h');
+  });
+
+  testWidgets('Écran En ligne : prévenir un absent, menu, ne pas déranger',
+      (tester) async {
+    await phone(tester);
+    await tester.runAsync(() async {
+      await server.call('gb_register',
+          {'p_pseudo': 'Zoé', 'p_pin': '1111', 'p_color': 3});
+    });
+    await tester
+        .pumpWidget(MaterialApp(theme: Tv.theme(), home: const OnlinePage()));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    final id = OnlineService.instance.people
+        .firstWhere((p) => p.name == 'Zoé')
+        .id;
+    expect(find.textContaining('VU '), findsWidgets);
+    await tester.tap(find.byKey(ValueKey('want-$id')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('PRÉVENU ✓'), findsOneWidget);
+    expect(server.wants, hasLength(1));
+    // menu : bloquer
+    await tester.tap(find.byKey(ValueKey('person-menu-$id')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Proposer un rendez-vous'), findsOneWidget);
+    await tester.tap(find.text('Bloquer'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byKey(const ValueKey('block-yes')));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('DÉBLOQUER'), findsOneWidget);
+    expect(find.textContaining('BLOQUÉ'), findsWidgets);
+    // ne pas déranger
+    await tester.tap(find.byKey(const ValueKey('dnd')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(server.dnd, hasLength(1));
+    expect(find.textContaining('NE PAS DÉRANGER'), findsWidgets);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Regarder la partie d\'un ami', (tester) async {
+    await phone(tester);
+    WatchPage.every = const Duration(milliseconds: 200);
+    late OnlineRoom ra, rb;
+    late OnlinePlayer bob;
+    await tester.runAsync(() async {
+      (ra, rb) = await rooms();
+      await a.loadPeople();
+      await a.askFriend(a.people.single);
+      await b.loadPeople();
+      await b.answerFriend(b.people.single, true);
+      await a.loadPeople();
+      bob = a.people.single;
+    });
+    await tester.pumpWidget(
+        MaterialApp(theme: Tv.theme(), home: WatchPage(player: bob)));
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+    expect(find.text('SPECTATEUR'), findsOneWidget);
+    expect(find.text('501'), findsWidgets);
+    // la partie se finit : message, on peut quitter
+    await tester.runAsync(() async {
+      await ra.leave();
+      await rb.leave();
+    });
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+    expect(find.text('PARTIE TERMINÉE.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('Écran En ligne : tous les joueurs, hors ligne, ami, filtres',
+      (tester) async {
+    await phone(tester);
+    await tester.runAsync(() async {
+      await b.ping();
+      // un 3e compte, jamais connecté en ligne
+      await server.call('gb_register',
+          {'p_pseudo': 'Zoé', 'p_pin': '1111', 'p_color': 3});
+    });
+    await tester
+        .pumpWidget(MaterialApp(theme: Tv.theme(), home: const OnlinePage()));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('ZOÉ'), findsOneWidget);
+    expect(find.textContaining('VU '), findsOneWidget);
+    expect(find.text('TOUS (2)'), findsOneWidget);
+    expect(find.text('EN LIGNE (1)'), findsOneWidget);
+    // défi impossible hors ligne
+    final id = OnlineService.instance.people
+        .firstWhere((p) => p.name == 'Zoé')
+        .id;
+    expect(
+        find.descendant(
+            of: find.byKey(ValueKey('person-$id')),
+            matching: find.text('DÉFIER')),
+        findsNothing);
+    expect(find.byKey(ValueKey('want-$id')), findsOneWidget);
+    // demande d'ami
+    await tester.tap(find.byKey(ValueKey('friend-add-$id')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('DEMANDÉ'), findsOneWidget);
+    // filtre « en ligne »
+    await tester.tap(find.byKey(const ValueKey('people-online')));
+    await tester.pump();
+    expect(find.text('ZOÉ'), findsNothing);
+    expect(find.text('SOPHIE'), findsOneWidget);
+    // recherche
+    await tester.tap(find.byKey(const ValueKey('people-all')));
+    await tester.enterText(find.byKey(const ValueKey('people-search')), 'zo');
+    await tester.pump();
+    expect(find.text('ZOÉ'), findsOneWidget);
+    expect(find.text('SOPHIE'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('Partie en ligne : tour par tour, annulation, départ',
       (tester) async {
     await phone(tester);

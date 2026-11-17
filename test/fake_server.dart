@@ -31,6 +31,25 @@ class FakeServer {
     next[sl.isEven ? 'a' : 'b'] = w;
   }
   final settings = <int, Map<String, dynamic>>{}; // réglages des comptes
+  final friends = <Map<String, dynamic>>[]; // {a: demandeur, b, ok}
+  final blocks = <(int, int)>{}; // (qui bloque, qui est bloqué)
+  final wants = <(int, int)>[]; // (qui veut jouer, avec qui)
+  final dnd = <int>{};
+  final mottos = <int, String>{};
+  final h2h = <(int, int), int>{}; // (gagnant, perdant) → parties en ligne
+  final counted = <int>{}; // salles déjà comptées
+  final dates = <Map<String, dynamic>>[]; // {id, from, to, at, ok}
+
+  bool _blocked(int a, int b) =>
+      blocks.contains((a, b)) || blocks.contains((b, a));
+
+  String _friend(int me, int other) {
+    for (final f in friends) {
+      if (f['a'] == me && f['b'] == other) return f['ok'] == true ? 'ok' : 'sent';
+      if (f['a'] == other && f['b'] == me) return f['ok'] == true ? 'ok' : 'ask';
+    }
+    return '';
+  }
   bool offline = false;
   final tvSignals = <Map<String, dynamic>>[];
   final tvRooms =
@@ -304,6 +323,167 @@ class FakeServer {
                 {'id': m['id'], 'from': m['from'], 'msg': m['msg']}
           ],
         };
+      case 'gb_on_people':
+        final me = _auth(b['p_token']);
+        int ord(Map p) => p['friend'] == 'ask'
+            ? 0
+            : p['state'] == 'free'
+                ? 1
+                : p['state'] == 'busy'
+                    ? 2
+                    : p['friend'] == 'ok'
+                        ? 3
+                        : 4;
+        final list = [
+          for (final id in accounts.keys)
+            if (id != me)
+              {
+                ..._onPlayer(id),
+                'state': !online.containsKey(id)
+                    ? 'off'
+                    : online[id]!
+                        ? 'busy'
+                        : 'free',
+                'friend':
+                    blocks.contains((me, id)) ? 'blocked' : _friend(me, id),
+                if (blocks.contains((id, me))) 'state': 'off',
+                'dnd': dnd.contains(id),
+                'seen': '2026-11-15T09:00:00Z',
+                'motto': mottos[id] ?? '',
+                'title': '',
+                'want': wants.contains((id, me)),
+                'wanted': wants.contains((me, id)),
+                if (_friend(me, id) == 'ok') ...{
+                  'w': h2h[(me, id)] ?? 0,
+                  'l': h2h[(id, me)] ?? 0,
+                  'room': rooms.values.any((r) =>
+                      (r['a'] == id || r['b'] == id) && r['left'] == null),
+                },
+              }
+        ]..sort((x, y) {
+            final c = ord(x).compareTo(ord(y));
+            return c != 0
+                ? c
+                : '${x['pseudo']}'
+                    .toLowerCase()
+                    .compareTo('${y['pseudo']}'.toLowerCase());
+          });
+        return _json(list);
+      case 'gb_friend_ask':
+        final me = _auth(b['p_token']);
+        final to = b['p_to'] as int;
+        if (to == me || !accounts.containsKey(to)) {
+          throw const ApiError('on_player');
+        }
+        if (_blocked(me, to)) throw const ApiError('on_blocked');
+        final st = _friend(me, to);
+        if (st == '') {
+          friends.add({'a': me, 'b': to, 'ok': false});
+          return 'sent';
+        }
+        if (st == 'ask') {
+          friends.firstWhere((f) => f['a'] == to && f['b'] == me)['ok'] = true;
+          return 'ok';
+        }
+        return st;
+      case 'gb_friend_answer':
+        final me = _auth(b['p_token']);
+        final from = b['p_from'];
+        if (b['p_accept'] == true) {
+          for (final f in friends) {
+            if (f['a'] == from && f['b'] == me) f['ok'] = true;
+          }
+        } else {
+          friends.removeWhere(
+              (f) => f['a'] == from && f['b'] == me && f['ok'] == false);
+        }
+        return null;
+      case 'gb_friend_remove':
+        final me = _auth(b['p_token']);
+        final o = b['p_other'];
+        friends.removeWhere((f) =>
+            (f['a'] == me && f['b'] == o) || (f['a'] == o && f['b'] == me));
+        return null;
+      case 'gb_friend_ids':
+        final me = _auth(b['p_token']);
+        return [
+          for (final f in friends)
+            if (f['ok'] == true && (f['a'] == me || f['b'] == me))
+              f['a'] == me ? f['b'] : f['a']
+        ];
+      case 'gb_block':
+        final me = _auth(b['p_token']);
+        final o = b['p_other'] as int;
+        if (b['p_on'] != false) {
+          blocks.add((me, o));
+          friends.removeWhere((f) =>
+              (f['a'] == me && f['b'] == o) || (f['a'] == o && f['b'] == me));
+          wants.removeWhere((w) => w == (me, o) || w == (o, me));
+          dates.removeWhere((d) =>
+              (d['from'] == me && d['to'] == o) ||
+              (d['from'] == o && d['to'] == me));
+        } else {
+          blocks.remove((me, o));
+        }
+        return null;
+      case 'gb_on_dnd':
+        final me = _auth(b['p_token']);
+        b['p_on'] == true ? dnd.add(me) : dnd.remove(me);
+        return null;
+      case 'gb_set_motto':
+        final me = _auth(b['p_token']);
+        var m = '${b['p_motto'] ?? ''}'.trim().replaceAll(RegExp(r'\s+'), ' ');
+        if (m.length > 60) m = m.substring(0, 60);
+        return mottos[me] = m;
+      case 'gb_on_want':
+        final me = _auth(b['p_token']);
+        final to = b['p_to'] as int;
+        if (b['p_on'] != false) {
+          if (_blocked(me, to)) throw const ApiError('on_blocked');
+          if (!wants.contains((me, to))) wants.add((me, to));
+        } else {
+          wants.removeWhere((w) => w == (me, to) || w == (to, me));
+        }
+        return null;
+      case 'gb_on_result':
+        final me = _auth(b['p_token']);
+        final r = rooms[b['p_room']];
+        if (r == null || (r['a'] != me && r['b'] != me)) return null;
+        if (!counted.add(b['p_room'] as int) || b['p_won'] == null) return null;
+        final other = (r['a'] == me ? r['b'] : r['a']) as int;
+        final key = b['p_won'] == true ? (me, other) : (other, me);
+        h2h[key] = (h2h[key] ?? 0) + 1;
+        return null;
+      case 'gb_on_watch':
+        final me = _auth(b['p_token']);
+        final p = b['p_player'] as int;
+        if (_friend(me, p) != 'ok') throw const ApiError('on_player');
+        final r = rooms.entries
+            .where((r) =>
+                (r.value['a'] == p || r.value['b'] == p) &&
+                r.value['left'] == null)
+            .lastOrNull;
+        if (r == null) return {'error': 'on_gone'};
+        return _json(
+            {'room': r.key, 'seq': r.value['seq'], 'game': r.value['game']});
+      case 'gb_date_set':
+        final me = _auth(b['p_token']);
+        final to = b['p_to'] as int;
+        if (_blocked(me, to)) throw const ApiError('on_blocked');
+        final id = dates.length + 1;
+        dates.add(
+            {'id': id, 'from': me, 'to': to, 'at': b['p_at'], 'ok': false});
+        return id;
+      case 'gb_date_answer':
+        final me = _auth(b['p_token']);
+        final d = dates.where((d) => d['id'] == b['p_id']).firstOrNull;
+        if (d == null || (d['from'] != me && d['to'] != me)) return null;
+        if (b['p_accept'] == true && d['to'] == me) {
+          d['ok'] = true;
+        } else {
+          dates.remove(d);
+        }
+        return null;
       case 'gb_on_ping':
         final me = _auth(b['p_token']);
         online[me] = b['p_busy'] == true;
@@ -323,6 +503,29 @@ class FakeServer {
             for (final e in online.entries)
               if (e.key != me) {..._onPlayer(e.key), 'busy': e.value}
           ],
+          'asks': [
+            for (final f in friends)
+              if (f['b'] == me && f['ok'] == false) _onPlayer(f['a'] as int)
+          ],
+          'wants': [
+            for (final w in wants)
+              if (w.$2 == me) _onPlayer(w.$1)
+          ],
+          'dates': [
+            for (final d in dates)
+              if (d['from'] == me || d['to'] == me)
+                {
+                  'id': d['id'],
+                  'at': d['at'],
+                  'ok': d['ok'],
+                  'mine': d['from'] == me,
+                  'with': _onPlayer(
+                      (d['from'] == me ? d['to'] : d['from']) as int),
+                }
+          ],
+          'dnd': dnd.contains(me),
+          'motto': mottos[me] ?? '',
+          'title': '',
           'invite': inv == null
               ? null
               : {
@@ -493,6 +696,9 @@ class FakeServer {
         final to = b['p_to'] as int;
         if (!online.containsKey(to)) return {'error': 'on_offline'};
         if (online[to] == true) return {'error': 'on_busy'};
+        if (_blocked(me, to)) throw const ApiError('on_blocked');
+        if (dnd.contains(to)) throw const ApiError('on_dnd');
+        wants.removeWhere((w) => w == (me, to) || w == (to, me));
         final id = invites.length + 1;
         invites[id] = {
           'id': id,

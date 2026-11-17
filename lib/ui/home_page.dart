@@ -407,7 +407,14 @@ class _HomePageState extends State<HomePage>
                                 art: TileArt.online,
                                 kicker: _online.resumeRoom != null
                                     ? 'PARTIE À REPRENDRE'
-                                    : n == 0
+                                    : _online.wants.isNotEmpty
+                                        ? '${_online.wants.first.name.toUpperCase()}'
+                                            ' VEUT JOUER'
+                                        : _online.asks.isNotEmpty
+                                        ? '${_online.asks.length} DEMANDE'
+                                            '${_online.asks.length > 1 ? 'S' : ''}'
+                                            ' D\'AMI'
+                                        : n == 0
                                         ? '1 CONTRE 1 · VIDÉO'
                                         : '$n JOUEUR${n > 1 ? 'S' : ''} EN LIGNE',
                                 title: 'EN LIGNE',

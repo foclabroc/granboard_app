@@ -40,6 +40,14 @@ class ApiError implements Exception {
         return 'Photo refusée (trop lourde ?)';
       case 'on_offline':
         return 'Ce joueur n\'est plus en ligne';
+      case 'on_blocked':
+        return 'Ce joueur n\'est pas disponible';
+      case 'on_dnd':
+        return 'Ce joueur ne veut pas être dérangé';
+      case 'date':
+        return 'Choisis une date à venir (60 jours au plus)';
+      case 'friend_many':
+        return 'Trop de demandes en attente';
       case 'on_busy':
         return 'Ce joueur est déjà en partie ou a un défi en cours';
       case 'on_gone':

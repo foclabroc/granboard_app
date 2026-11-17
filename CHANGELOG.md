@@ -2,6 +2,8 @@
 
 ## v0.6.16
 
+- En ligne : tous les joueurs du serveur sont listés avec leur état (libre, en partie, hors ligne), filtres TOUS / EN LIGNE / AMIS et recherche ; demandes d'ami (+ AMI, ACCEPTER / refuser, étoile = ami, toucher pour retirer) ; la tuile En ligne de l'accueil annonce les demandes reçues. SQL `2026-11-15_amis.sql`
+- En ligne, la suite (SQL `2026-11-15_social.sql`) : dernière connexion des absents (« vu il y a 2 h ») ; PRÉVENIR = dire à un joueur absent ou occupé qu'on veut jouer (il le voit à sa prochaine connexion) ; bilan contre chaque ami (3 V · 2 D, parties à la maison et en ligne) ; REGARDER la partie en ligne d'un ami ; REVANCHE à la fin d'une partie en ligne (1 contre 1, celui qui commençait joue en second) ; « Ne pas déranger » (visible, sans défi) ; bloquer un joueur ; rendez-vous proposés à un joueur (jour et heure, à accepter) ; phrase du profil et titre gagné par les exploits (Roi du 180, Grand finisseur…) ; filtre AMIS dans les classements
 - Réglages gardés sur le compte du profil principal (Options › Mes réglages sur mon compte) : thème, style de cible, sons et annonceur, prononciations, favoris et derniers réglages des parties, vue du Cricket, option AUTO, lumières, fond d'écran et ses photos. Envoyés tout seuls quand on quitte l'appli ; sur un nouvel appareil où on se connecte, l'accueil propose de les reprendre. SQL `2026-11-15_reglages.sql`
 
 ## v0.6.15

@@ -39,7 +39,7 @@ Dans la fenêtre TV du téléphone :
 
 ## Jeu en ligne
 
-1 contre 1 ou 2 contre 2, chacun chez soi sur sa cible. Tuile **En ligne** : la liste des joueurs qui ont l'appli ouverte ; **Défier**, choisis le jeu, l'autre a 45 s pour accepter. La vidéo de l'adversaire est dans une vignette (déplaçable ; caméra, micro, caméra arrière). Il faut un profil sur chaque téléphone.
+1 contre 1 ou 2 contre 2, chacun chez soi sur sa cible. Tuile **En ligne** : tous les joueurs du serveur avec leur état (libre, en partie, hors ligne), filtres et recherche, demandes d'ami (**+ AMI**) ; **Défier** un joueur en ligne, choisis le jeu, l'autre a 45 s pour accepter. La vidéo de l'adversaire est dans une vignette (déplaçable ; caméra, micro, caméra arrière). Il faut un profil sur chaque téléphone.
 
 La vidéo passe en direct entre les 2 téléphones (WebRTC) ; le serveur ne fait que la mise en relation. Si elle ne s'établit pas sur certains réseaux (4G, certaines box), il faut ajouter un relais TURN dans `gb_config` (clé `ice`).
 
@@ -77,6 +77,8 @@ Stats, rangs, classements, photos, sons, cibles des joueurs, écran TV, jeu en l
 10. `2026-11-13_cible.sql`
 11. `2026-11-13_camera_ecran.sql`
 12. `2026-11-15_reglages.sql`
+13. `2026-11-15_amis.sql`
+14. `2026-11-15_social.sql`
 
 `psql -U postgres -d postgres -f fichier.sql`
 

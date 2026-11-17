@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../game/practice.dart';
 import '../media.dart';
+import '../online/online.dart';
 import '../players.dart';
 import '../server.dart';
 import 'players_page.dart' show RatingBadge;
@@ -29,6 +30,10 @@ class RankingPage extends StatefulWidget {
 
   /// Vrai = seulement les comptes de ce téléphone.
   static final mineOnly = ValueNotifier(false);
+
+  /// Filtre AMIS : mes amis en ligne (et moi) seulement.
+  static final friendsOnly = ValueNotifier(false);
+  static final friends = ValueNotifier<Set<int>>(const {});
   static const _pref = 'ranking_mine_v1';
 
   @override
@@ -45,7 +50,16 @@ class _RankingPageState extends State<RankingPage> {
         RankingPage.mineOnly.value =
             prefs.getBool(RankingPage._pref) ?? RankingPage.mineOnly.value;
       } catch (_) {}
+      try {
+        RankingPage.friends.value = await OnlineService.instance.friendIds();
+      } catch (_) {}
     }();
+  }
+
+  /// 0 = tous, 1 = mes joueurs, 2 = amis.
+  void _pick(int v) {
+    RankingPage.friendsOnly.value = v == 2;
+    if (v != 2) _set(v == 1);
   }
 
   void _set(bool v) {
@@ -63,11 +77,12 @@ class _RankingPageState extends State<RankingPage> {
         appBar: AppBar(
           title: const Text('CLASSEMENTS'),
           actions: [
-            ValueListenableBuilder(
-              valueListenable: RankingPage.mineOnly,
-              builder: (_, mine, __) => Padding(
+            ListenableBuilder(
+              listenable: Listenable.merge(
+                  [RankingPage.mineOnly, RankingPage.friendsOnly]),
+              builder: (_, __) => Padding(
                 padding: const EdgeInsets.only(right: 12),
-                child: SegmentedButton<bool>(
+                child: SegmentedButton<int>(
                   showSelectedIcon: false,
                   style: SegmentedButton.styleFrom(
                     visualDensity: VisualDensity.compact,
@@ -78,11 +93,18 @@ class _RankingPageState extends State<RankingPage> {
                     textStyle: Tv.title(14),
                   ),
                   segments: const [
-                    ButtonSegment(value: false, label: Text('TOUS')),
-                    ButtonSegment(value: true, label: Text('MES JOUEURS')),
+                    ButtonSegment(value: 0, label: Text('TOUS')),
+                    ButtonSegment(value: 1, label: Text('MES JOUEURS')),
+                    ButtonSegment(value: 2, label: Text('AMIS')),
                   ],
-                  selected: {mine},
-                  onSelectionChanged: (v) => _set(v.first),
+                  selected: {
+                    RankingPage.friendsOnly.value
+                        ? 2
+                        : RankingPage.mineOnly.value
+                            ? 1
+                            : 0
+                  },
+                  onSelectionChanged: (v) => _pick(v.first),
                 ),
               ),
             ),
@@ -185,13 +207,22 @@ class _TopListState extends State<_TopList> {
   @override
   Widget build(BuildContext context) {
     final mine = {for (final p in PlayerStore.instance.players) p.id};
-    return ValueListenableBuilder(
-      valueListenable: RankingPage.mineOnly,
-      builder: (context, mineOnly, _) => _list(context, mine, mineOnly),
+    return ListenableBuilder(
+      listenable: Listenable.merge(
+          [RankingPage.mineOnly, RankingPage.friendsOnly, RankingPage.friends]),
+      builder: (context, _) {
+        final owner = PlayerStore.instance.owner?.id;
+        return RankingPage.friendsOnly.value
+            ? _list(context,
+                {...RankingPage.friends.value, if (owner != null) owner}, true,
+                friends: true)
+            : _list(context, mine, RankingPage.mineOnly.value);
+      },
     );
   }
 
-  Widget _list(BuildContext context, Set<int> mine, bool mineOnly) {
+  Widget _list(BuildContext context, Set<int> mine, bool mineOnly,
+      {bool friends = false}) {
     return FutureBuilder(
       future: _future,
       builder: (context, snap) {
@@ -237,11 +268,14 @@ class _TopListState extends State<_TopList> {
         if (rows.isEmpty) {
           return Center(
             child: Text(
-                mineOnly && all.isNotEmpty
-                    ? 'Aucun de tes joueurs dans ce classement'
-                    : const ['rating', 'avg', 'mpr'].contains(widget.kind)
-                        ? 'Personne n\'a encore 3 parties'
-                        : 'Pas encore de résultat',
+                friends
+                    ? 'Aucun ami dans ce classement\n'
+                        '(les amis se demandent dans En ligne)'
+                    : mineOnly && all.isNotEmpty
+                        ? 'Aucun de tes joueurs dans ce classement'
+                        : const ['rating', 'avg', 'mpr'].contains(widget.kind)
+                            ? 'Personne n\'a encore 3 parties'
+                            : 'Pas encore de résultat',
                 style: Tv.label(15, color: Tv.text)),
           );
         }

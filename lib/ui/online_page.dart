@@ -10,6 +10,7 @@ import '../media.dart';
 import '../online/online.dart';
 import '../players.dart';
 import '../server.dart';
+import '../tv/tv_home.dart' show TvGameView;
 import 'game_page.dart';
 import 'players_page.dart' show RatingBadge;
 import 'setup_page.dart';
@@ -454,24 +455,131 @@ class _OnlinePageState extends State<OnlinePage> {
     );
   }
 
+  /// Filtre de la liste : all | friends | online.
+  String _filter = 'all';
+  String _query = '';
+
+  Future<void> _friend(Future<void> Function() job) async {
+    try {
+      await job();
+    } on ApiError catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
+
+  /// Ami touché : le retirer (ou annuler ma demande) ?
+  Future<void> _confirmRemove(OnlinePlayer p) async {
+    final sent = p.friend == 'sent';
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(sent ? 'Annuler la demande ?' : 'Retirer cet ami ?',
+            style: Tv.title(22)),
+        content: Text(sent
+            ? 'Ta demande d\'ami à ${p.name} sera annulée.'
+            : '${p.name} ne sera plus dans tes amis.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('NON')),
+          FilledButton(
+              key: const ValueKey('friend-remove-yes'),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(sent ? 'ANNULER LA DEMANDE' : 'RETIRER')),
+        ],
+      ),
+    );
+    if (yes == true) await _friend(() => online.removeFriend(p));
+  }
+
   Widget _list() {
-    final ps = online.players;
+    // Tous les joueurs du serveur ; avant leur arrivée, ceux en ligne
+    final all = online.people.isNotEmpty ? online.people : online.players;
+    final q = _query.trim().toLowerCase();
+    final ps = [
+      for (final p in all)
+        if ((_filter == 'all' ||
+                (_filter == 'friends' && (p.isFriend || p.friend == 'ask')) ||
+                (_filter == 'online' && !p.offline)) &&
+            (q.isEmpty || p.name.toLowerCase().contains(q)))
+          p
+    ];
+    final here = all.where((p) => !p.offline).length;
+    final friends = all.where((p) => p.isFriend).length;
+    Widget chip(String id, String label) => Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: ChoiceChip(
+            key: ValueKey('people-$id'),
+            visualDensity: VisualDensity.compact,
+            showCheckmark: false,
+            selected: _filter == id,
+            label: Text(label),
+            onSelected: (_) => setState(() => _filter = id),
+          ),
+        );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TvSection('Joueurs en ligne (${ps.length})',
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 6)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(children: [
+                    chip('all', 'TOUS (${all.length})'),
+                    chip('online', 'EN LIGNE ($here)'),
+                    chip('friends', 'AMIS ($friends)'),
+                  ]),
+                ),
+              ),
+              SizedBox(
+                width: 120,
+                child: SizedBox(
+                  height: 34,
+                  child: TextField(
+                    key: const ValueKey('people-search'),
+                    onChanged: (v) => setState(() => _query = v),
+                    textInputAction: TextInputAction.search,
+                    style: const TextStyle(fontSize: 14),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: 'Chercher',
+                      prefixIcon: const Icon(Icons.search, size: 18),
+                      prefixIconConstraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 0),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(17)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
         Expanded(
           child: ps.isEmpty
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: Text(
-                        online.connected
-                            ? 'Personne d\'autre pour l\'instant.\n'
-                                'Les joueurs apparaissent ici dès qu\'ils '
-                                'ouvrent Foclaboard.'
-                            : online.error ?? 'Connexion…',
+                        !online.connected
+                            ? online.error ?? 'Connexion…'
+                            : q.isNotEmpty
+                                ? 'Aucun joueur trouvé.'
+                                : _filter == 'friends'
+                                    ? 'Pas encore d\'ami.\nTouche + AMI à '
+                                        'côté d\'un joueur pour lui demander.'
+                                    : _filter == 'online'
+                                        ? 'Personne d\'autre en ligne pour '
+                                            'l\'instant.'
+                                        : 'Aucun autre joueur sur le serveur '
+                                            'pour l\'instant.',
                         textAlign: TextAlign.center,
                         style: Tv.label(14, color: Tv.text)),
                   ),
@@ -486,18 +594,260 @@ class _OnlinePageState extends State<OnlinePage> {
     );
   }
 
+  /// Regarde la partie en ligne d'un ami.
+  Future<void> _watch(OnlinePlayer p) async {
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (_) => WatchPage(player: p)));
+  }
+
+  /// Propose un rendez-vous à [p] (jour puis heure).
+  Future<void> _date(OnlinePlayer p) async {
+    final now = DateTime.now();
+    final day = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 60)),
+      helpText: 'RENDEZ-VOUS AVEC ${p.name.toUpperCase()}',
+    );
+    if (day == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: (now.hour + 1) % 24, minute: 0),
+      helpText: 'À QUELLE HEURE ?',
+    );
+    if (time == null || !mounted) return;
+    final at = DateTime(day.year, day.month, day.day, time.hour, time.minute);
+    await _friend(() => online.proposeDate(p, at));
+  }
+
+  Future<void> _confirmBlock(OnlinePlayer p) async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Bloquer ${p.name} ?', style: Tv.title(22)),
+        content: const Text(
+            'Il ne pourra plus te défier ni te demander en ami, et te verra '
+            'hors ligne. Tu pourras le débloquer ici.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('NON')),
+          FilledButton(
+              key: const ValueKey('block-yes'),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('BLOQUER')),
+        ],
+      ),
+    );
+    if (yes == true) await _friend(() => online.block(p));
+  }
+
+  /// Menu d'une ligne : tout ce qu'on peut faire avec ce joueur.
+  Widget _menu(OnlinePlayer p) {
+    return PopupMenuButton<String>(
+      key: ValueKey('person-menu-${p.id}'),
+      tooltip: 'Plus',
+      padding: EdgeInsets.zero,
+      icon: Icon(Icons.more_vert, color: Tv.muted),
+      onSelected: (v) {
+        switch (v) {
+          case 'stats':
+            openPlayerStats(context, id: p.key, name: p.name, color: p.color);
+          case 'friend':
+            p.friend == ''
+                ? _friend(() => online.askFriend(p))
+                : _confirmRemove(p);
+          case 'want':
+            _friend(() => online.want(p, !p.wanted));
+          case 'date':
+            _date(p);
+          case 'watch':
+            _watch(p);
+          case 'block':
+            p.blocked ? _friend(() => online.block(p, false)) : _confirmBlock(p);
+        }
+      },
+      itemBuilder: (_) => [
+        if (p.title.isNotEmpty || p.motto.isNotEmpty)
+          PopupMenuItem(
+            enabled: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (p.title.isNotEmpty)
+                  Text(p.title.toUpperCase(),
+                      style: Tv.label(13, color: Tv.gold)),
+                if (p.motto.isNotEmpty)
+                  Text('« ${p.motto} »',
+                      style: const TextStyle(
+                          color: Tv.text, fontStyle: FontStyle.italic)),
+              ],
+            ),
+          ),
+        const PopupMenuItem(value: 'stats', child: Text('Stats et rang')),
+        if (!p.blocked) ...[
+          if (p.friend == '')
+            const PopupMenuItem(
+                value: 'friend', child: Text('Demander en ami')),
+          if (p.friend == 'sent')
+            const PopupMenuItem(
+                value: 'friend', child: Text('Annuler ma demande d\'ami')),
+          if (p.isFriend)
+            const PopupMenuItem(value: 'friend', child: Text('Retirer cet ami')),
+          PopupMenuItem(
+              value: 'want',
+              child: Text(p.wanted
+                  ? 'Retirer « je veux jouer »'
+                  : 'Lui dire que je veux jouer')),
+          const PopupMenuItem(
+              value: 'date', child: Text('Proposer un rendez-vous')),
+          if (p.watchable)
+            const PopupMenuItem(
+                value: 'watch', child: Text('Regarder sa partie')),
+        ],
+        PopupMenuItem(
+            value: 'block', child: Text(p.blocked ? 'Débloquer' : 'Bloquer')),
+      ],
+    );
+  }
+
+  /// Bouton d'amitié d'une ligne, selon le lien.
+  Widget _friendButton(OnlinePlayer p) {
+    switch (p.friend) {
+      case 'blocked':
+        return const SizedBox.shrink();
+      case 'ok':
+        return IconButton(
+          key: ValueKey('friend-ok-${p.id}'),
+          tooltip: 'Ami (toucher pour retirer)',
+          visualDensity: VisualDensity.compact,
+          icon: Icon(Icons.star, color: Tv.gold),
+          onPressed: () => _confirmRemove(p),
+        );
+      case 'sent':
+        return TextButton(
+          key: ValueKey('friend-sent-${p.id}'),
+          style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8)),
+          onPressed: () => _confirmRemove(p),
+          child: Text('DEMANDÉ', style: Tv.label(12)),
+        );
+      case 'ask':
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              key: ValueKey('friend-no-${p.id}'),
+              tooltip: 'Refuser',
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.close, color: Tv.red),
+              onPressed: () => _friend(() => online.answerFriend(p, false)),
+            ),
+            OutlinedButton(
+              key: ValueKey('friend-yes-${p.id}'),
+              style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 10)),
+              onPressed: () => _friend(() => online.answerFriend(p, true)),
+              child: Text('ACCEPTER', style: Tv.title(15, color: Tv.green)),
+            ),
+          ],
+        );
+      default:
+        return TextButton.icon(
+          key: ValueKey('friend-add-${p.id}'),
+          style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8)),
+          onPressed: () => _friend(() => online.askFriend(p)),
+          icon: const Icon(Icons.person_add_alt_1, size: 16),
+          label: Text('AMI', style: Tv.label(12, color: Tv.text)),
+        );
+    }
+  }
+
+  /// Bouton principal d'une ligne : défier, regarder, prévenir, débloquer.
+  Widget _mainButton(OnlinePlayer p) {
+    final style = FilledButton.styleFrom(
+        minimumSize: const Size(92, 40),
+        padding: const EdgeInsets.symmetric(horizontal: 8));
+    if (p.blocked) {
+      return OutlinedButton(
+        key: ValueKey('unblock-${p.id}'),
+        style: OutlinedButton.styleFrom(
+            minimumSize: const Size(92, 40),
+            padding: const EdgeInsets.symmetric(horizontal: 8)),
+        onPressed: () => _friend(() => online.block(p, false)),
+        child: Text('DÉBLOQUER', style: Tv.title(15)),
+      );
+    }
+    if (p.free) {
+      return FilledButton(
+        style: style,
+        onPressed: () => _challenge(p),
+        child: Text('DÉFIER', style: Tv.title(18, color: Colors.black)),
+      );
+    }
+    if (p.watchable) {
+      return FilledButton.tonal(
+        key: ValueKey('watch-${p.id}'),
+        style: style,
+        onPressed: () => _watch(p),
+        child: Text('REGARDER', style: Tv.title(16)),
+      );
+    }
+    // Absent, en partie ou « ne pas déranger » : lui laisser un mot
+    return OutlinedButton(
+      key: ValueKey('want-${p.id}'),
+      style: OutlinedButton.styleFrom(
+          minimumSize: const Size(92, 40),
+          padding: const EdgeInsets.symmetric(horizontal: 8)),
+      onPressed: () => _friend(() => online.want(p, !p.wanted)),
+      child: Text(p.wanted ? 'PRÉVENU ✓' : 'PRÉVENIR',
+          style: Tv.title(15, color: p.wanted ? Tv.green : Tv.text)),
+    );
+  }
+
   Widget _playerRow(OnlinePlayer p) {
+    final ask = p.friend == 'ask';
+    final (dot, base) = p.blocked
+        ? (Tv.red, 'BLOQUÉ')
+        : p.offline
+            ? (
+                Tv.muted,
+                p.seen == null
+                    ? 'HORS LIGNE'
+                    : 'VU ${agoText(p.seen!).toUpperCase()}'
+              )
+            : p.busy
+                ? (Tv.gold, 'EN PARTIE')
+                : p.dnd
+                    ? (Tv.red, 'NE PAS DÉRANGER')
+                    : (Tv.green, 'LIBRE');
+    final note = ask
+        ? 'TE DEMANDE EN AMI'
+        : p.want
+            ? 'VEUT JOUER AVEC TOI'
+            : p.isFriend && p.wins + p.losses > 0
+                ? '${p.wins} V · ${p.losses} D'
+                : null;
+    final hot = ask || p.want;
     return Container(
+      key: ValueKey('person-${p.id}'),
       margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+      padding: const EdgeInsets.fromLTRB(8, 6, 0, 6),
       decoration: BoxDecoration(
         gradient: Tv.panelGradient,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Tv.line),
+        border: Border.all(color: hot ? Tv.green : Tv.line),
       ),
       child: Row(
         children: [
-          PlayerAvatar(name: p.name, color: p.color, size: 40, id: p.key),
+          Opacity(
+            opacity: p.offline || p.blocked ? 0.55 : 1,
+            child:
+                PlayerAvatar(name: p.name, color: p.color, size: 40, id: p.key),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: InkWell(
@@ -512,10 +862,14 @@ class _OnlinePageState extends State<OnlinePage> {
                       style: Tv.title(20)),
                   Row(
                     children: [
-                      Icon(Icons.circle,
-                          size: 9, color: p.busy ? Tv.gold : Tv.green),
+                      Icon(Icons.circle, size: 9, color: dot),
                       const SizedBox(width: 5),
-                      Text(p.busy ? 'EN PARTIE' : 'LIBRE', style: Tv.label(11)),
+                      Flexible(
+                        child: Text(note == null ? base : '$base · $note',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Tv.label(11, color: hot ? Tv.green : null)),
+                      ),
                     ],
                   ),
                 ],
@@ -524,14 +878,99 @@ class _OnlinePageState extends State<OnlinePage> {
           ),
           if (p.rating != null) ...[
             RatingBadge(rating: p.rating!),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
           ],
+          _friendButton(p),
+          const SizedBox(width: 4),
+          _mainButton(p),
+          _menu(p),
+        ],
+      ),
+    );
+  }
+
+  /// Phrase de mon profil : la changer.
+  Future<void> _editMotto() async {
+    final ctl = TextEditingController(text: online.motto);
+    final v = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Ma phrase', style: Tv.title(22)),
+        content: TextField(
+          key: const ValueKey('motto-field'),
+          controller: ctl,
+          autofocus: true,
+          maxLength: 60,
+          decoration: const InputDecoration(
+              hintText: 'Visible par les autres joueurs'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('ANNULER')),
           FilledButton(
-            style: FilledButton.styleFrom(
-                minimumSize: const Size(96, 40),
-                padding: const EdgeInsets.symmetric(horizontal: 12)),
-            onPressed: p.busy ? null : () => _challenge(p),
-            child: Text('DÉFIER', style: Tv.title(18, color: Colors.black)),
+              key: const ValueKey('motto-ok'),
+              onPressed: () => Navigator.pop(ctx, ctl.text),
+              child: const Text('OK')),
+        ],
+      ),
+    );
+    if (v != null) await _friend(() => online.setMotto(v));
+  }
+
+  String _dateText(DateTime t) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    const days = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
+    return '${days[t.weekday - 1]} ${two(t.day)}/${two(t.month)} '
+        '${two(t.hour)}:${two(t.minute)}';
+  }
+
+  /// Mes rendez-vous (panneau de droite).
+  Widget _dateRow(OnlineDate d) {
+    final wait = !d.ok && !d.mine; // à moi de répondre
+    return Container(
+      key: ValueKey('date-${d.id}'),
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.fromLTRB(10, 4, 2, 4),
+      decoration: BoxDecoration(
+        color: Tv.panel,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: wait ? Tv.green : Tv.line),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${_dateText(d.at)} · ${d.other.name.toUpperCase()}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Tv.title(15)),
+                Text(
+                    d.ok
+                        ? 'RENDEZ-VOUS PRIS'
+                        : d.mine
+                            ? 'EN ATTENTE DE SA RÉPONSE'
+                            : 'TE PROPOSE CE RENDEZ-VOUS',
+                    style: Tv.label(10,
+                        color: d.ok || wait ? Tv.green : null)),
+              ],
+            ),
+          ),
+          if (wait)
+            IconButton(
+              key: ValueKey('date-yes-${d.id}'),
+              tooltip: 'Accepter',
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.check, color: Tv.green),
+              onPressed: () => _friend(() => online.answerDate(d.id, true)),
+            ),
+          IconButton(
+            key: ValueKey('date-no-${d.id}'),
+            tooltip: wait ? 'Refuser' : 'Retirer',
+            visualDensity: VisualDensity.compact,
+            icon: Icon(Icons.close, color: Tv.muted),
+            onPressed: () => _friend(() => online.answerDate(d.id, false)),
           ),
         ],
       ),
@@ -559,12 +998,19 @@ class _OnlinePageState extends State<OnlinePage> {
                   Row(
                     children: [
                       Icon(Icons.circle,
-                          size: 9, color: online.connected ? Tv.green : Tv.red),
+                          size: 9,
+                          color: !online.connected || online.dnd
+                              ? Tv.red
+                              : Tv.green),
                       const SizedBox(width: 5),
                       Expanded(
                         child: Text(
                             online.connected
-                                ? 'EN LIGNE'
+                                ? [
+                                    online.dnd ? 'NE PAS DÉRANGER' : 'EN LIGNE',
+                                    if (online.title.isNotEmpty)
+                                      online.title.toUpperCase()
+                                  ].join(' · ')
                                 : (online.error ?? 'CONNEXION…').toUpperCase(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -577,6 +1023,48 @@ class _OnlinePageState extends State<OnlinePage> {
             ),
           ],
         ),
+        InkWell(
+          key: const ValueKey('motto-edit'),
+          onTap: _editMotto,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                      online.motto.isEmpty
+                          ? 'Ajouter une phrase à mon profil'
+                          : '« ${online.motto} »',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: online.motto.isEmpty ? Tv.muted : Tv.text,
+                          fontStyle: FontStyle.italic,
+                          fontSize: 13)),
+                ),
+                Icon(Icons.edit, size: 14, color: Tv.muted),
+              ],
+            ),
+          ),
+        ),
+        SwitchListTile(
+          key: const ValueKey('dnd'),
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          visualDensity: VisualDensity.compact,
+          title: Text('NE PAS DÉRANGER', style: Tv.label(13, color: Tv.text)),
+          subtitle: Text('Visible en ligne, sans recevoir de défi',
+              style: TextStyle(color: Tv.muted, fontSize: 11)),
+          value: online.dnd,
+          onChanged: (v) => _friend(() => online.setDnd(v)),
+        ),
+        if (online.dates.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 4),
+            child: Text('RENDEZ-VOUS', style: Tv.label(12, color: Tv.gold)),
+          ),
+          for (final d in online.dates) _dateRow(d),
+        ],
         if (room != null) ...[
           const SizedBox(height: 12),
           FilledButton.icon(
@@ -602,7 +1090,11 @@ class _OnlinePageState extends State<OnlinePage> {
                 ),
         ),
         Text(
-            '1 contre 1, chacun chez soi sur sa cible.\n'
+            'Tous les joueurs du serveur sont listés : + AMI pour demander '
+            'quelqu\'un en ami, l\'étoile pour le retirer, PRÉVENIR pour '
+            'dire à un absent que tu veux jouer, les 3 points pour le reste '
+            '(rendez-vous, regarder la partie d\'un ami, bloquer).\n'
+            '1 contre 1 ou 2 contre 2, chacun chez soi sur sa cible.\n'
             'Touche DÉFIER, choisis le jeu : ton adversaire a 45 s pour '
             'accepter.\n'
             'Pendant la partie, vous vous voyez en vidéo : touche l\'image '
@@ -714,6 +1206,122 @@ class _WaitDialogState extends State<_WaitDialog> {
           child: const Text('ANNULER'),
         ),
       ],
+    );
+  }
+}
+
+/// Partie en ligne d'un ami, regardée en direct (comme sur un écran).
+class WatchPage extends StatefulWidget {
+  final OnlinePlayer player;
+  const WatchPage({super.key, required this.player});
+
+  /// Relecture de la partie (coupée dans les tests).
+  static Duration every = const Duration(seconds: 2);
+
+  @override
+  State<WatchPage> createState() => _WatchPageState();
+}
+
+class _WatchPageState extends State<WatchPage> {
+  final online = OnlineService.instance;
+  Map<String, dynamic>? _state;
+  String? _over;
+  Timer? _timer;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _timer = Timer.periodic(WatchPage.every, (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    if (_busy || _over != null) return;
+    _busy = true;
+    try {
+      final g = await online.watchGame(widget.player.id);
+      if (!mounted) return;
+      if (g == null) {
+        setState(() => _over = _state == null
+            ? '${widget.player.name} n\'est plus en partie.'
+            : 'Partie terminée.');
+        _timer?.cancel();
+        return;
+      }
+      final ids = [
+        for (final p in (g['players'] as List? ?? const []))
+          '${(p as Map)['id']}'
+      ];
+      if (_state == null) {
+        PlayerStore.instance.setGameColors(ids);
+        MediaStore.instance.ensure(ids);
+      }
+      final old = _state?['game'] as Map?;
+      if (old == null ||
+          '${old['actions']}' != '${g['actions']}' ||
+          '${old['players']}' != '${g['players']}') {
+        setState(() => _state = {'game': g});
+      }
+    } on ApiError catch (e) {
+      if (mounted && _state == null) setState(() => _over = e.message);
+    } catch (_) {
+    } finally {
+      _busy = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final st = _state;
+    return Scaffold(
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: st == null
+                ? Center(
+                    child: Text(_over ?? 'Connexion à la partie…',
+                        style: Tv.title(22)))
+                : TvGameView(state: st),
+          ),
+          if (_over != null && st != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 12,
+              child: Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Tv.gold)),
+                  child: Text(_over!.toUpperCase(),
+                      style: Tv.label(13, color: Tv.gold)),
+                ),
+              ),
+            ),
+          Positioned(
+            left: 4,
+            bottom: 4,
+            child: SafeArea(
+              child: TextButton.icon(
+                key: const ValueKey('watch-quit'),
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back, size: 16),
+                label: Text('QUITTER', style: Tv.label(13)),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

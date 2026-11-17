@@ -19,6 +19,8 @@ import '../granboard.dart';
 import '../media.dart';
 import '../online/online.dart';
 import '../online/video.dart';
+import '../server.dart';
+import 'online_page.dart' show waitForAnswer;
 import '../players.dart';
 import '../tv_link.dart';
 import 'award.dart';
@@ -233,6 +235,7 @@ class _GamePageState extends State<GamePage> {
     _room?.push(game.actionLog);
     _pushTv();
     _reportTournament();
+    _reportResult();
     _autoResults();
     _scheduleAutoNext();
   }
@@ -313,6 +316,24 @@ class _GamePageState extends State<GamePage> {
 
   /// Match de tournoi terminé : le vainqueur est envoyé au tableau (par
   /// chacun des 2 téléphones, le serveur garde le premier).
+  bool _resultSent = false;
+
+  /// Partie en ligne finie : gagnée ou perdue, pour le bilan entre joueurs.
+  void _reportResult() {
+    final room = _room;
+    if (room == null || _resultSent || !game.finished) return;
+    _resultSent = true;
+    final mine = game.winners.any((i) => room.mine(game.players[i].id));
+    final theirs = game.winners.any((i) => !room.mine(game.players[i].id));
+    GbServer.rpc('gb_on_result', {
+      'p_token': room.account.token,
+      'p_room': room.id,
+      'p_won': mine == theirs ? null : mine,
+    }).catchError((Object _) {
+      _resultSent = false;
+    });
+  }
+
   void _reportTournament() {
     final room = _room;
     if (room == null || _tnSent || !game.finished) return;
@@ -357,6 +378,7 @@ class _GamePageState extends State<GamePage> {
     });
     _pushTv();
     _reportTournament();
+    _reportResult();
     _autoResults();
     _scheduleAutoNext();
   }
@@ -533,7 +555,11 @@ class _GamePageState extends State<GamePage> {
         MaterialPageRoute(
             builder: (_) => _room == null
                 ? resultsPageFor(g, saving: _saving)
-                : OnlineResultsPage(game: g, saving: _saving)));
+                : OnlineResultsPage(
+                    game: g,
+                    saving: _saving,
+                    peer: _room!.peer,
+                    roomGame: _room!.game)));
   }
 
   Future<bool> _confirmQuit() async {
@@ -838,27 +864,97 @@ class _OnlineBanner extends StatelessWidget {
   }
 }
 
-/// Résultats d'une partie en ligne : ceux du jeu, sans « Rejouer » (la
-/// revanche se lance depuis l'écran En ligne).
-class OnlineResultsPage extends StatelessWidget {
+/// Résultats d'une partie en ligne : ceux du jeu, avec REVANCHE (même
+/// partie reproposée à l'adversaire ; pas en double ni en tournoi).
+class OnlineResultsPage extends StatefulWidget {
   final DartsGame game;
   final Future<bool>? saving;
-  const OnlineResultsPage({super.key, required this.game, this.saving});
+  final OnlinePlayer? peer;
+  final Map<String, dynamic>? roomGame;
+  const OnlineResultsPage(
+      {super.key, required this.game, this.saving, this.peer, this.roomGame});
+
+  /// La même partie, journal vidé, celui qui commençait joue en second.
+  static Map<String, dynamic>? rematchOf(Map<String, dynamic>? game) {
+    if (game == null || game['double'] == true || game['tn'] != null) {
+      return null;
+    }
+    final players = game['players'];
+    if (players is! List || players.length != 2) return null;
+    return {
+      ...game,
+      'players': players.reversed.toList(),
+      'actions': <String>[],
+    };
+  }
+
+  @override
+  State<OnlineResultsPage> createState() => _OnlineResultsPageState();
+}
+
+class _OnlineResultsPageState extends State<OnlineResultsPage> {
+  bool _asking = false;
+
+  Future<void> _rematch(OnlinePlayer peer, Map<String, dynamic> game) async {
+    setState(() => _asking = true);
+    int id;
+    try {
+      id = await OnlineService.instance.challenge(peer, game);
+    } on ApiError catch (e) {
+      if (mounted) {
+        setState(() => _asking = false);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+      return;
+    }
+    if (!mounted) return;
+    await waitForAnswer(context, id, peer, game);
+    if (!mounted) return;
+    // Revanche jouée (ou refusée) : ces résultats-ci sont derrière nous
+    if (OnlineService.instance.sent?.status == 'accepted') {
+      Navigator.pop(context);
+    } else {
+      setState(() => _asking = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final peer = widget.peer;
+    final again = OnlineResultsPage.rematchOf(widget.roomGame);
     return Stack(
       children: [
-        Positioned.fill(child: resultsPageFor(game, saving: saving, tv: true)),
+        Positioned.fill(
+            child: resultsPageFor(widget.game, saving: widget.saving, tv: true)),
         Positioned(
           right: 12,
           bottom: 10,
           child: SafeArea(
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(minimumSize: const Size(150, 46)),
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.public),
-              label: Text('TERMINER', style: Tv.title(20, color: Colors.black)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (peer != null && again != null) ...[
+                  OutlinedButton.icon(
+                    key: const ValueKey('rematch'),
+                    style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(150, 46),
+                        backgroundColor: Colors.black54),
+                    onPressed: _asking ? null : () => _rematch(peer, again),
+                    icon: const Icon(Icons.replay),
+                    label: Text('REVANCHE', style: Tv.title(20)),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                FilledButton.icon(
+                  style:
+                      FilledButton.styleFrom(minimumSize: const Size(150, 46)),
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.public),
+                  label:
+                      Text('TERMINER', style: Tv.title(20, color: Colors.black)),
+                ),
+              ],
             ),
           ),
         ),

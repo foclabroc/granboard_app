@@ -14,23 +14,102 @@ class OnlinePlayer {
   final int colorIndex;
   final double? rating;
   final bool busy;
+
+  /// Hors ligne (liste de tous les joueurs du serveur).
+  final bool offline;
+
+  /// Lien d'amitié avec moi : '' | sent (je lui ai demandé) | ask (il me
+  /// demande) | ok.
+  final String friend;
+
+  /// Ne veut pas être dérangé (pas de défi).
+  final bool dnd;
+
+  /// Dernière fois vu en ligne.
+  final DateTime? seen;
+
+  /// Phrase et titre de son profil.
+  final String motto, title;
+
+  /// Il veut jouer avec moi / je lui ai dit que je voulais jouer.
+  final bool want, wanted;
+
+  /// Mon bilan contre lui (amis) : victoires, défaites.
+  final int wins, losses;
+
+  /// Ami en partie en ligne : on peut la regarder.
+  final bool watchable;
   const OnlinePlayer(
       {required this.id,
       required this.name,
       this.colorIndex = 0,
       this.rating,
-      this.busy = false});
+      this.busy = false,
+      this.offline = false,
+      this.friend = '',
+      this.dnd = false,
+      this.seen,
+      this.motto = '',
+      this.title = '',
+      this.want = false,
+      this.wanted = false,
+      this.wins = 0,
+      this.losses = 0,
+      this.watchable = false});
 
   factory OnlinePlayer.fromJson(Map j) => OnlinePlayer(
         id: (j['id'] as num).toInt(),
         name: '${j['pseudo'] ?? '?'}',
         colorIndex: (j['color'] as num?)?.toInt() ?? 0,
         rating: (j['rating'] as num?)?.toDouble(),
-        busy: j['busy'] == true,
+        busy: j['busy'] == true || j['state'] == 'busy',
+        offline: j['state'] == 'off',
+        friend: '${j['friend'] ?? ''}',
+        dnd: j['dnd'] == true,
+        seen: DateTime.tryParse('${j['seen'] ?? ''}')?.toLocal(),
+        motto: '${j['motto'] ?? ''}',
+        title: '${j['title'] ?? ''}',
+        want: j['want'] == true,
+        wanted: j['wanted'] == true,
+        wins: (j['w'] as num?)?.toInt() ?? 0,
+        losses: (j['l'] as num?)?.toInt() ?? 0,
+        watchable: j['room'] == true,
       );
+
+  bool get isFriend => friend == 'ok';
+  bool get blocked => friend == 'blocked';
+
+  /// Peut être défié tout de suite.
+  bool get free => !offline && !busy && !dnd && !blocked;
 
   String get key => '$id';
   Color get color => kPlayerColors[colorIndex % kPlayerColors.length];
+}
+
+/// Rendez-vous pour jouer avec [other].
+class OnlineDate {
+  final int id;
+  final OnlinePlayer other;
+  final DateTime at;
+
+  /// Accepté ; sinon en attente de la réponse de celui qui l'a reçu.
+  final bool ok;
+
+  /// C'est moi qui l'ai proposé.
+  final bool mine;
+  const OnlineDate(this.id, this.other, this.at, this.ok, this.mine);
+}
+
+/// « Il y a 5 min », « hier », « le 12/11 » (dernière connexion).
+String agoText(DateTime t, [DateTime? now]) {
+  final d = (now ?? DateTime.now()).difference(t);
+  if (d.inMinutes < 2) return 'à l\'instant';
+  if (d.inMinutes < 60) return 'il y a ${d.inMinutes} min';
+  if (d.inHours < 24) return 'il y a ${d.inHours} h';
+  if (d.inDays < 2) return 'hier';
+  if (d.inDays < 7) return 'il y a ${d.inDays} jours';
+  String two(int n) => n.toString().padLeft(2, '0');
+  return 'le ${two(t.day)}/${two(t.month)}';
 }
 
 /// Défi reçu.
@@ -68,6 +147,25 @@ class OnlineService extends ChangeNotifier with WidgetsBindingObserver {
   static const _fast = Duration(seconds: 4);
 
   List<OnlinePlayer> players = const [];
+
+  /// Tous les joueurs du serveur, avec leur état et le lien d'amitié
+  /// (relu tant que l'écran « En ligne » est ouvert).
+  List<OnlinePlayer> people = const [];
+
+  /// Demandes d'ami reçues.
+  List<OnlinePlayer> asks = const [];
+
+  /// Joueurs qui veulent jouer avec moi (message laissé en mon absence).
+  List<OnlinePlayer> wants = const [];
+
+  /// Mes rendez-vous (proposés ou reçus).
+  List<OnlineDate> dates = const [];
+
+  /// Je ne veux pas être dérangé (pas de défi).
+  bool dnd = false;
+
+  /// Phrase et titre de mon profil.
+  String motto = '', title = '';
   OnlineInvite? invite;
   SentInvite? sent;
 
@@ -166,6 +264,10 @@ class OnlineService extends ChangeNotifier with WidgetsBindingObserver {
     if (m == null) {
       if (players.isNotEmpty || invite != null || connected) {
         players = const [];
+        people = const [];
+        asks = const [];
+        wants = const [];
+        dates = const [];
         invite = null;
         sent = null;
         connected = false;
@@ -200,6 +302,27 @@ class OnlineService extends ChangeNotifier with WidgetsBindingObserver {
               '${s['status']}', (s['room'] as num?)?.toInt())
           : null;
       resumeRoom = (r['room'] as num?)?.toInt();
+      asks = [
+        for (final p in (r['asks'] as List? ?? const []))
+          OnlinePlayer.fromJson(p as Map)
+      ];
+      wants = [
+        for (final p in (r['wants'] as List? ?? const []))
+          OnlinePlayer.fromJson(p as Map)
+      ];
+      dates = [
+        for (final d in (r['dates'] as List? ?? const []))
+          if (d is Map && DateTime.tryParse('${d['at']}') != null)
+            OnlineDate(
+                (d['id'] as num).toInt(),
+                OnlinePlayer.fromJson(d['with'] as Map),
+                DateTime.parse('${d['at']}').toLocal(),
+                d['ok'] == true,
+                d['mine'] == true)
+      ];
+      dnd = r['dnd'] == true;
+      motto = '${r['motto'] ?? ''}';
+      title = '${r['title'] ?? ''}';
       final topic = r['topic'] as String?;
       if (topic != null && topic != _topic) {
         _unlisten?.call();
@@ -216,6 +339,112 @@ class OnlineService extends ChangeNotifier with WidgetsBindingObserver {
       _pinging = false;
     }
     notifyListeners();
+    if (_watchers > 0 && connected) await loadPeople();
+  }
+
+  /// Relit tous les joueurs du serveur.
+  Future<void> loadPeople() async {
+    final m = me;
+    if (m == null) return;
+    try {
+      final r = await GbServer.rpc('gb_on_people', {'p_token': m.token});
+      people = [for (final p in r as List) OnlinePlayer.fromJson(p as Map)];
+      for (final p in people) {
+        PlayerStore.instance.remoteColors[p.key] = p.color;
+      }
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Demande [p] en ami (ou accepte s'il m'avait demandé). Lève ApiError.
+  Future<void> askFriend(OnlinePlayer p) async {
+    await GbServer.rpc('gb_friend_ask', {'p_token': me!.token, 'p_to': p.id});
+    await _friendsChanged();
+  }
+
+  /// Répond à la demande d'ami de [p].
+  Future<void> answerFriend(OnlinePlayer p, bool accept) async {
+    await GbServer.rpc('gb_friend_answer',
+        {'p_token': me!.token, 'p_from': p.id, 'p_accept': accept});
+    await _friendsChanged();
+  }
+
+  /// Retire [p] de mes amis, ou annule ma demande.
+  Future<void> removeFriend(OnlinePlayer p) async {
+    await GbServer.rpc(
+        'gb_friend_remove', {'p_token': me!.token, 'p_other': p.id});
+    await _friendsChanged();
+  }
+
+  /// Laisse (ou retire) « je veux jouer avec toi » à [p].
+  Future<void> want(OnlinePlayer p, [bool on = true]) async {
+    await GbServer.rpc(
+        'gb_on_want', {'p_token': me!.token, 'p_to': p.id, 'p_on': on});
+    await _friendsChanged();
+  }
+
+  /// Bloque (ou débloque) [p].
+  Future<void> block(OnlinePlayer p, [bool on = true]) async {
+    await GbServer.rpc(
+        'gb_block', {'p_token': me!.token, 'p_other': p.id, 'p_on': on});
+    await _friendsChanged();
+  }
+
+  /// « Ne pas déranger » : visible en ligne, sans recevoir de défi.
+  Future<void> setDnd(bool on) async {
+    await GbServer.rpc('gb_on_dnd', {'p_token': me!.token, 'p_on': on});
+    dnd = on;
+    notifyListeners();
+  }
+
+  /// Phrase de mon profil (60 caractères au plus).
+  Future<void> setMotto(String text) async {
+    final r = await GbServer.rpc(
+        'gb_set_motto', {'p_token': me!.token, 'p_motto': text});
+    motto = '${r ?? ''}';
+    notifyListeners();
+  }
+
+  /// Propose un rendez-vous à [p].
+  Future<void> proposeDate(OnlinePlayer p, DateTime at) async {
+    await GbServer.rpc('gb_date_set', {
+      'p_token': me!.token,
+      'p_to': p.id,
+      'p_at': at.toUtc().toIso8601String()
+    });
+    await ping();
+  }
+
+  /// Accepte un rendez-vous reçu, ou le retire.
+  Future<void> answerDate(int id, bool accept) async {
+    await GbServer.rpc('gb_date_answer',
+        {'p_token': me!.token, 'p_id': id, 'p_accept': accept});
+    await ping();
+  }
+
+  /// Ids de mes amis (classements).
+  Future<Set<int>> friendIds() async {
+    final m = me;
+    if (m == null) return const {};
+    final r = await GbServer.rpc('gb_friend_ids', {'p_token': m.token});
+    return {for (final x in r as List) (x as num).toInt()};
+  }
+
+  /// Partie en ligne de l'ami [playerId] : son JSON, ou null si finie.
+  Future<Map<String, dynamic>?> watchGame(int playerId) async {
+    try {
+      final r = await GbServer.rpc(
+          'gb_on_watch', {'p_token': me!.token, 'p_player': playerId});
+      return Map<String, dynamic>.from((r as Map)['game'] as Map);
+    } on ApiError catch (e) {
+      if (e.code == 'on_gone') return null;
+      rethrow;
+    }
+  }
+
+  Future<void> _friendsChanged() async {
+    await loadPeople();
+    await ping();
   }
 
   /// Défie [p] avec la partie [game] (lève ApiError) ; renvoie l'id du défi.

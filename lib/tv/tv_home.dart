@@ -571,7 +571,8 @@ class _TvGameState extends State<_TvGame> {
                 style: Tv.title(22),
               ),
               const SizedBox(width: 16),
-              Text('CODE ${widget.code ?? ''}', style: Tv.label(12)),
+              Text(widget.code == null ? 'SPECTATEUR' : 'CODE ${widget.code}',
+                  style: Tv.label(12)),
             ],
           ),
         ),
@@ -632,4 +633,14 @@ String videoErrorSummary(String e, {bool camera = false}) {
     return e.length > 160 ? '…${e.substring(e.length - 160)}' : e;
   }
   return parts.join(' · ');
+}
+
+/// Une partie affichée comme sur un écran, à partir de son état
+/// ({game, next…}) : spectateur d'une partie en ligne.
+class TvGameView extends StatelessWidget {
+  final Map<String, dynamic> state;
+  const TvGameView({super.key, required this.state});
+
+  @override
+  Widget build(BuildContext context) => _TvGame(state: state);
 }
