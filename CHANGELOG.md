@@ -5,6 +5,7 @@
 - Écran TV 4K : l'appli passe l'écran en 1080p au démarrage (4 fois moins de pixels à dessiner, la TV agrandit l'image). Rien ne change sur les TV dont l'interface tourne déjà en 1080p (la plupart).
 - Écran TV : vidéos lues par le décodeur de la TV (plus léger) ; si une vidéo ne se lit pas, l'écran repasse tout seul au décodeur logiciel et le garde. Réglage « Vidéos en décodage logiciel » dans la fenêtre TV du téléphone.
 - Écran TV : réglage « Moteur de rendu Skia » dans la fenêtre TV du téléphone (au lieu d'Impeller, à essayer si l'écran saccade ; l'écran redémarre tout seul). Moteur, décodeur et mode d'affichage écrits en petit en bas de l'écran d'attente.
+- Son : nouveau réglage « Annoncer le joueur » (« Ana, à toi » à chaque tour). Coupé : seulement le son du joueur, le bandeau et ce qu'il lui reste (« Il te reste 40, double 20 »). Suivi par les écrans TV.
 - Partie abandonnée : la TV ne dit plus « X, à toi » après coup (annonces en attente, son du joueur et bandeau annulés). L'annonce du tour attend au plus 2,5 s la fin de l'annonce précédente (4 s avant).
 - Écran TV : moins de travail à chaque fléchette : l'écran de jeu n'est plus reconstruit quand l'état reçu ne change que la musique, le son ou la caméra ; bandeau du haut et écran de jeu dans des couches séparées ; « Ensuite » en 01 recalculé seulement au changement de joueur ; chrono de « Contre la montre » dans sa propre couche.
 

@@ -128,6 +128,7 @@ class _TvHomeState extends State<TvHome> {
     // qu'aucun téléphone n'a rien dit)
     if (s?['anim'] is bool) Perf.lite = !(s!['anim'] as bool);
     if (s?['tease'] is bool) AudioService.instance.teasing = s!['tease'];
+    if (s?['names'] is bool) AudioService.instance.turnNames = s!['names'];
     // moteur de rendu et décodeur vidéo de l'écran (Android TV)
     TvGfx.apply(s?['gfx']);
     if (s?['pron'] is Map) {

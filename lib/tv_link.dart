@@ -419,6 +419,7 @@ class TvLink extends ChangeNotifier {
         'anim': fullAnim,
         'gfx': {'engine': engine, 'video': video},
         'tease': AudioService.instance.teasing,
+        'names': AudioService.instance.turnNames,
         'pron': AudioService.instance.pronunciations,
         'wall': Wallpaper.instance.forTv,
         // musique des menus : l'écran joue le même morceau que nous

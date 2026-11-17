@@ -34,6 +34,7 @@ void main() {
       ..voice = true
       ..dartCalls = true
       ..teasing = false
+      ..turnNames = true
       ..said.clear();
     GameFx.session180 = 0;
     GameFx.sessionBestCheckout = 0;
@@ -231,6 +232,21 @@ void main() {
     await open(tester, GamePage(game: g));
     await next(tester);
     expect(audio.said.last, 'Ana, à toi. Il te reste 40, double 20');
+    await close(tester);
+  });
+  testWidgets('Annoncer le joueur coupé : sans « Ana, à toi »', (tester) async {
+    final g = X01Game(const X01Settings(startScore: 101), two);
+    g.throwDart(const DartHit(20, 3, Ring.triple));
+    g.throwDart(const DartHit(1, 1, Ring.singleOuter));
+    g.throwDart(null); // Ana : 40
+    g.next();
+    for (var i = 0; i < 3; i++) {
+      g.throwDart(null);
+    }
+    audio.turnNames = false;
+    await open(tester, GamePage(game: g));
+    await next(tester);
+    expect(audio.said.last, 'Il te reste 40, double 20');
     await close(tester);
   });
 

@@ -53,6 +53,16 @@ class _SoundSheet extends StatelessWidget {
                 onChanged: a.voice ? a.setDartCalls : null,
               ),
               SwitchListTile(
+                key: const ValueKey('turn-names'),
+                secondary: const Icon(Icons.person_pin_outlined),
+                title: Text('Annoncer le joueur', style: Tv.title(18)),
+                subtitle: const Text(
+                    '« Ana, à toi » à chaque tour. Coupé : seulement son son '
+                    'et ce qu\'il lui reste'),
+                value: a.turnNames,
+                onChanged: a.voice ? a.setTurnNames : null,
+              ),
+              SwitchListTile(
                 key: const ValueKey('teasing'),
                 secondary: const Icon(Icons.sentiment_very_satisfied),
                 title: Text('Commentaires et chambrage', style: Tv.title(18)),

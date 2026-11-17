@@ -31,6 +31,10 @@ class AudioService extends ChangeNotifier {
   /// 01, aucune marque en Cricket) ou un bust.
   bool teasing = true;
 
+  /// L'annonceur dit le joueur dont c'est le tour (« Ana, à toi »). Coupé :
+  /// seulement le son du joueur et ce qu'il lui reste.
+  bool turnNames = true;
+
   /// Écran TV (posé par main.dart avant init) : bruitages en lecteur
   /// classique, plus fiable que le mode faible latence sur ces appareils.
   bool tvDevice = false;
@@ -191,6 +195,7 @@ class AudioService extends ChangeNotifier {
         musicVolume = double.tryParse(v[3]) ?? musicVolume;
         if (v.length >= 5) dartCalls = v[4] == '1';
         if (v.length >= 6) teasing = v[5] == '1';
+        if (v.length >= 7) turnNames = v[6] == '1';
       }
       final pr = prefs.getString(_prefPron);
       if (pr != null) {
@@ -261,6 +266,7 @@ class AudioService extends ChangeNotifier {
         musicVolume.toStringAsFixed(2),
         dartCalls ? '1' : '0',
         teasing ? '1' : '0',
+        turnNames ? '1' : '0',
       ]);
     } catch (_) {}
   }
@@ -272,6 +278,11 @@ class AudioService extends ChangeNotifier {
 
   void setTeasing(bool v) {
     teasing = v;
+    _save();
+  }
+
+  void setTurnNames(bool v) {
+    turnNames = v;
     _save();
   }
 
@@ -401,7 +412,7 @@ class AudioService extends ChangeNotifier {
   final said = <String>[];
 
   void say(String text) {
-    if (_muted || _background || !voice) return;
+    if (_muted || _background || !voice || text.trim().isEmpty) return;
     said.add(text);
     if (said.length > 50) said.removeAt(0);
     final tts = _tts;

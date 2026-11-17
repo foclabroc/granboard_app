@@ -106,8 +106,19 @@ class GameFx {
 
   /// Son du tour du joueur en cours (s'il en a un), puis l'annonce.
   void _turn(DartsGame game, String text, [int ms = 250, bool next = true]) {
+    // Réglage « Annoncer le joueur » coupé : plus de « <pseudo>, à toi » ;
+    // le bandeau, le son du joueur et le reste (il te reste…, cible,
+    // commentaires) sont gardés
+    if (!audio.turnNames) {
+      final turn = '${game.currentPlayer.name}, à toi';
+      text = text
+          .replaceAll('$turn. ', '')
+          .replaceAll('$turn.', '')
+          .replaceAll(turn, '')
+          .trim();
+    }
     if (_lead.isNotEmpty) {
-      text = '${_lead.join('. ')}. $text';
+      text = [..._lead, if (text.isNotEmpty) text].join('. ');
       _lead.clear();
     }
     final id = game.currentPlayer.id;
