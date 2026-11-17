@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.24
+
+- Joueur suivant (bouton rouge de la cible ou bouton à l'écran) : les annonces en cours ou en attente (« il reste … », commentaires) sont coupées, le son du joueur suivant et son bandeau partent tout de suite.
+- Bandeau « au tour de » synchronisé avec le son du joueur : il apparaît au moment où le son part (avant, il s'affichait tout de suite et le son pouvait arriver plusieurs secondes après).
+
 ## v0.6.23
 
 - Démarrage : petite barre de chargement avant l'accueil, le temps de tout préparer pour que la partie ne cale pas :

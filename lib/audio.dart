@@ -453,15 +453,31 @@ class AudioService extends ChangeNotifier {
   /// Attend d'abord que l'annonce en cours soit finie (4 s au plus) : le
   /// « il reste … » de la 3e fléchette n'est plus coupé quand « suivant »
   /// arrive vite (joueur virtuel, bouton de la cible).
+  ///
+  /// [interrupt] (joueur suivant demandé) : les annonces en cours ou en
+  /// attente sont coupées, le son du joueur part tout de suite. Sinon on
+  /// attend la fin de l'annonce en cours (2,5 s au plus).
+  /// [onStart] : appelé au moment où le son du joueur part (bandeau du tour
+  /// synchronisé avec le son).
   void turnCue(String text,
-      {String sound = '', Uint8List? voice, int ms = 250, bool next = true}) {
+      {String sound = '',
+      Uint8List? voice,
+      int ms = 250,
+      bool next = true,
+      bool interrupt = false,
+      VoidCallback? onStart}) {
     final id = ++_cueId;
+    if (interrupt) {
+      _laterGen++;
+      _stopVoice();
+    }
     () async {
-      for (var i = 0; talking && i < 25; i++) {
+      for (var i = 0; !interrupt && talking && i < 25; i++) {
         await Future<void>.delayed(const Duration(milliseconds: 100));
         if (id != _cueId) return;
       }
       if (id != _cueId) return;
+      onStart?.call();
       final c = _cue;
       final custom = sound.isNotEmpty && (sound != 'voice' || voice != null);
       if (_muted || !effects || c == null || !custom) {

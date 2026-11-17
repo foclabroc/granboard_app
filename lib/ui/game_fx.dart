@@ -123,8 +123,17 @@ class GameFx {
     }
     final id = game.currentPlayer.id;
     final media = MediaStore.instance;
+    // Après « joueur suivant » : annonces en cours coupées, bandeau du tour
+    // affiché au moment où le son du joueur part
+    final banner = _nextBanner;
+    _nextBanner = null;
     audio.turnCue(text,
-        sound: media.soundOf(id), voice: media.voiceOf(id), ms: ms, next: next);
+        sound: media.soundOf(id),
+        voice: media.voiceOf(id),
+        ms: ms,
+        next: next,
+        interrupt: _cut,
+        onStart: banner == null ? null : () => _banner(banner));
   }
 
   /// Les pseudos sont lus par la synthèse vocale, le reste par la voix
@@ -334,11 +343,27 @@ class GameFx {
   }
 
   /// Après « joueur suivant », quel que soit le jeu.
+  /// Bandeau à montrer avec le son du joueur (posé par [afterAnyNext],
+  /// pris par [_turn]).
+  DartsGame? _nextBanner;
+
+  /// « Joueur suivant » en cours : l'annonce du tour coupe les autres.
+  bool _cut = false;
+
   void afterAnyNext(DartsGame game) {
     AwardPlayer.stop();
     _names(game);
-    _afterNext(game);
-    _banner(game);
+    _nextBanner = game;
+    _cut = true;
+    try {
+      _afterNext(game);
+    } finally {
+      _cut = false;
+      // pas d'annonce du tour (fin, entre 2 legs…) : bandeau tout de suite
+      final b = _nextBanner;
+      _nextBanner = null;
+      if (b != null) _banner(b);
+    }
   }
 
   /// Bandeau « au tour de … » (pas en solo, ni entre 2 legs ou à la fin).

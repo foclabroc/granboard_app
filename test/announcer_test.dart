@@ -197,6 +197,28 @@ void main() {
     expect(audio.said, ['raté']);
   });
 
+  testWidgets('Joueur suivant : coupe l\'annonce en cours, bandeau avec le son',
+      (tester) async {
+    var started = 0;
+    audio.sayLater('20, Il reste 241', 800);
+    audio.turnCue('Bob, à toi', interrupt: true, onStart: () => started++);
+    // pas d'attente : bandeau et annonce du tour tout de suite
+    expect(started, 1);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(audio.said, ['Bob, à toi']);
+    await tester.pump(const Duration(seconds: 2));
+    expect(audio.said, ['Bob, à toi']); // « il reste » coupé
+    // sans interruption : le bandeau attend la fin de l'annonce en cours
+    audio.said.clear();
+    audio.sayLater('raté', 500);
+    audio.turnCue('Ana, à toi', onStart: () => started++);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(started, 1);
+    await tester.pump(const Duration(seconds: 1));
+    expect(started, 2);
+    expect(audio.said, ['raté', 'Ana, à toi']);
+  });
+
   testWidgets('Partie abandonnée : plus d\'annonce du tour qui attendait',
       (tester) async {
     audio.sayLater('20, Il reste 241', 800);
