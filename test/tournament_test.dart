@@ -106,6 +106,9 @@ void main() {
         MaterialApp(theme: Tv.theme(), home: const TournamentsPage()));
     await tester.runAsync(settle);
     await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('tn-tab-online')));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
     expect(find.text('COUPE DU VENDREDI'), findsOneWidget);
     expect(find.text('INSCRIPTIONS 1/4'), findsOneWidget);
 
@@ -135,6 +138,107 @@ void main() {
     expect(find.text('DEMI-FINALES'), findsOneWidget);
     expect(find.text('FINALE'), findsOneWidget);
     expect(find.text('EXEMPT'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Tableau de tournois : onglets, aperçu et match personnel', (
+    tester,
+  ) async {
+    await phone(tester);
+    final lt = LocalTournament.create(
+      name: 'Soirée à la maison',
+      label: '301',
+      game: game,
+      players: [
+        X01Player(id: ps[0].key, name: ps[0].name),
+        const X01Player(id: 'guest-1', name: 'Invité'),
+      ],
+    );
+    await tester.runAsync(() => LocalTournamentStore.instance.add(lt));
+    await tester.pumpWidget(
+      MaterialApp(theme: Tv.theme(), home: const TournamentsPage()),
+    );
+    await tester.runAsync(settle);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('SOIRÉE À LA MAISON'), findsOneWidget);
+    expect(find.text('TON PROCHAIN MATCH'), findsOneWidget);
+    expect(
+      find.textContaining('Foc contre Invité').evaluate().isNotEmpty ||
+          find.textContaining('Invité contre Foc').evaluate().isNotEmpty,
+      isTrue,
+    );
+    expect(find.text('TABLEAU'), findsOneWidget);
+    expect(find.byKey(const ValueKey('tn-new-local')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('tn-tab-online')));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('tn-next-match')), findsNothing);
+    expect(find.byKey(const ValueKey('tn-new')), findsOneWidget);
+    expect(find.byKey(const ValueKey('tn-refresh')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('tn-tab-local')));
+    await tester.pump();
+    final stored = LocalTournamentStore.instance.byUid(lt.uid)!;
+    final match = stored.view().nextMatch!;
+    stored.advance(match.round, match.slot, match.a!);
+    await tester.runAsync(() => LocalTournamentStore.instance.save());
+    await tester.pump();
+    expect(find.byKey(const ValueKey('tn-next-match')), findsNothing);
+    expect(find.text('TERMINÉ'), findsOneWidget);
+    await tester.tap(find.byKey(ValueKey('tn-local-${lt.uid}')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(LocalTournamentPage), findsOneWidget);
+    expect(find.textContaining('REMPORTE LE TOURNOI'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Tournois en ligne sans compte et accueil local vide', (
+    tester,
+  ) async {
+    await phone(tester);
+    PlayerStore.instance.players.clear();
+    await tester.pumpWidget(
+      MaterialApp(theme: Tv.theme(), home: const TournamentsPage()),
+    );
+    await tester.runAsync(settle);
+    await tester.pump();
+    expect(find.textContaining('Aucun tournoi à la maison'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tn-tab-online')));
+    await tester.pump();
+    expect(find.textContaining('Crée ton profil'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const ValueKey('tn-new')))
+          .onPressed,
+      isNull,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Tournois en ligne : erreur, nouvel essai et actualisation',
+      (tester) async {
+    await phone(tester);
+    server.offline = true;
+    await tester.pumpWidget(
+        MaterialApp(theme: Tv.theme(), home: const TournamentsPage()));
+    await tester.runAsync(settle);
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('tn-tab-online')));
+    await tester.pump();
+    expect(find.text('Pas de connexion au serveur'), findsOneWidget);
+    server.offline = false;
+    await tester.tap(find.text('RÉESSAYER'));
+    await tester.runAsync(settle);
+    await tester.pump();
+    expect(find.textContaining('Aucun tournoi pour l'), findsOneWidget);
+    await tester.runAsync(() => TournamentApi.create(ps[0].token,
+        name: 'Nouvelle coupe', size: 4, label: '301', game: game));
+    await tester.tap(find.byKey(const ValueKey('tn-refresh')));
+    await tester.runAsync(settle);
+    await tester.pump();
+    expect(find.text('NOUVELLE COUPE'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
