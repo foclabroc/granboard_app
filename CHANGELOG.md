@@ -1,5 +1,9 @@
 # Changelog
 
+## À venir
+
+- Sous-menu Tournois : onglets maison et en ligne, création selon le mode choisi, cartes avec aperçu du tableau et prochain match personnel à la maison lorsqu'il est connu.
+
 ## v0.6.16
 
 - Stats d'un joueur : HISTORIQUE DES PARTIES (toutes les parties enregistrées, les plus récentes d'abord, 30 par page avec VOIR PLUS : jeu, date, avec qui, qui a gagné, moyenne / MPR / score ; parties en ligne marquées EN LIGNE, avec l'adversaire : chaque téléphone relie sa partie à la salle, `gb_on_link`). SQL `2026-11-17_historique.sql`
