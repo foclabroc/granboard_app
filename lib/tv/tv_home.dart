@@ -16,6 +16,7 @@ import '../ui/game_fx.dart';
 import '../ui/game_page.dart' show NextMatchChip, gameView, resultsPageFor;
 import '../tournament.dart';
 import '../ui/theme.dart';
+import '../ui/turn_banner.dart';
 import '../ui/wallpaper.dart';
 import '../ui/tournament_page.dart' show TvTournamentView;
 import 'tv_client.dart';
@@ -142,6 +143,14 @@ class _TvHomeState extends State<TvHome> {
     _cam.update(s?['cam'] as Map?);
     final screen = s?['screen'] as String?;
     if (screen != _screen) {
+      // Partie quittée (abandon, retour à l'attente) : l'annonce du tour qui
+      // attendait ne part plus (« X, à toi » après l'abandon). Pas vers les
+      // résultats : l'annonce de la victoire continue.
+      if (_screen == 'game' && screen != 'results') {
+        AudioService.instance.hush();
+        AwardPlayer.stop();
+        TurnBanner.hide();
+      }
       _screen = screen;
       if (screen == 'game') {
         AudioService.instance.stopMusic();

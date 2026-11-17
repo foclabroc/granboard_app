@@ -629,6 +629,7 @@ class _GamePageState extends State<GamePage> {
     );
     if (r == true) {
       _close();
+      audio.hush();
       // L'écran TV quitte la partie tout de suite (la page d'en dessous,
       // tableau d'un tournoi par exemple, renvoie ensuite son état)
       TvLink.instance.pushLobby();

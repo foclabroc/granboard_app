@@ -326,7 +326,7 @@ class AudioService extends ChangeNotifier {
       {String sound = '', Uint8List? voice, int ms = 250, bool next = true}) {
     final id = ++_cueId;
     () async {
-      for (var i = 0; talking && i < 40; i++) {
+      for (var i = 0; talking && i < 25; i++) {
         await Future<void>.delayed(const Duration(milliseconds: 100));
         if (id != _cueId) return;
       }
@@ -375,6 +375,17 @@ class AudioService extends ChangeNotifier {
   bool get talking => _later > 0 || _speakingId != 0;
   int _later = 0;
   int _speakingId = 0;
+
+  /// Partie quittée : plus rien de ce qui attendait (annonce du tour,
+  /// `sayLater`, son du joueur) et l'annonce en cours coupée.
+  void hush() {
+    _cueId++;
+    _laterGen++;
+    _stopVoice();
+    _cue?.stop().catchError((_) {});
+  }
+
+  int _laterGen = 0;
 
   void _stopVoice() {
     _speakingId = 0;
@@ -430,8 +441,10 @@ class AudioService extends ChangeNotifier {
   /// Annonce après un court délai (laisse le bruitage se jouer).
   void sayLater(String text, [int ms = 350]) {
     _later++;
+    final gen = _laterGen;
     Timer(Duration(milliseconds: ms), () {
       _later--;
+      if (gen != _laterGen) return;
       say(text);
     });
   }

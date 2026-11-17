@@ -196,6 +196,20 @@ void main() {
     expect(audio.said, ['raté']);
   });
 
+  testWidgets('Partie abandonnée : plus d\'annonce du tour qui attendait',
+      (tester) async {
+    audio.sayLater('20, Il reste 241', 800);
+    audio.turnCue('Bob, à toi');
+    await tester.pump(const Duration(milliseconds: 300));
+    audio.hush();
+    await tester.pump(const Duration(seconds: 4));
+    expect(audio.said, isEmpty);
+    // les annonces suivantes repartent normalement
+    audio.sayLater('Ana, à toi', 100);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(audio.said, ['Ana, à toi']);
+  });
+
   test('Arrière-plan : plus aucune annonce, reprise au retour', () {
     audio.background = true;
     audio.say('triple 20');
