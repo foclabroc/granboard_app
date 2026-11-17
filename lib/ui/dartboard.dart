@@ -978,46 +978,17 @@ class _HitsPainter extends CustomPainter {
     }
   }
 
-  /// Anneau de LED autour de la cible (comme la 3s) : une lumière qui
-  /// tourne à la couleur du joueur, rouge sur un bust, arc-en-ciel à la
-  /// victoire ; reflet de lumière qui glisse lentement.
+  /// Reflet de lumière qui glisse lentement sur la cible. (L'anneau de LED
+  /// du tour a été retiré à la demande de foclabroc : les cases des
+  /// numéros vont jusqu'au bord et portent seules les effets bust /
+  /// victoire / joueur.)
   void _leds(Canvas canvas, Offset c, double outer, double r) {
-    const n = 60;
-    final ringR = outer * 0.972;
-    final ledR = math.max(1.2, outer * 0.012);
     final phase = spin * 2 * math.pi;
-    for (var i = 0; i < n; i++) {
-      final a = -math.pi / 2 + i * 2 * math.pi / n;
-      final p = c + Offset(math.cos(a), math.sin(a)) * ringR;
-      Color col;
-      double on;
-      if (win) {
-        col = HSVColor.fromAHSV(1, (i * 6 + spin * 360 * 2) % 360, 0.85, 1)
-            .toColor();
-        on = 0.85;
-      } else if (bust) {
-        col = Tv.red;
-        on = 0.35 + 0.65 * pulse;
-      } else {
-        col = dartColor;
-        // 2 « comètes » qui tournent
-        final d = math.cos(a - phase);
-        final d2 = math.cos(a - phase - math.pi);
-        on = 0.18 + 0.82 * math.pow(math.max(0, math.max(d, d2)), 8).toDouble();
-      }
-      canvas.drawCircle(
-          p,
-          ledR * 2.6,
-          Paint()
-            ..color = col.withValues(alpha: 0.35 * on)
-            ..maskFilter = MaskFilter.blur(BlurStyle.normal, ledR * 2));
-      canvas.drawCircle(
-          p,
-          ledR,
-          Paint()
-            ..color = Color.lerp(const Color(0xFF202226), col, on)!
-                .withValues(alpha: 1));
-    }
+    _gloss(canvas, c, outer, phase);
+  }
+
+  void _gloss(Canvas canvas, Offset c, double outer, double phase) {
+    final r = outer - outer * 0.15;
     // Reflet qui glisse sur le plastique
     final la = phase / 3;
     final lc = Alignment(-0.5 + 0.25 * math.cos(la), -0.5 + 0.2 * math.sin(la));
@@ -1042,7 +1013,8 @@ class _HitsPainter extends CustomPainter {
   /// sur un bust et en arc-en-ciel qui tourne à la victoire.
   void _numberLights(Canvas canvas, Offset c, double outer, double r) {
     const seg = 2 * math.pi / 20;
-    final ri = r * 1.01, ro = outer * 0.95;
+    // de l'anneau double jusqu'au liseré du bord (plus d'anneau de LED)
+    final ri = r * 1.01, ro = outer * 0.985;
     final band = outer - r;
     final lit = <int, double>{}; // numéro → intensité
     for (var k = 0; k < hits.length; k++) {
@@ -1093,10 +1065,8 @@ class _HitsPainter extends CustomPainter {
         col = dartColor;
       }
       final path = Path()
-        ..arcTo(
-            Rect.fromCircle(center: c, radius: ro), a0 + 0.02, seg - 0.04, true)
-        ..arcTo(Rect.fromCircle(center: c, radius: ri), a0 + seg - 0.02,
-            -(seg - 0.04), false)
+        ..arcTo(Rect.fromCircle(center: c, radius: ro), a0, seg, true)
+        ..arcTo(Rect.fromCircle(center: c, radius: ri), a0 + seg, -seg, false)
         ..close();
       final aimed = aim.contains(n) && !win && !bust;
       if (aimed) {
