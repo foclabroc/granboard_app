@@ -1,11 +1,8 @@
 # Changelog
 
-## À venir
-
-- Sous-menu Tournois : onglets maison et en ligne, création selon le mode choisi, cartes avec aperçu du tableau et prochain match personnel à la maison lorsqu'il est connu.
-
 ## v0.6.16
 
+- Sous-menu Tournois : onglets maison et en ligne, création selon le mode choisi, cartes avec aperçu du tableau et prochain match personnel à la maison lorsqu'il est connu.
 - Stats d'un joueur : HISTORIQUE DES PARTIES (toutes les parties enregistrées, les plus récentes d'abord, 30 par page avec VOIR PLUS : jeu, date, avec qui, qui a gagné, moyenne / MPR / score ; parties en ligne marquées EN LIGNE, avec l'adversaire : chaque téléphone relie sa partie à la salle, `gb_on_link`). SQL `2026-11-17_historique.sql`
 - Photos des joueurs relues en entier à chaque lancement : après la remise à zéro du serveur, les nouveaux comptes ont repris les mêmes numéros que les anciens et le téléphone pouvait garder une ancienne photo (ou aucune) ; une partie en attente qui pose problème n'empêche plus la mise à jour des profils et des photos
 - 01 : écran blanc en cochant Freeze avec un nombre impair de joueurs (équipes inégales) ; maintenant le message « Les 2 équipes doivent avoir autant de joueurs » s'affiche. Aussi : étiquettes VIRTUEL / INVITÉ qui débordaient dans la colonne des joueurs en équipes
