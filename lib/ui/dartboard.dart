@@ -9,6 +9,10 @@ import '../media.dart';
 import '../players.dart';
 import 'theme.dart';
 
+/// Couleur des cases à viser (chemin de finish, Cricket) : cyan vif, qui
+/// tranche sur le rouge, le vert, le crème et le noir de la cible.
+const kAimColor = Color(0xFF00E5FF);
+
 /// Style de la cible dessinée (choisi dans l'accueil, envoyé à la TV).
 class BoardSkin {
   final String id;
@@ -905,25 +909,17 @@ class _HitsPainter extends CustomPainter {
       _numberLights(canvas, c, outer, r);
     }
 
-    // Zone à viser pour finir : contour blanc qui pulse (visible sur le
-    // rouge comme sur le vert)
+    // Zone à viser pour finir : la case entière s'allume en cyan vif qui
+    // pulse (tranche sur le rouge, le vert et le crème)
     for (final h in targets) {
       final path = _zonePath(c, r, h);
+      canvas.drawPath(
+          path,
+          Paint()
+            ..color = kAimColor.withValues(alpha: 0.45 + 0.35 * pulse)
+            ..maskFilter = MaskFilter.blur(BlurStyle.outer, r * 0.04));
       canvas.drawPath(path,
-          Paint()..color = Colors.white.withValues(alpha: 0.2 + 0.3 * pulse));
-      canvas.drawPath(
-          path,
-          Paint()
-            ..color = Tv.goldLight.withValues(alpha: 0.5 + 0.4 * pulse)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = r * 0.035
-            ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.02));
-      canvas.drawPath(
-          path,
-          Paint()
-            ..color = Colors.white
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = r * 0.014);
+          Paint()..color = kAimColor.withValues(alpha: 0.7 + 0.3 * pulse));
     }
 
     // Zones touchées : halo qui pulse
@@ -1073,6 +1069,10 @@ class _HitsPainter extends CustomPainter {
       } else if (bust) {
         col = Tv.red;
         on = 0.25 + 0.55 * pulse;
+      } else if (aim.contains(n)) {
+        // à viser : la case du numéro s'allume en entier, bien vive
+        col = kAimColor;
+        on = 0.8 + 0.2 * pulse;
       } else if (lit.containsKey(n)) {
         col = dartColor;
         on = lit[n]!.clamp(0.0, 1.0);
@@ -1092,7 +1092,16 @@ class _HitsPainter extends CustomPainter {
         ..arcTo(Rect.fromCircle(center: c, radius: ri), a0 + seg - 0.02,
             -(seg - 0.04), false)
         ..close();
-      if (col != null && on > 0.01) {
+      final aimed = aim.contains(n) && !win && !bust;
+      if (aimed) {
+        // case pleine + halo autour
+        canvas.drawPath(
+            path,
+            Paint()
+              ..color = kAimColor.withValues(alpha: 0.6 * on)
+              ..maskFilter = MaskFilter.blur(BlurStyle.outer, band * 0.25));
+        canvas.drawPath(path, Paint()..color = kAimColor.withValues(alpha: on));
+      } else if (col != null && on > 0.01) {
         canvas.drawPath(
             path,
             Paint()
@@ -1104,14 +1113,6 @@ class _HitsPainter extends CustomPainter {
               ..color = col.withValues(alpha: 0.9 * on)
               ..style = PaintingStyle.stroke
               ..strokeWidth = math.max(1, band * 0.05));
-      }
-      if (aim.contains(n) && !win && !bust) {
-        canvas.drawPath(
-            path,
-            Paint()
-              ..color = Colors.white.withValues(alpha: 0.35 + 0.55 * pulse)
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = math.max(1, band * 0.06));
       }
       // Numéro redessiné par-dessus, lumineux quand sa zone est allumée
       if (on > 0.3 || aim.contains(n)) {
@@ -1125,11 +1126,23 @@ class _HitsPainter extends CustomPainter {
               fontWeight: FontWeight.w800,
               fontSize: band * 0.74,
               color: Colors.white,
-              shadows: [
-                Shadow(
-                    color: (col ?? Colors.white).withValues(alpha: 0.9),
-                    blurRadius: band * 0.25),
-              ],
+              // sur la case allumée : ombre sombre pour que le numéro
+              // blanc reste bien lisible
+              shadows: aimed
+                  ? [
+                      Shadow(
+                          color: Colors.black.withValues(alpha: 0.85),
+                          blurRadius: band * 0.18),
+                      Shadow(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          offset: Offset(0, band * 0.03),
+                          blurRadius: band * 0.05),
+                    ]
+                  : [
+                      Shadow(
+                          color: (col ?? Colors.white).withValues(alpha: 0.9),
+                          blurRadius: band * 0.25),
+                    ],
             ),
           ),
           textDirection: TextDirection.ltr,
@@ -1184,8 +1197,8 @@ class _HitsPainter extends CustomPainter {
     canvas.restore();
     // Centre : pastille numérotée
     canvas.drawCircle(p, s * 0.3, Paint()..color = Colors.white);
-    canvas.drawCircle(
-        p, s * 0.25, Paint()..color = Color.lerp(dartColor, Colors.black, 0.3)!);
+    canvas.drawCircle(p, s * 0.25,
+        Paint()..color = Color.lerp(dartColor, Colors.black, 0.3)!);
     final tp = TextPainter(
       text: TextSpan(
         text: '${k + 1}',
