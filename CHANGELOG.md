@@ -2,6 +2,7 @@
 
 ## v0.6.19
 
+- Cible : message de connexion lisible (« Cible introuvable : allume-la et rapproche-toi »…) au lieu de l'erreur technique Flutter Blue Plus.
 - Annonceur, nouveaux commentaires : compliment après un ton (« Belle volée ! », « Magnifique ! » à 140+), série (« Deuxième ton d'affilée ! »), « X prend la tête ! » (01 et Cricket à points), « Le double se refuse » quand une fin possible est ratée, « plus que double 16 » en cours de tour, « Tout est fermé ! » au Cricket, « Leg décisif ! » au Medley, « Neuf fléchettes en vue ! » en 501. Réglage « Commentaires et chambrage » (ex-« Chambrage »). 17 nouvelles annonces enregistrées (voix Piper).
 - Mise à jour : « Ouvrir » après l'installation ne lance plus une 2e Foclaboard à côté de l'ancienne (une seule tâche pour l'appli).
 - Cible : jeux de lumière rapides sur les cases des numéros — simple : la case flashe et une onde part ; double : 2 ondes font le tour ; triple : la case clignote en blanc puis grande onde ; bull : tout l'anneau tourbillonne ; joueur suivant : une comète à sa couleur fait le tour ; bust : rouge qui alterne une case sur deux ; victoire : arc-en-ciel qui court ; attente : petite comète plus vive. Aussi sur la TV (halo flou coupé en mode allégé).

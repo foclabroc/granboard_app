@@ -170,12 +170,29 @@ class BoardService extends ChangeNotifier {
       await prefs.setString(_prefName, lastName!);
     } catch (e) {
       status = BoardStatus.disconnected;
-      error = 'Connexion impossible : $e';
+      error = connectError(e);
       try {
         await d.disconnect();
       } catch (_) {}
     }
     notifyListeners();
+  }
+
+  /// Message lisible d'un échec de connexion (sans le détail technique de
+  /// Flutter Blue Plus).
+  static String connectError(Object e) {
+    final t = '$e'.toLowerCase();
+    if (t.contains('timed out') || t.contains('timeout')) {
+      return 'Cible introuvable : allume-la et rapproche-toi';
+    }
+    if (t.contains('bluetooth') &&
+        (t.contains('off') || t.contains('disabled'))) {
+      return 'Bluetooth coupé : active-le puis reconnecte';
+    }
+    if (t.contains('permission')) {
+      return 'Autorise le Bluetooth pour Foclaboard dans les réglages';
+    }
+    return 'Connexion à la cible impossible';
   }
 
   Future<void> disconnect() async {
