@@ -203,7 +203,9 @@ void main() {
     ));
     await tester.tap(find.text('go'));
     await tester.pumpAndSettle();
-    expect(find.text('DÉFIER SOPHIE'), findsOneWidget);
+    expect(find.textContaining('CONTRE SOPHIE', findRichText: true),
+        findsOneWidget);
+    expect(find.text('ADVERSAIRE'), findsOneWidget);
     expect(find.text('Équipes (Team Cricket)'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('MOI'));
@@ -696,10 +698,11 @@ void main() {
     ));
     await tester.tap(find.text('go'));
     await tester.pumpAndSettle();
-    expect(find.text('DÉFIER SOPHIE EN DOUBLE'), findsOneWidget);
+    expect(find.textContaining('CONTRE SOPHIE EN DOUBLE', findRichText: true),
+        findsOneWidget);
     expect(find.text('MEDLEY'), findsNothing);
     expect(find.text('PARTY'), findsNothing);
-    expect(find.text('SON ÉQUIPIER'), findsOneWidget);
+    expect(find.text('ÉQUIPIER'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('MOI'));
     await tester.pump();

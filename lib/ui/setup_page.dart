@@ -545,232 +545,7 @@ class _SetupPageState extends State<SetupPage> {
     final full = _selected.length >= _maxPlayers;
     final short = MediaQuery.sizeOf(context).height < 380;
     final chipDensity = short ? VisualDensity.compact : null;
-    if (!_online) return _broadcast(problem, available, full, chipDensity);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.tournament
-            ? (_online ? 'NOUVEAU TOURNOI EN LIGNE' : 'TOURNOI À LA MAISON')
-            : widget.salon
-                ? 'PARTIE DU SALON'
-                : _online
-                    ? 'DÉFIER ${widget.online![1].name.toUpperCase()}${_double ? ' EN DOUBLE' : ''}'
-                    : _fixed
-                        ? _familyName
-                        : 'NOUVELLE PARTIE'),
-        actions: [
-          if (_fixed) ...[
-            RulesButton(title: _gameName, text: _rulesText),
-            const SizedBox(width: 8),
-          ],
-        ],
-      ),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ─── Mode et règles ───
-          Expanded(
-            flex: _online ? 1 : 5,
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 16),
-              children: [
-                if (_localTournament)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                    child: TextField(
-                      key: const ValueKey('tn-name'),
-                      controller: _tnName,
-                      maxLength: 40,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                          labelText: 'Nom du tournoi',
-                          hintText: 'Tournoi du samedi',
-                          counterText: '',
-                          isDense: true,
-                          border: OutlineInputBorder()),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                // Ouvert depuis une tuile de l'accueil : ce jeu seulement
-                if (!_fixed)
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: TvSection('Jeu',
-                            padding: EdgeInsets.fromLTRB(16, 4, 16, 8)),
-                      ),
-                      RulesButton(title: _gameName, text: _rulesText),
-                      const SizedBox(width: 8),
-                    ],
-                  ),
-                if (!_fixed)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: SegmentedButton<String>(
-                      showSelectedIcon: false,
-                      style: SegmentedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 4)),
-                      segments: [
-                        for (final (v, l) in [
-                          ('x01', '01'),
-                          ('cricket', 'CRICKET'),
-                          if (!_double) ('match', 'MEDLEY'),
-                          if (!widget.tournament && !_double) ...[
-                            ('practice', 'ENTRAÎN.'),
-                            ('party', 'PARTY'),
-                          ],
-                        ])
-                          ButtonSegment(
-                              value: v,
-                              label: FittedBox(
-                                  fit: BoxFit.scaleDown, child: Text(l))),
-                      ],
-                      selected: {_kind},
-                      onSelectionChanged: (v) =>
-                          setState(() => _kind = v.first),
-                    ),
-                  ),
-                if (_practiceOn)
-                  ..._practiceOptions()
-                else if (_matchOn)
-                  ..._matchOptions()
-                else if (_cricketOn)
-                  ..._cricketOptions()
-                else
-                  ..._x01Options(),
-              ],
-            ),
-          ),
-          const VerticalDivider(width: 1),
-          // ─── Joueurs ───
-          if (widget.tournament && _online)
-            Expanded(child: _tournamentPanel())
-          else if (_online)
-            Expanded(child: _onlinePanel(problem))
-          else
-            Expanded(
-              flex: 3,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: ListView(
-                      children: [
-                        TvSection('Joueurs ${_selected.length}/$_maxPlayers',
-                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 6)),
-                        if (_selected.isNotEmpty)
-                          ReorderableListView(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            buildDefaultDragHandles: false,
-                            onReorderItem: (from, to) => setState(() =>
-                                _selected.insert(to, _selected.removeAt(from))),
-                            children: [
-                              for (var i = 0; i < _selected.length; i++)
-                                _playerTile(i, _selected[i]),
-                            ],
-                          ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
-                          child: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              if (!full)
-                                for (final p in available)
-                                  ActionChip(
-                                    visualDensity: chipDensity,
-                                    avatar: PlayerAvatar.of(p, size: 24),
-                                    label: Text(
-                                        p.expired ? '${p.name} ⚠' : p.name),
-                                    onPressed: () => _select(p.key),
-                                  ),
-                              if (!full)
-                                ActionChip(
-                                  visualDensity: chipDensity,
-                                  avatar: const Icon(Icons.person_outline,
-                                      size: 18),
-                                  label: const Text('Invité'),
-                                  onPressed: _addGuest,
-                                ),
-                              if (!full)
-                                ActionChip(
-                                  key: const ValueKey('add-bot'),
-                                  visualDensity: chipDensity,
-                                  avatar: const Icon(Icons.smart_toy_outlined,
-                                      size: 18),
-                                  label: const Text('Joueur virtuel'),
-                                  onPressed: _addBot,
-                                ),
-                              ActionChip(
-                                visualDensity: chipDensity,
-                                avatar: const Icon(Icons.person_add, size: 18),
-                                label: const Text('Ajouter un joueur'),
-                                onPressed: _newPlayer,
-                              ),
-                              if (_selected.isNotEmpty)
-                                ActionChip(
-                                  key: const ValueKey('players-clear'),
-                                  visualDensity: VisualDensity.compact,
-                                  avatar: const Icon(Icons.clear_all, size: 18),
-                                  label: const Text('Tout vider'),
-                                  onPressed: _clearPlayers,
-                                ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                              'Les invités et les bots jouent sans enregistrer de stats. '
-                              'Le bot prend le niveau de ses adversaires.',
-                              style: Tv.label(12)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SafeArea(
-                    top: false,
-                    left: false,
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(16, 4, 16, short ? 6 : 10),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (problem != null)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Text(problem,
-                                  maxLines: 2,
-                                  textAlign: TextAlign.center,
-                                  style:
-                                      Tv.title(short ? 13 : 15, color: Tv.red)),
-                            ),
-                          SizedBox(
-                            width: double.infinity,
-                            height: short ? 44 : 54,
-                            child: FilledButton.icon(
-                              onPressed: problem == null ? _startGame : null,
-                              icon: const Icon(Icons.play_arrow),
-                              label: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                    _localTournament
-                                        ? 'CRÉER LE TOURNOI (${_selected.length})'
-                                        : 'LANCER ${_gameName.toUpperCase()}',
-                                    style: Tv.title(22, color: Colors.black)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
+    return _broadcast(problem, available, full, chipDensity);
   }
 
   // ─── Mise en page « retransmission » (parties à la maison, tournoi) ───
@@ -973,7 +748,7 @@ class _SetupPageState extends State<SetupPage> {
           selected: _start == s,
           onTap: () => setState(() => _start = s),
         ),
-      if (!widget.tournament)
+      if (!widget.tournament && !_online)
         SetupSwitch(
           label: 'Freeze (équipes)',
           icon: Icons.ac_unit,
@@ -1058,7 +833,7 @@ class _SetupPageState extends State<SetupPage> {
             values: kCricketRoundLimits,
             text: (l) => l == null ? 'Sans limite' : '$l',
             onChanged: (v) => setState(() => _cLimit = v)),
-        if (!widget.tournament)
+        if (!widget.tournament && !_online)
           SetupSwitch(
               label: 'Équipes',
               icon: Icons.groups,
@@ -1092,7 +867,7 @@ class _SetupPageState extends State<SetupPage> {
           values: _limits,
           text: (l) => l == null ? 'Sans limite' : '$l',
           onChanged: (v) => setState(() => _limit = v)),
-      if (_freeze && !widget.tournament)
+      if (_freeze && !widget.tournament && !_online)
         const SetupNote('Freeze : une équipe dont le total restant dépasse '
             'celui de l\'adversaire est gelée et ne peut pas finir.'),
     ];
@@ -1109,25 +884,64 @@ class _SetupPageState extends State<SetupPage> {
             SetupBand(
               title: _localTournament
                   ? 'Tournoi à la maison'
-                  : _fixed
-                      ? _familyName
-                      : 'Nouvelle partie',
-              sub: 'Configuration',
+                  : widget.tournament
+                      ? 'Tournoi en ligne'
+                      : widget.salon
+                          ? 'Salon'
+                          : _online
+                              ? 'Défi'
+                              : _fixed
+                                  ? _familyName
+                                  : 'Nouvelle partie',
+              sub: widget.salon
+                  ? 'Jeu de la partie'
+                  : _online && !widget.tournament
+                      ? 'contre ${widget.online![1].name}'
+                          '${_double ? ' en double' : ''}'
+                      : 'Configuration',
               actions: [RulesButton(title: _gameName, text: _rulesText)],
             ),
-            Row(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: 14),
-                  child: Text(
-                      _localTournament
-                          ? 'PRÉPARE TON TOURNOI'
-                          : 'PRÉPARE TA PARTIE',
-                      style: Tv.title(16, color: Tv.text)),
+            if (_online)
+              SizedBox(
+                height: 36,
+                child: Row(
+                  children: [
+                    const SizedBox(width: 14),
+                    Icon(Icons.public, size: 16, color: Tv.gold),
+                    const SizedBox(width: 6),
+                    Text('PARTIE EN LIGNE',
+                        style: Tv.label(11, color: Tv.gold)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                          widget.tournament
+                              ? 'Chacun joue ses matchs chez lui'
+                              : widget.salon
+                                  ? 'Chaque maison joue chez elle, sur sa cible'
+                                  : 'Chacun joue chez soi sur sa cible ; '
+                                      'les stats comptent comme une partie '
+                                      'normale',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Tv.label(11)),
+                    ),
+                  ],
                 ),
-                Expanded(child: _favBar()),
-              ],
-            ),
+              )
+            else
+              Row(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 14),
+                    child: Text(
+                        _localTournament
+                            ? 'PRÉPARE TON TOURNOI'
+                            : 'PRÉPARE TA PARTIE',
+                        style: Tv.title(16, color: Tv.text)),
+                  ),
+                  Expanded(child: _favBar()),
+                ],
+              ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 2, 10, 8),
@@ -1148,15 +962,24 @@ class _SetupPageState extends State<SetupPage> {
                                   for (final (v, l) in [
                                     ('x01', '01'),
                                     ('cricket', 'CRICKET'),
-                                    ('match', 'MEDLEY'),
-                                    if (!widget.tournament) ...[
+                                    if (!_double) ('match', 'MEDLEY'),
+                                    if (!widget.tournament && !_double) ...[
                                       ('practice', 'ENTRAÎN.'),
                                       ('party', 'PARTY'),
                                     ],
                                   ])
                                     ChoiceChip(
                                       visualDensity: VisualDensity.compact,
-                                      label: Text(l),
+                                      showCheckmark: false,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 2),
+                                      labelPadding: const EdgeInsets.symmetric(
+                                          horizontal: 6),
+                                      label: Text(l,
+                                          style: Tv.title(15,
+                                              color: _kind == v
+                                                  ? Colors.black
+                                                  : Tv.text)),
                                       selected: _kind == v,
                                       onSelected: (_) =>
                                           setState(() => _kind = v),
@@ -1194,76 +1017,81 @@ class _SetupPageState extends State<SetupPage> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: SetupColumn(
-                        title: 'Joueurs (${_selected.length})',
-                        children: [
-                          if (_selected.isNotEmpty)
-                            ReorderableListView(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              buildDefaultDragHandles: false,
-                              onReorderItem: (from, to) => setState(() =>
-                                  _selected.insert(
-                                      to, _selected.removeAt(from))),
+                    if (_online)
+                      Expanded(child: _onlineColumn())
+                    else
+                      Expanded(
+                        child: SetupColumn(
+                          title: 'Joueurs (${_selected.length})',
+                          children: [
+                            if (_selected.isNotEmpty)
+                              ReorderableListView(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                buildDefaultDragHandles: false,
+                                onReorderItem: (from, to) => setState(() =>
+                                    _selected.insert(
+                                        to, _selected.removeAt(from))),
+                                children: [
+                                  for (var i = 0; i < _selected.length; i++)
+                                    _playerTile(i, _selected[i]),
+                                ],
+                              ),
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
                               children: [
-                                for (var i = 0; i < _selected.length; i++)
-                                  _playerTile(i, _selected[i]),
+                                if (!full)
+                                  for (final p in available)
+                                    ActionChip(
+                                      visualDensity: chipDensity,
+                                      avatar: PlayerAvatar.of(p, size: 22),
+                                      label: Text(
+                                          p.expired ? '${p.name} ⚠' : p.name),
+                                      onPressed: () => _select(p.key),
+                                    ),
+                                if (!full)
+                                  ActionChip(
+                                    visualDensity: VisualDensity.compact,
+                                    avatar: const Icon(Icons.person_outline,
+                                        size: 18),
+                                    label: const Text('Invité'),
+                                    onPressed: _addGuest,
+                                  ),
+                                if (!full)
+                                  ActionChip(
+                                    key: const ValueKey('add-bot'),
+                                    visualDensity: VisualDensity.compact,
+                                    avatar: const Icon(Icons.smart_toy_outlined,
+                                        size: 18),
+                                    label: const Text('Joueur virtuel'),
+                                    onPressed: _addBot,
+                                  ),
+                                ActionChip(
+                                  visualDensity: VisualDensity.compact,
+                                  avatar:
+                                      const Icon(Icons.person_add, size: 18),
+                                  label: const Text('Ajouter un joueur'),
+                                  onPressed: _newPlayer,
+                                ),
+                                if (_selected.isNotEmpty)
+                                  ActionChip(
+                                    key: const ValueKey('players-clear'),
+                                    visualDensity: VisualDensity.compact,
+                                    avatar:
+                                        const Icon(Icons.clear_all, size: 18),
+                                    label: const Text('Tout vider'),
+                                    onPressed: _clearPlayers,
+                                  ),
                               ],
                             ),
-                          const SizedBox(height: 6),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: [
-                              if (!full)
-                                for (final p in available)
-                                  ActionChip(
-                                    visualDensity: chipDensity,
-                                    avatar: PlayerAvatar.of(p, size: 22),
-                                    label: Text(
-                                        p.expired ? '${p.name} ⚠' : p.name),
-                                    onPressed: () => _select(p.key),
-                                  ),
-                              if (!full)
-                                ActionChip(
-                                  visualDensity: VisualDensity.compact,
-                                  avatar: const Icon(Icons.person_outline,
-                                      size: 18),
-                                  label: const Text('Invité'),
-                                  onPressed: _addGuest,
-                                ),
-                              if (!full)
-                                ActionChip(
-                                  key: const ValueKey('add-bot'),
-                                  visualDensity: VisualDensity.compact,
-                                  avatar: const Icon(Icons.smart_toy_outlined,
-                                      size: 18),
-                                  label: const Text('Joueur virtuel'),
-                                  onPressed: _addBot,
-                                ),
-                              ActionChip(
-                                visualDensity: VisualDensity.compact,
-                                avatar: const Icon(Icons.person_add, size: 18),
-                                label: const Text('Ajouter un joueur'),
-                                onPressed: _newPlayer,
-                              ),
-                              if (_selected.isNotEmpty)
-                                ActionChip(
-                                  key: const ValueKey('players-clear'),
-                                  visualDensity: VisualDensity.compact,
-                                  avatar: const Icon(Icons.clear_all, size: 18),
-                                  label: const Text('Tout vider'),
-                                  onPressed: _clearPlayers,
-                                ),
-                            ],
-                          ),
-                          const SetupNote('Invités et bots jouent sans '
-                              'stats. Le bot prend le niveau de ses '
-                              'adversaires.'),
-                        ],
+                            const SetupNote('Invités et bots jouent sans '
+                                'stats. Le bot prend le niveau de ses '
+                                'adversaires.'),
+                          ],
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -1289,8 +1117,10 @@ class _SetupPageState extends State<SetupPage> {
                             style: Tv.title(18, color: Tv.gold)),
                         Text(
                             problem ??
-                                '${plural(_selected.length, 'joueur')}'
-                                    '${first == null ? '' : ' · $first commence'}',
+                                (_online
+                                    ? _onlineInfo
+                                    : '${plural(_selected.length, 'joueur')}'
+                                        '${first == null ? '' : ' · $first commence'}'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: problem != null
@@ -1299,31 +1129,59 @@ class _SetupPageState extends State<SetupPage> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    key: const ValueKey('fav-add'),
-                    onPressed: _addFavorite,
-                    style: OutlinedButton.styleFrom(
-                        foregroundColor: Tv.gold,
-                        side: BorderSide(color: Tv.gold),
-                        visualDensity: VisualDensity.compact),
-                    icon: const Icon(Icons.star_border, size: 18),
-                    label: const Text('FAVORI'),
-                  ),
+                  if (!_online) ...[
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      key: const ValueKey('fav-add'),
+                      onPressed: _addFavorite,
+                      style: OutlinedButton.styleFrom(
+                          foregroundColor: Tv.gold,
+                          side: BorderSide(color: Tv.gold),
+                          visualDensity: VisualDensity.compact),
+                      icon: const Icon(Icons.star_border, size: 18),
+                      label: const Text('FAVORI'),
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   SizedBox(
                     height: 42,
                     child: FilledButton.icon(
-                      onPressed: problem == null ? _startGame : null,
-                      icon: const Icon(Icons.play_arrow),
+                      key: widget.salon
+                          ? const ValueKey('salon-pick')
+                          : widget.tournament && _online
+                              ? const ValueKey('tn-create')
+                              : _online
+                                  ? const ValueKey('online-challenge')
+                                  : null,
+                      onPressed: widget.tournament && _online
+                          ? (_tnName.text.trim().isEmpty
+                              ? null
+                              : _createTournament)
+                          : problem == null
+                              ? _startGame
+                              : null,
+                      icon: Icon(widget.tournament && _online
+                          ? Icons.account_tree
+                          : widget.salon
+                              ? Icons.check
+                              : _online
+                                  ? Icons.public
+                                  : Icons.play_arrow),
                       label: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 190),
+                        constraints:
+                            BoxConstraints(maxWidth: _online ? 260 : 190),
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
                               _localTournament
                                   ? 'CRÉER LE TOURNOI (${_selected.length})'
-                                  : 'LANCER ${_gameName.toUpperCase()}',
+                                  : widget.tournament
+                                      ? 'CRÉER : ${_gameName.toUpperCase()}'
+                                      : widget.salon
+                                          ? 'CHOISIR : ${_gameName.toUpperCase()}'
+                                          : _online
+                                              ? 'DÉFIER : ${_gameName.toUpperCase()}'
+                                              : 'LANCER ${_gameName.toUpperCase()}',
                               style: Tv.title(20, color: Colors.black)),
                         ),
                       ),
@@ -1348,76 +1206,6 @@ class _SetupPageState extends State<SetupPage> {
   }
 
   /// Création d'un tournoi : nom, nombre de places, bouton « Créer ».
-  Widget _tournamentPanel() {
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            children: [
-              const TvSection('Tournoi', padding: EdgeInsets.zero),
-              const SizedBox(height: 8),
-              TextField(
-                key: const ValueKey('tn-name'),
-                controller: _tnName,
-                maxLength: 40,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                    labelText: 'Nom du tournoi',
-                    hintText: 'Coupe du vendredi',
-                    counterText: '',
-                    border: OutlineInputBorder()),
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 12),
-              const TvSection('Places', padding: EdgeInsets.zero),
-              const SizedBox(height: 6),
-              SegmentedButton<int>(
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(value: 4, label: Text('4')),
-                  ButtonSegment(value: 8, label: Text('8')),
-                  ButtonSegment(value: 16, label: Text('16')),
-                ],
-                selected: {_tnSize},
-                onSelectionChanged: (v) => setState(() => _tnSize = v.first),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                  'Élimination directe, en ligne : chacun joue ses matchs '
-                  'chez lui. Tu lances le tournoi quand tout le monde est '
-                  'inscrit ; s\'il manque des joueurs, certains passent le '
-                  '1er tour sans jouer. Qui commence est tiré au sort.',
-                  style: Tv.label(12)),
-            ],
-          ),
-        ),
-        SafeArea(
-          top: false,
-          left: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-            child: SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: FilledButton.icon(
-                key: const ValueKey('tn-create'),
-                onPressed:
-                    _tnName.text.trim().isEmpty ? null : _createTournament,
-                icon: const Icon(Icons.account_tree),
-                label: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text('CRÉER : ${_gameName.toUpperCase()}',
-                      style: Tv.title(22, color: Colors.black)),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Future<void> _createTournament() async {
     await _save();
     if (!mounted) return;
@@ -1434,494 +1222,159 @@ class _SetupPageState extends State<SetupPage> {
     });
   }
 
-  /// Défi en ligne : l'adversaire, qui commence, bouton « Défier ».
-  Widget _onlinePanel(String? problem) {
-    if (widget.salon) return _salonPanel(problem);
+  /// Ligne d'information de la barre du bas (en ligne).
+  String get _onlineInfo {
+    if (widget.tournament) {
+      return 'Élimination directe · $_tnSize places';
+    }
+    if (widget.salon) {
+      return '${plural(widget.online!.length, 'joueur')} · '
+          '${_first == 2 ? 'ordre au hasard' : 'maisons en alternance'}';
+    }
+    final opp = widget.online![1].name;
+    return '${_double ? 'En double' : '1 contre 1'} · '
+        '${_first == 0 ? 'je commence' : _first == 1 ? '$opp commence' : 'qui commence au hasard'}';
+  }
+
+  /// 3e colonne en ligne : adversaire (défi), joueurs (salon) ou tournoi.
+  Widget _onlineColumn() {
+    if (widget.tournament) {
+      return SetupColumn(
+        title: 'Tournoi',
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 6, 4, 4),
+            child: TextField(
+              key: const ValueKey('tn-name'),
+              controller: _tnName,
+              maxLength: 40,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                  labelText: 'Nom du tournoi',
+                  hintText: 'Coupe du vendredi',
+                  counterText: '',
+                  isDense: true,
+                  border: OutlineInputBorder()),
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+          SetupPick<int>(
+              label: 'Places',
+              value: _tnSize,
+              values: const [4, 8, 16],
+              text: (n) => '$n',
+              onChanged: (v) => setState(() => _tnSize = v)),
+          const SetupNote(
+              'Élimination directe, en ligne : chacun joue ses matchs chez '
+              'lui. Tu lances le tournoi quand tout le monde est inscrit ; '
+              's\'il manque des joueurs, certains passent le 1er tour sans '
+              'jouer. Qui commence est tiré au sort.'),
+        ],
+      );
+    }
+    Widget first(List<(int, String)> options) => Padding(
+          padding: const EdgeInsets.fromLTRB(4, 4, 4, 2),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final (v, l) in options)
+                ChoiceChip(
+                  key: ValueKey('first-$v'),
+                  label: Text(l.toUpperCase()),
+                  selected: _first == v,
+                  onSelected: (_) => setState(() => _first = v),
+                ),
+            ],
+          ),
+        );
+    Widget label(String t) => Padding(
+          padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
+          child: Text(t.toUpperCase(), style: Tv.label(12, color: Tv.gold)),
+        );
+    if (widget.salon) {
+      final players = widget.online!;
+      return SetupColumn(
+        title: 'Joueurs du salon (${players.length})',
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final p in players)
+                  Chip(
+                    visualDensity: VisualDensity.compact,
+                    avatar: PlayerAvatar(
+                        name: p.name,
+                        color: store.colorOf(p.id),
+                        size: 22,
+                        id: p.id),
+                    label: Text(p.name),
+                  ),
+              ],
+            ),
+          ),
+          label('Ordre'),
+          first(const [(0, 'Maisons en alternance'), (2, 'Au hasard')]),
+          const SetupNote('Chaque maison joue chez elle, sur sa cible, pour '
+              'ses joueurs. Les joueurs qui changent dans le salon sont '
+              'repris au lancement.'),
+        ],
+      );
+    }
     final me = widget.online![0];
     final opp = widget.online![1];
     final mate = _double ? widget.online![2] : null;
-    final size = _double ? 40.0 : 54.0;
-    Widget who(X01Player p) => Column(
+    final size = _double ? 32.0 : 52.0;
+    Widget who(X01Player? p) => Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            PlayerAvatar(
-                name: p.name, color: store.colorOf(p.id), size: size, id: p.id),
+            if (p == null)
+              CircleAvatar(
+                  radius: size / 2,
+                  backgroundColor: Tv.panel2,
+                  child: Icon(Icons.help_outline, color: Tv.muted))
+            else
+              PlayerAvatar(
+                  name: p.name,
+                  color: store.colorOf(p.id),
+                  size: size,
+                  id: p.id),
             const SizedBox(height: 4),
-            Text(p.name.toUpperCase(),
+            Text(p == null ? 'ÉQUIPIER' : p.name.toUpperCase(),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Tv.title(18)),
+                style: p == null ? Tv.label(10) : Tv.title(_double ? 13 : 16)),
           ],
         );
-    return Column(
+    return SetupColumn(
+      title: _double ? 'Adversaires' : 'Adversaire',
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(2, 8, 2, 0),
+          child: Row(
             children: [
-              const TvSection('Partie en ligne', padding: EdgeInsets.zero),
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Expanded(
-                    child: mate == null
-                        ? who(me)
-                        : Row(children: [
-                            Expanded(child: who(me)),
-                            Expanded(child: who(mate)),
-                          ]),
-                  ),
-                  Text('VS', style: Tv.title(26, color: Tv.gold)),
-                  Expanded(
-                    child: mate == null
-                        ? who(opp)
-                        : Row(children: [
-                            Expanded(child: who(opp)),
-                            Expanded(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  CircleAvatar(
-                                      radius: size / 2,
-                                      backgroundColor: Tv.panel2,
-                                      child: Icon(Icons.help_outline,
-                                          color: Tv.muted)),
-                                  const SizedBox(height: 4),
-                                  Text('SON ÉQUIPIER',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Tv.label(12)),
-                                ],
-                              ),
-                            ),
-                          ]),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              const TvSection('Qui commence', padding: EdgeInsets.zero),
-              const SizedBox(height: 6),
-              SegmentedButton<int>(
-                showSelectedIcon: false,
-                segments: [
-                  const ButtonSegment(value: 0, label: Text('MOI')),
-                  ButtonSegment(
-                      value: 1,
-                      label: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(opp.name.toUpperCase()))),
-                  const ButtonSegment(value: 2, label: Text('AU HASARD')),
-                ],
-                selected: {_first},
-                onSelectionChanged: (v) => setState(() => _first = v.first),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                  _double
-                      ? 'Chaque équipe joue chez elle sur sa cible. '
-                          '${opp.name} choisit son équipier en acceptant. '
-                          '01 : score commun à l\'équipe.'
-                      : 'Chacun joue chez soi sur sa cible. Les stats comptent '
-                          'comme une partie normale.',
-                  style: Tv.label(12)),
+              Expanded(child: who(me)),
+              if (_double) Expanded(child: who(mate)),
+              Text('VS', style: Tv.title(_double ? 18 : 24, color: Tv.gold)),
+              Expanded(child: who(opp)),
+              if (_double) Expanded(child: who(null)),
             ],
           ),
         ),
-        SafeArea(
-          top: false,
-          left: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (problem != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Text(problem, style: Tv.title(15, color: Tv.red)),
-                  ),
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: FilledButton.icon(
-                    onPressed: problem == null ? _startGame : null,
-                    icon: const Icon(Icons.public),
-                    label: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text('DÉFIER : ${_gameName.toUpperCase()}',
-                          style: Tv.title(22, color: Colors.black)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        label('Qui commence'),
+        first([(0, 'Moi'), (1, opp.name), (2, 'Au hasard')]),
+        SetupNote(_double
+            ? 'Chaque équipe joue chez elle sur sa cible. ${opp.name} '
+                'choisit son équipier en acceptant. 01 : score commun à '
+                'l\'équipe.'
+            : 'Chacun joue chez soi sur sa cible. Les stats comptent comme '
+                'une partie normale.'),
       ],
     );
   }
-
-  /// Salon : joueurs de toutes les maisons et ordre de jeu.
-  Widget _salonPanel(String? problem) {
-    final players = widget.online!;
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            children: [
-              TvSection('Joueurs du salon (${players.length})',
-                  padding: EdgeInsets.zero),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final p in players)
-                    Chip(
-                      avatar: PlayerAvatar(
-                          name: p.name,
-                          color: store.colorOf(p.id),
-                          size: 24,
-                          id: p.id),
-                      label: Text(p.name.toUpperCase(), style: Tv.title(15)),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              const TvSection('Ordre', padding: EdgeInsets.zero),
-              const SizedBox(height: 6),
-              SegmentedButton<int>(
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(
-                      value: 0,
-                      label: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text('MAISONS EN ALTERNANCE'))),
-                  ButtonSegment(value: 2, label: Text('AU HASARD')),
-                ],
-                selected: {_first == 2 ? 2 : 0},
-                onSelectionChanged: (v) => setState(() => _first = v.first),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                  'Chaque maison joue chez elle sur sa cible, pour ses '
-                  'joueurs. Les joueurs qui changent dans le salon sont '
-                  'repris au lancement.',
-                  style: Tv.label(12)),
-            ],
-          ),
-        ),
-        SafeArea(
-          top: false,
-          left: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (problem != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Text(problem, style: Tv.title(15, color: Tv.red)),
-                  ),
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: FilledButton.icon(
-                    key: const ValueKey('salon-pick'),
-                    onPressed: problem == null ? _startGame : null,
-                    icon: const Icon(Icons.check),
-                    label: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text('CHOISIR : ${_gameName.toUpperCase()}',
-                          style: Tv.title(22, color: Colors.black)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  List<Widget> _practiceOptions() {
-    final info = _pInfo;
-    final rounds = _pRounds ?? info.defaultRounds;
-    final goal = _pGoal ?? info.defaultGoal;
-    return [
-      TvSection(_partyOn ? 'Jeu de party' : 'Jeu d\'entraînement',
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8)),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            for (final k in PracticeKind.values)
-              if (kPracticeInfo[k]!.party == _partyOn)
-                ChoiceChip(
-                  label: Text(kPracticeInfo[k]!.name.toUpperCase()),
-                  selected: _curKind == k,
-                  onSelected: (_) => setState(() {
-                    _curKind = k;
-                    _pRounds = null;
-                    _pGoal = null;
-                  }),
-                ),
-          ],
-        ),
-      ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-        child: Text(info.help, style: Tv.label(12, color: Tv.text)),
-      ),
-      if (info.goals != null)
-        ListTile(
-          title: Text(info.goalLabel, style: Tv.title(17)),
-          trailing: DropdownButton<int>(
-            value: goal,
-            items: [
-              for (final n in info.goals!)
-                DropdownMenuItem(
-                    value: n, child: Text(n == 0 ? 'En 10 manches' : '$n')),
-            ],
-            onChanged: (v) => setState(() => _pGoal = v),
-          ),
-        ),
-      if (info.rounds != null)
-        ListTile(
-          title: Text(
-              _curKind == PracticeKind.checkout121
-                  ? 'Fléchettes par tentative'
-                  : 'Manches',
-              style: Tv.title(17)),
-          trailing: DropdownButton<int>(
-            value: rounds,
-            items: [
-              for (final n in info.rounds!)
-                DropdownMenuItem(
-                    value: n,
-                    child: Text(_curKind == PracticeKind.countUp && n == 33
-                        ? '33 (99 fléchettes)'
-                        : '$n')),
-            ],
-            onChanged: (v) => setState(() => _pRounds = v),
-          ),
-        ),
-      if (info.target)
-        ListTile(
-          title: Text('Cible', style: Tv.title(17)),
-          trailing: DropdownButton<int>(
-            value: _pTarget,
-            items: [
-              for (final n in [for (var i = 20; i >= 1; i--) i, 25])
-                DropdownMenuItem(
-                    value: n, child: Text(n == 25 ? 'Bull' : '$n')),
-            ],
-            onChanged: (v) => setState(() => _pTarget = v ?? 20),
-          ),
-        ),
-      for (final o in info.options.entries)
-        SwitchListTile(
-          title: Text(o.value, style: Tv.title(17)),
-          value: _pOptions.contains(o.key),
-          onChanged: (v) => setState(() {
-            // Options qui s'excluent (doubles / triples seulement)
-            if (v && (o.key == 'double' || o.key == 'triple')) {
-              _pOptions.removeAll({'double', 'triple'});
-            }
-            v ? _pOptions.add(o.key) : _pOptions.remove(o.key);
-          }),
-        ),
-      if (info.bull)
-        _RuleRow<BullMode>(
-          label: 'Bull',
-          value: _bull,
-          values: BullMode.values,
-          text: (b) => b == BullMode.split ? '25 / 50' : '50 / 50',
-          onChanged: (v) => setState(() => _bull = v),
-        ),
-    ];
-  }
-
-  List<Widget> _matchOptions() => [
-        const TvSection('Nombre de legs',
-            padding: EdgeInsets.fromLTRB(16, 8, 16, 8)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              for (final n in kMatchLegs)
-                ChoiceChip(
-                  label: Text('$n',
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
-                  selected: _mLegs == n,
-                  onSelected: (_) => setState(() => _mLegs = n),
-                ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-          child: Text(
-              'Le premier à ${_mLegs ~/ 2 + 1} legs gagne. Le joueur qui '
-              'commence change à chaque leg.',
-              style: Tv.label(12, color: Tv.text)),
-        ),
-        const TvSection('Jeu de chaque leg (touche pour changer)',
-            padding: EdgeInsets.fromLTRB(16, 12, 16, 8)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              for (var i = 0; i < _mLegs; i++)
-                ActionChip(
-                  avatar: CircleAvatar(
-                      backgroundColor: Tv.panel2,
-                      child: Text('${i + 1}', style: Tv.label(11))),
-                  label: Text(_legText(_legGame(i)).toUpperCase(),
-                      style: Tv.title(15,
-                          color: _mPattern[i] == LegKind.x01
-                              ? Tv.goldLight
-                              : Tv.green)),
-                  // 301 → 501 → 701 → 901 → Cricket → 301…
-                  onPressed: () {
-                    const order = [...kStartScores, 0];
-                    _setLegGame(i,
-                        order[(order.indexOf(_legGame(i)) + 1) % order.length]);
-                  },
-                ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-          child: Text('Cricket : règles Standard, 20 manches.',
-              style: Tv.label(12)),
-        ),
-        ..._x01Options(match: true),
-      ];
-
-  List<Widget> _x01Options({bool match = false}) => [
-        TvSection(match ? 'Règles des legs 01' : 'Mode',
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8)),
-        // Medley : score de départ choisi leg par leg
-        if (!match)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(
-              spacing: 8,
-              children: [
-                for (final s in kStartScores)
-                  ChoiceChip(
-                    label: Text('$s',
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                    selected: _start == s,
-                    onSelected: (_) => setState(() => _start = s),
-                  ),
-              ],
-            ),
-          ),
-        if (!match && !_online && !widget.tournament)
-          SwitchListTile(
-            title: Text('Freeze (équipes)', style: Tv.title(18)),
-            subtitle:
-                const Text('Une équipe dont le total restant dépasse celui de '
-                    'l\'adversaire est gelée ❄ et ne peut pas finir.'),
-            value: _freeze,
-            onChanged: (v) => setState(() => _freeze = v),
-          ),
-        const TvSection('Règles', padding: EdgeInsets.fromLTRB(16, 8, 16, 6)),
-        _RuleRow<InRule>(
-          label: 'Début',
-          value: _in,
-          values: InRule.values,
-          text: (r) => r.label.split(' ').first,
-          onChanged: (v) => setState(() => _in = v),
-        ),
-        _RuleRow<OutRule>(
-          label: 'Fin',
-          value: _out,
-          values: OutRule.values,
-          text: (r) => r.label.split(' ').first,
-          onChanged: (v) => setState(() => _out = v),
-        ),
-        _RuleRow<BullMode>(
-          label: 'Bull',
-          value: _bull,
-          values: BullMode.values,
-          text: (b) => b == BullMode.split ? '25 / 50' : '50 / 50',
-          onChanged: (v) => setState(() => _bull = v),
-        ),
-        if (!match)
-          ListTile(
-            title: Text('Limite de manches', style: Tv.title(17)),
-            trailing: DropdownButton<int?>(
-              value: _limit,
-              items: [
-                for (final l in _limits)
-                  DropdownMenuItem(
-                      value: l, child: Text(l == null ? 'Aucune' : '$l')),
-              ],
-              onChanged: (v) => setState(() => _limit = v),
-            ),
-          ),
-      ];
-
-  List<Widget> _cricketOptions() => [
-        const TvSection('Variante', padding: EdgeInsets.fromLTRB(16, 8, 16, 8)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              for (final v in CricketVariant.values)
-                ChoiceChip(
-                  label: Text(v.label.toUpperCase()),
-                  selected: _variant == v,
-                  onSelected: (_) => setState(() => _variant = v),
-                ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: Text(_variant.help, style: Tv.label(12, color: Tv.text)),
-        ),
-        if (!_online)
-          SwitchListTile(
-            title: Text('Équipes (Team Cricket)', style: Tv.title(18)),
-            subtitle: const Text(
-                'Marques et points communs à l\'équipe, joueurs en alternance.'),
-            value: _cTeams,
-            onChanged: (v) => setState(() => _cTeams = v),
-          ),
-        ListTile(
-          title: Text('Limite de manches', style: Tv.title(17)),
-          subtitle: const Text('À la limite, le meilleur score gagne'),
-          trailing: DropdownButton<int?>(
-            value: _cLimit,
-            items: [
-              for (final l in kCricketRoundLimits)
-                DropdownMenuItem(
-                    value: l, child: Text(l == null ? 'Aucune' : '$l')),
-            ],
-            onChanged: (v) => setState(() => _cLimit = v),
-          ),
-        ),
-      ];
 
   Widget _playerTile(int index, String id) {
     final guest = isGuestId(id);
@@ -1997,43 +1450,6 @@ class _SetupPageState extends State<SetupPage> {
           IconButton(
             icon: const Icon(Icons.close),
             onPressed: () => setState(() => _selected.remove(id)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RuleRow<T> extends StatelessWidget {
-  final String label;
-  final T value;
-  final List<T> values;
-  final String Function(T) text;
-  final ValueChanged<T> onChanged;
-  const _RuleRow(
-      {required this.label,
-      required this.value,
-      required this.values,
-      required this.text,
-      required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Row(
-        children: [
-          SizedBox(width: 56, child: Text(label)),
-          Expanded(
-            child: SegmentedButton<T>(
-              showSelectedIcon: false,
-              segments: [
-                for (final v in values)
-                  ButtonSegment(value: v, label: Text(text(v))),
-              ],
-              selected: {value},
-              onSelectionChanged: (s) => onChanged(s.first),
-            ),
           ),
         ],
       ),

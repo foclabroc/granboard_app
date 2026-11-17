@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.19
+
+- En ligne : le défi (1 contre 1 et double), le choix du jeu d'un salon et la création d'un tournoi en ligne passent au même affichage en tableau que les parties à la maison. Le bandeau indique « DÉFI · CONTRE SOPHIE », puis trois colonnes (choisir le jeu, règles, adversaire / joueurs du salon / tournoi) et une barre du bas avec le résumé et le bouton DÉFIER, CHOISIR ou CRÉER.
+
 ## v0.6.18
 
 - Salons en ligne : de 2 à 4 maisons, chacune sur sa cible avec 1 à 4 joueurs (comptes du téléphone ou invités). Le salon est privé (sur invitation) ou public (visible dans la liste « Salons » de l'écran En ligne). L'hôte choisit le jeu, l'ordre (maisons en alternance ou au hasard) et lance la partie, qui s'ouvre chez tout le monde. On revient au salon après la partie.

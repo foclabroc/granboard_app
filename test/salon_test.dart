@@ -210,7 +210,9 @@ void main() {
     ));
     await tester.tap(find.text('go'));
     await tester.pumpAndSettle();
-    expect(find.text('PARTIE DU SALON'), findsOneWidget);
+    expect(find.textContaining('JEU DE LA PARTIE', findRichText: true),
+        findsOneWidget);
+    expect(find.text('JOUEURS DU SALON (3)'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('MAISONS EN ALTERNANCE'));
     await tester.pump();
