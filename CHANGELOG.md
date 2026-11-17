@@ -1,8 +1,14 @@
 # Changelog
 
-## À venir
+## v0.6.17
 
 - Sous-menus des tuiles : présentation en tableau, bandeau de configuration et nombre de joueurs, avec les couleurs du thème choisi.
+- Inclut aussi les nouveautés de la 0.6.16, qui n'a pas été compilée :
+  - Tournois : onglets maison et en ligne, création selon le mode choisi, cartes avec aperçu du tableau et prochain match personnel à la maison lorsqu'il est connu.
+  - Historique des parties dans les statistiques, avec adversaires, gagnant et résultats ; les parties en ligne sont reliées entre les deux téléphones.
+  - Photos des joueurs rafraîchies après une remise à zéro du serveur ; en Freeze, un nombre impair de joueurs affiche un message au lieu d'un écran blanc.
+  - En ligne : liste des joueurs, demandes d'ami, recherche et filtres, spectateur, revanche, rendez-vous, « ne pas déranger », blocage, phrase de profil et titres.
+  - Réglages du téléphone sauvegardés sur le compte principal et récupérables sur un nouvel appareil.
 
 ## v0.6.16
 

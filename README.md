@@ -11,7 +11,7 @@ L'appli se joue en paysage, téléphone posé à côté de la cible.
 3. **Cible** (pastille en haut de l'accueil) → touche la GranBoard. Ensuite l'appli s'y reconnecte toute seule.
 4. **Options** (tuile de l'accueil) : joueurs du téléphone, thème, style de cible, son, écran TV, calibration, lumières de la 3s, partage de l'appli (QR code), mise à jour.
 5. **Fiche d'un joueur** : photo ou avatar, son du tour (21 sons ou sa voix enregistrée), couleur, cible préférée, prononciation du pseudo, stats et rang. Les invités et les joueurs virtuels jouent sans stats.
-6. Choisis un jeu sur l'accueil, puis les règles et les joueurs (★ FAVORI garde tes réglages préférés).
+6. Choisis un jeu sur l'accueil, puis son jeu, ses règles et ses joueurs dans le tableau de configuration (★ FAVORI garde tes réglages préférés).
 7. Le bouton de la cible (ou « Suivant ») passe au joueur suivant ; « Raté » pour une fléchette hors cible ; « Annuler » revient en arrière. Une partie coupée peut être reprise au lancement suivant.
 
 ## Jeux
