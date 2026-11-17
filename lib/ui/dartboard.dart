@@ -752,6 +752,9 @@ class AnimatedDartboard extends StatefulWidget {
   State<AnimatedDartboard> createState() => _AnimatedDartboardState();
 }
 
+/// Jeux de lumière rapides sur les cases des numéros.
+enum BoardFx { none, single, double, triple, bull, sweep, bust, win }
+
 class _AnimatedDartboardState extends State<AnimatedDartboard>
     with TickerProviderStateMixin {
   // Démarre « fini » : les fléchettes déjà là sont plantées
@@ -765,6 +768,25 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
   // Anneau de LED et reflet qui tournent (cible réaliste)
   late final _spin =
       AnimationController(vsync: this, duration: const Duration(seconds: 6));
+
+  // Effet lumineux rapide en cours sur les cases des numéros (aussi sur la
+  // TV : ce sont des coups ponctuels, pas une animation continue)
+  late final _fxc = AnimationController(vsync: this);
+  BoardFx _fx = BoardFx.none;
+  int _fxAt = 0; // case de départ (index dans kBoardOrder)
+  Color _fxColor = Tv.gold;
+
+  void _startFx(BoardFx fx, {int at = 0, required int ms, Color? color}) {
+    _fx = fx;
+    _fxAt = at;
+    _fxColor = color ?? widget.dartColor ?? Tv.gold;
+    _fxc.duration = Duration(milliseconds: ms);
+    if (fx == BoardFx.win) {
+      _fxc.repeat();
+    } else {
+      _fxc.forward(from: 0);
+    }
+  }
 
   @override
   void initState() {
@@ -789,9 +811,41 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
   @override
   void didUpdateWidget(AnimatedDartboard old) {
     super.didUpdateWidget(old);
-    if (widget.hits.length > old.hits.length) _impact.forward(from: 0);
-    if (widget.bust && !old.bust) _flash.forward(from: 0);
-    if (widget.win && !old.win) _flash.forward(from: 0);
+    if (widget.hits.length > old.hits.length) {
+      _impact.forward(from: 0);
+      final h = widget.hits.last;
+      if (h.isBull) {
+        _startFx(BoardFx.bull, ms: 650);
+      } else {
+        final at = kBoardOrder.indexOf(h.number);
+        switch (h.multiplier) {
+          case 3:
+            _startFx(BoardFx.triple, at: at, ms: 750);
+          case 2:
+            _startFx(BoardFx.double, at: at, ms: 600);
+          default:
+            _startFx(BoardFx.single, at: at, ms: 450);
+        }
+      }
+    }
+    if (widget.bust && !old.bust) {
+      _flash.forward(from: 0);
+      _startFx(BoardFx.bust, ms: 900, color: Tv.red);
+    }
+    if (widget.win && !old.win) {
+      _flash.forward(from: 0);
+      _startFx(BoardFx.win, ms: 1100);
+    } else if (!widget.win && old.win) {
+      _fxc.stop();
+      _fx = BoardFx.none;
+    }
+    // Joueur suivant : une comète à sa couleur fait le tour
+    if (!widget.win &&
+        !widget.bust &&
+        widget.hits.isEmpty &&
+        (old.hits.isNotEmpty || widget.dartColor != old.dartColor)) {
+      _startFx(BoardFx.sweep, ms: 650);
+    }
   }
 
   @override
@@ -801,6 +855,7 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
     _pulse.dispose();
     _flash.dispose();
     _spin.dispose();
+    _fxc.dispose();
     super.dispose();
   }
 
@@ -831,8 +886,13 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
                 builder: (context, cur, _) {
                   final skin = widget.skin ?? cur;
                   return AnimatedBuilder(
-                    animation: Listenable.merge(
-                        [_impact, _pulse, _flash, if (skin.realistic) _spin]),
+                    animation: Listenable.merge([
+                      _impact,
+                      _pulse,
+                      _flash,
+                      _fxc,
+                      if (skin.realistic) _spin
+                    ]),
                     builder: (context, _) => CustomPaint(
                       painter: _HitsPainter(
                         hits: widget.hits,
@@ -849,6 +909,10 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
                         spin: _spin.value,
                         bust: widget.bust,
                         win: widget.win,
+                        fx: _fx,
+                        fxT: _fxc.value,
+                        fxAt: _fxAt,
+                        fxColor: _fxColor,
                       ),
                     ),
                   );
@@ -877,7 +941,15 @@ class _HitsPainter extends CustomPainter {
   final Set<int> litNumbers;
   final Set<int> aimNumbers;
   final List<(DartHit, Color, bool)> painted;
+  final BoardFx fx;
+  final double fxT; // 0 → 1
+  final int fxAt;
+  final Color fxColor;
   _HitsPainter({
+    this.fx = BoardFx.none,
+    this.fxT = 1,
+    this.fxAt = 0,
+    this.fxColor = Colors.white,
     required this.hits,
     this.painted = const [],
     this.targets = const [],
@@ -1011,6 +1083,64 @@ class _HitsPainter extends CustomPainter {
   /// tour (flash à l'impact), les numéros à viser clignotent en blanc, une
   /// petite lumière fait le tour quand rien n'est touché, tout passe au rouge
   /// sur un bust et en arc-en-ciel qui tourne à la victoire.
+  /// Effet rapide sur la case [i] (index dans kBoardOrder) : intensité
+  /// 0 → 1 et couleur.
+  (double, Color) _fxOf(int i) {
+    if (fx == BoardFx.none) return (0, fxColor);
+    final t = fxT;
+    // distance (en cases) depuis la case de départ, des 2 côtés
+    final d0 = ((i - fxAt) % 20 + 20) % 20;
+    final d = math.min(d0, 20 - d0).toDouble();
+    double wave(double front, double width) =>
+        math.max(0, 1 - (d - front).abs() / width);
+    switch (fx) {
+      case BoardFx.none:
+        return (0, fxColor);
+      case BoardFx.single:
+        // la case flashe, une petite onde part sur 4 cases de chaque côté
+        final e = d == 0 ? 1 - t * 0.6 : wave(t * 6, 1.6) * (1 - t * 0.5);
+        return (e, Color.lerp(Colors.white, fxColor, math.min(1, t * 3))!);
+      case BoardFx.double:
+        // 2 ondes qui font tout le tour
+        final e = math.max(wave(t * 11, 1.7), wave(t * 11 - 3, 1.7) * 0.85) *
+            (1 - t * 0.4);
+        return (d == 0 ? math.max(e, 1 - t) : e, fxColor);
+      case BoardFx.triple:
+        // la case clignote 3 fois en blanc, puis une grande onde
+        if (d == 0) {
+          final strobe = math.sin(t * math.pi * 6) > 0 ? 1.0 : 0.35;
+          return (t < 0.55 ? strobe : 1 - t, t < 0.55 ? Colors.white : fxColor);
+        }
+        final e =
+            math.max(wave((t - 0.1) * 14, 2.2), wave((t - 0.3) * 14, 2) * 0.8) *
+                (1 - t * 0.3);
+        return (e, Color.lerp(Colors.white, fxColor, 0.35)!);
+      case BoardFx.bull:
+        // tout l'anneau tourbillonne (2 bras, 3 tours) en s'éteignant
+        final arm = 0.5 +
+            0.5 * math.cos(i / 20 * 2 * math.pi * 2 - t * 2 * math.pi * 3);
+        return (math.pow(arm, 3).toDouble() * (1 - t), fxColor);
+      case BoardFx.sweep:
+        // comète d'un tour, en partant du 20
+        final head = t * 20;
+        final back = ((head - i) % 20 + 20) % 20;
+        final e = back < 5 ? (1 - back / 5) : 0.0;
+        return (e * (t > 0.85 ? (1 - t) / 0.15 : 1), fxColor);
+      case BoardFx.bust:
+        // rouge, une case sur deux, qui alterne vite
+        final phase = (t * 10).floor();
+        return (i.isEven == phase.isEven ? 1 - t * 0.4 : 0.1, Tv.red);
+      case BoardFx.win:
+        // arc-en-ciel qui court (3 vagues)
+        final e =
+            0.55 + 0.45 * math.cos(i / 20 * 2 * math.pi * 3 - t * 2 * math.pi);
+        return (
+          e,
+          HSVColor.fromAHSV(1, (i * 18 + t * 360) % 360, 0.9, 1).toColor()
+        );
+    }
+  }
+
   void _numberLights(Canvas canvas, Offset c, double outer, double r) {
     const seg = 2 * math.pi / 20;
     // de l'anneau double jusqu'au liseré du bord (plus d'anneau de LED)
@@ -1033,7 +1163,7 @@ class _HitsPainter extends CustomPainter {
       ...aimNumbers,
     }..removeAll(lit.keys);
     final anyBull = hits.any((h) => h.isBull);
-    final phase = spin * 20; // position de la lumière qui tourne
+    final phase = spin * 40; // position de la lumière qui tourne (2 tours)
     for (var i = 0; i < 20; i++) {
       final n = kBoardOrder[i];
       final a0 = -math.pi / 2 - seg / 2 + i * seg;
@@ -1059,9 +1189,9 @@ class _HitsPainter extends CustomPainter {
         col = dartColor;
         on = impact < 1 ? 0.45 * (1 - impact) : 0;
       } else if (hits.isEmpty && litNumbers.isEmpty && aimNumbers.isEmpty) {
-        // attente : une lumière douce fait le tour
-        final d = ((i - phase) % 20 + 20) % 20;
-        on = d < 1 ? 0.35 * (1 - d) : (d > 19 ? 0.35 * (d - 19) : 0);
+        // attente : une petite comète fait le tour
+        final back = ((phase - i) % 20 + 20) % 20;
+        on = back < 3 ? 0.5 * (1 - back / 3) : 0;
         col = dartColor;
       }
       final path = Path()
@@ -1090,6 +1220,23 @@ class _HitsPainter extends CustomPainter {
               ..style = PaintingStyle.stroke
               ..strokeWidth = math.max(1, band * 0.05));
       }
+      // Effet rapide par-dessus (coup, joueur suivant, bust, victoire)
+      final (fe, fc) = _fxOf(i);
+      if (fe > 0.02) {
+        if (!Perf.lite) {
+          canvas.drawPath(
+              path,
+              Paint()
+                ..color = fc.withValues(alpha: 0.6 * fe)
+                ..maskFilter = MaskFilter.blur(BlurStyle.outer, band * 0.3));
+        }
+        canvas.drawPath(path,
+            Paint()..color = fc.withValues(alpha: (0.9 * fe).clamp(0, 1)));
+        if (fe > on) {
+          on = fe;
+          col = fc;
+        }
+      }
       // Numéro redessiné par-dessus, lumineux quand sa zone est allumée
       if (on > 0.3 || aim.contains(n)) {
         final mid = a0 + seg / 2;
@@ -1104,7 +1251,7 @@ class _HitsPainter extends CustomPainter {
               color: Colors.white,
               // sur la case allumée : ombre sombre pour que le numéro
               // blanc reste bien lisible
-              shadows: aimed
+              shadows: aimed || fe > 0.5
                   ? [
                       Shadow(
                           color: Colors.black.withValues(alpha: 0.85),

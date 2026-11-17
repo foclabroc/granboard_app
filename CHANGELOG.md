@@ -2,6 +2,7 @@
 
 ## v0.6.19
 
+- Cible : jeux de lumière rapides sur les cases des numéros — simple : la case flashe et une onde part ; double : 2 ondes font le tour ; triple : la case clignote en blanc puis grande onde ; bull : tout l'anneau tourbillonne ; joueur suivant : une comète à sa couleur fait le tour ; bust : rouge qui alterne une case sur deux ; victoire : arc-en-ciel qui court ; attente : petite comète plus vive. Aussi sur la TV (halo flou coupé en mode allégé).
 - Cible : plus d'anneau de diodes autour ; les cases des numéros vont jusqu'au bord et ont exactement la largeur de leur segment.
 - Cible : la case à viser (chemin de finish, numéros du Cricket, zones des entraînements) s'allume à la couleur du joueur en cours : voile qui pulse et bord lumineux sur la zone, case du numéro pleine avec le numéro en blanc bien lisible ; plus d'encadrement blanc.
 - Écran TV : le chemin de finish du 01 (et des legs de 01 du Medley) est affiché 2 fois plus grand, cases plus marquées.
