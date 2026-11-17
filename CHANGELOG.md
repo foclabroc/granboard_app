@@ -2,6 +2,7 @@
 
 ## v0.6.19
 
+- Écran TV : le chemin de finish du 01 (et des legs de 01 du Medley) est affiché 2 fois plus grand, cases plus marquées.
 - Fluidité sur la TV : la cible qui flotte sur l'écran d'attente, le bandeau « au tour de », le grand texte des coups et les grandes marques du Cricket ne redessinent plus tout l'écran à chaque image ; ombres floues retirées en mode allégé ; vidéos des coups réencodées en 960 × 540 (2 fois plus légères à décoder, 54 → 27 Mo).
 - En ligne : rubrique « SALONS OUVERTS (n) » toujours visible, avec un message quand aucun salon public n'est ouvert (les salons privés ne s'y affichent pas).
 - Sous-menus des tuiles, colonne JOUEURS allégée : elle ne montre plus que les joueurs choisis (à glisser pour l'ordre), un bouton AJOUTER et la corbeille « Tout vider ». AJOUTER ouvre une fenêtre avec mes joueurs (un toucher les ajoute), Invité, Joueur virtuel et Nouveau joueur ; elle reste ouverte pour en ajouter plusieurs. L'étiquette VIRTUEL disparaît (l'avatar robot suffit).

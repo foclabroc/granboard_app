@@ -1101,7 +1101,9 @@ class GameLayout extends StatelessWidget {
               flex: 5,
               child: Column(
                 children: [
-                  Expanded(child: _CurrentPanel(game: game)),
+                  // Écran TV (sans boutons) : chemin de finish en grand
+                  Expanded(
+                      child: _CurrentPanel(game: game, big: actionBar == null)),
                   if (actionBar != null) actionBar!,
                 ],
               ),
@@ -1122,7 +1124,10 @@ Color _colorOf(X01Player p) => PlayerStore.instance.colorOf(p.id);
 
 class _CurrentPanel extends StatelessWidget {
   final X01Game game;
-  const _CurrentPanel({required this.game});
+
+  /// Écran TV : chemin de finish en grand, bien visible de loin.
+  final bool big;
+  const _CurrentPanel({required this.game, this.big = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1211,7 +1216,7 @@ class _CurrentPanel extends StatelessWidget {
             ),
           ),
           if (routes.isNotEmpty)
-            _CheckoutRow(routes: routes)
+            _CheckoutRow(routes: routes, big: big)
           else
             Text(status,
                 maxLines: 1,
@@ -1261,7 +1266,10 @@ class _CurrentPanel extends StatelessWidget {
 /// Fin possible : la combinaison conseillée en cases vertes, puis les autres.
 class _CheckoutRow extends StatelessWidget {
   final List<List<String>> routes;
-  const _CheckoutRow({required this.routes});
+
+  /// Écran TV : 2 fois plus haut, cases plus marquées.
+  final bool big;
+  const _CheckoutRow({required this.routes, this.big = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1272,7 +1280,7 @@ class _CheckoutRow extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          height: 30,
+          height: big ? 58 : 30,
           child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -1295,9 +1303,9 @@ class _CheckoutRow extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: Tv.green.withValues(alpha: 0.18),
+                      color: Tv.green.withValues(alpha: big ? 0.32 : 0.18),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Tv.green, width: 1.5),
+                      border: Border.all(color: Tv.green, width: big ? 2 : 1.5),
                     ),
                     child: Text(d, style: Tv.title(19, color: Colors.white)),
                   ),
@@ -1309,7 +1317,7 @@ class _CheckoutRow extends StatelessWidget {
           Text('ou $others',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Tv.title(14, color: Tv.muted)),
+              style: Tv.title(big ? 20 : 14, color: Tv.muted)),
       ],
     );
   }
