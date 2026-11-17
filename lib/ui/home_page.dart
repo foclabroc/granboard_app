@@ -19,6 +19,7 @@ import 'connect_page.dart';
 import 'dartboard.dart';
 import 'diagnostic_page.dart';
 import 'game_page.dart' show GamePage;
+import 'lobby_page.dart' show showLobbyInviteDialog;
 import 'online_page.dart';
 import 'players_page.dart';
 import 'ranking_page.dart';
@@ -184,9 +185,18 @@ class _HomePageState extends State<HomePage>
     )));
   }
 
+  final _shownLobbies = <int>{};
+
   void _onOnline() {
+    if (!mounted) return;
+    for (final l in _online.lobbyInvites) {
+      if (_shownLobbies.add(l.id)) {
+        showLobbyInviteDialog(context, l);
+        return;
+      }
+    }
     final inv = _online.invite;
-    if (inv == null || inv.id == _shownInvite || !mounted) return;
+    if (inv == null || inv.id == _shownInvite) return;
     _shownInvite = inv.id;
     showInviteDialog(context, inv);
   }
@@ -407,16 +417,20 @@ class _HomePageState extends State<HomePage>
                                 art: TileArt.online,
                                 kicker: _online.resumeRoom != null
                                     ? 'PARTIE À REPRENDRE'
-                                    : _online.wants.isNotEmpty
-                                        ? '${_online.wants.first.name.toUpperCase()}'
-                                            ' VEUT JOUER'
-                                        : _online.asks.isNotEmpty
-                                        ? '${_online.asks.length} DEMANDE'
-                                            '${_online.asks.length > 1 ? 'S' : ''}'
-                                            ' D\'AMI'
-                                        : n == 0
-                                        ? '1 CONTRE 1 · VIDÉO'
-                                        : '$n JOUEUR${n > 1 ? 'S' : ''} EN LIGNE',
+                                    : _online.lobbyInvites.isNotEmpty
+                                        ? 'INVITATION DANS UN SALON'
+                                        : _online.lobby != null
+                                            ? 'TON SALON EST OUVERT'
+                                            : _online.wants.isNotEmpty
+                                                ? '${_online.wants.first.name.toUpperCase()}'
+                                                    ' VEUT JOUER'
+                                                : _online.asks.isNotEmpty
+                                                    ? '${_online.asks.length} DEMANDE'
+                                                        '${_online.asks.length > 1 ? 'S' : ''}'
+                                                        ' D\'AMI'
+                                                    : n == 0
+                                                        ? '1 CONTRE 1 · SALONS · VIDÉO'
+                                                        : '$n JOUEUR${n > 1 ? 'S' : ''} EN LIGNE',
                                 title: 'EN LIGNE',
                                 icon: Icons.public,
                                 onTap: () => _open(const OnlinePage()),

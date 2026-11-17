@@ -132,6 +132,7 @@ class _GamePageState extends State<GamePage> {
   void dispose() {
     _botTimer?.cancel();
     _autoTimer?.cancel();
+    _absentTimer?.cancel();
     AutoNext.on.removeListener(_onAutoChanged);
     AwardPlayer.stop();
     TurnBanner.hide();
@@ -232,6 +233,7 @@ class _GamePageState extends State<GamePage> {
   /// Après une action : envoi à l'adversaire et à la TV.
   void _sync() {
     _scheduleBot();
+    _scheduleAbsent();
     _room?.push(game.actionLog);
     _pushTv();
     _reportTournament();
@@ -288,7 +290,8 @@ class _GamePageState extends State<GamePage> {
     }
     // une vidéo plein écran joue : on attend qu'elle finisse
     if (AwardPlayer.active) {
-      _autoTimer = Timer(const Duration(milliseconds: 500), () => _autoFire(len));
+      _autoTimer =
+          Timer(const Duration(milliseconds: 500), () => _autoFire(len));
       return;
     }
     _autoTimer = null;
@@ -321,7 +324,7 @@ class _GamePageState extends State<GamePage> {
   /// Partie en ligne finie : gagnée ou perdue, pour le bilan entre joueurs.
   void _reportResult() {
     final room = _room;
-    if (room == null || _resultSent || !game.finished) return;
+    if (room == null || room.isSalon || _resultSent || !game.finished) return;
     _resultSent = true;
     final mine = game.winners.any((i) => room.mine(game.players[i].id));
     final theirs = game.winners.any((i) => !room.mine(game.players[i].id));
@@ -356,6 +359,7 @@ class _GamePageState extends State<GamePage> {
     if (!mounted) return;
     if (room.gameVersion == _roomVersion) {
       setState(() {}); // présence, connexion
+      _scheduleAbsent(); // une maison a pu quitter
       return;
     }
     _roomVersion = room.gameVersion;
@@ -381,6 +385,32 @@ class _GamePageState extends State<GamePage> {
     _reportResult();
     _autoResults();
     _scheduleAutoNext();
+    _scheduleAbsent();
+  }
+
+  // ─── Salon : maison partie ───
+
+  Timer? _absentTimer;
+
+  /// Le joueur en cours est chez une maison qui a quitté la partie : la 1re
+  /// maison encore là passe son tour à sa place (2 s pour qu'on le voie).
+  void _scheduleAbsent() {
+    final room = _room;
+    final g = game;
+    if (room == null || !room.isSalon || g.finished) return;
+    if (g is MatchGame && g.betweenLegs) return;
+    if (!room.absent(g.currentPlayer.id) || !room.mine(g.currentPlayer.id)) {
+      return;
+    }
+    if (_absentTimer?.isActive ?? false) return;
+    final at = g.actionLog.length;
+    _absentTimer = Timer(const Duration(seconds: 2), () {
+      if (!mounted || game.finished || game.actionLog.length != at) return;
+      if (!room.absent(game.currentPlayer.id)) return;
+      setState(() => game.next());
+      _fx.afterAnyNext(game);
+      _sync();
+    });
   }
 
   void _onEvent(BoardEvent e) {
@@ -579,8 +609,11 @@ class _GamePageState extends State<GamePage> {
         title: Text('Abandonner la partie ?', style: Tv.title(22)),
         content: Text(_room == null
             ? 'Les statistiques ne seront pas enregistrées.'
-            : 'Ton adversaire sera prévenu. Les statistiques ne seront pas '
-                'enregistrées.'),
+            : _room!.isSalon
+                ? 'Les autres seront prévenus et la partie continuera sans '
+                    'toi. Tes statistiques ne seront pas enregistrées.'
+                : 'Ton adversaire sera prévenu. Les statistiques ne seront '
+                    'pas enregistrées.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -670,7 +703,8 @@ class _GamePageState extends State<GamePage> {
                   showCheckmark: false,
                   avatar: Icon(on ? Icons.timer : Icons.timer_off, size: 16),
                   label: const Text('AUTO'),
-                  tooltip: 'Joueur suivant tout seul 5 s après les 3 fléchettes',
+                  tooltip:
+                      'Joueur suivant tout seul 5 s après les 3 fléchettes',
                   onSelected: AutoNext.set,
                 ),
               ),
@@ -719,7 +753,12 @@ class _GamePageState extends State<GamePage> {
                     Positioned.fill(
                       child: VideoBubble(
                           call: _video!,
-                          peerName: _room!.peer?.name ?? 'l\'adversaire'),
+                          names: _room!.isSalon
+                              ? {
+                                  for (final h in _room!.others)
+                                    h.home: h.player.name
+                                }
+                              : {'peer': _room!.peer?.name ?? 'l\'adversaire'}),
                     ),
                 ],
               ),
@@ -835,9 +874,29 @@ class _OnlineBanner extends StatelessWidget {
     final peer = room.peer?.name ?? 'Ton adversaire';
     String? text;
     var quit = false;
-    if (room.left) {
+    if (room.isSalon && !room.left) {
+      final gone = [
+        for (final h in room.homes)
+          if (h.left) h.player.name
+      ];
+      final slow = [
+        for (final h in room.others)
+          if (h.age >= 20) h.player.name
+      ];
+      if (room.error != null) {
+        text = 'Connexion au serveur perdue, nouvel essai…';
+      } else if (slow.isNotEmpty) {
+        text = '${slow.join(', ')} ne répond plus';
+      } else if (gone.isNotEmpty && !finished) {
+        text = '${gone.join(', ')} a quitté la partie : '
+            'ses joueurs passent leur tour';
+      }
+      if (text == null) return const SizedBox.shrink();
+    } else if (room.left) {
       if (finished) return const SizedBox.shrink();
-      text = '$peer a quitté la partie';
+      text = room.isSalon
+          ? 'Tout le monde a quitté la partie'
+          : '$peer a quitté la partie';
       quit = true;
     } else if (room.error != null) {
       text = 'Connexion au serveur perdue, nouvel essai…';
@@ -879,7 +938,10 @@ class OnlineResultsPage extends StatefulWidget {
 
   /// La même partie, journal vidé, celui qui commençait joue en second.
   static Map<String, dynamic>? rematchOf(Map<String, dynamic>? game) {
-    if (game == null || game['double'] == true || game['tn'] != null) {
+    if (game == null ||
+        game['double'] == true ||
+        game['tn'] != null ||
+        game['salon'] != null) {
       return null;
     }
     final players = game['players'];
@@ -929,7 +991,8 @@ class _OnlineResultsPageState extends State<OnlineResultsPage> {
     return Stack(
       children: [
         Positioned.fill(
-            child: resultsPageFor(widget.game, saving: widget.saving, tv: true)),
+            child:
+                resultsPageFor(widget.game, saving: widget.saving, tv: true)),
         Positioned(
           right: 12,
           bottom: 10,
@@ -954,8 +1017,11 @@ class _OnlineResultsPageState extends State<OnlineResultsPage> {
                       FilledButton.styleFrom(minimumSize: const Size(150, 46)),
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.public),
-                  label:
-                      Text('TERMINER', style: Tv.title(20, color: Colors.black)),
+                  label: Text(
+                      widget.roomGame?['salon'] != null
+                          ? 'RETOUR AU SALON'
+                          : 'TERMINER',
+                      style: Tv.title(20, color: Colors.black)),
                 ),
               ],
             ),

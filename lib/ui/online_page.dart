@@ -12,6 +12,7 @@ import '../players.dart';
 import '../server.dart';
 import '../tv/tv_home.dart' show TvGameView;
 import 'game_page.dart';
+import 'lobby_page.dart';
 import 'players_page.dart' show RatingBadge;
 import 'setup_page.dart';
 import 'setup_widgets.dart';
@@ -688,7 +689,9 @@ class _OnlinePageState extends State<OnlinePage> {
           case 'watch':
             _watch(p);
           case 'block':
-            p.blocked ? _friend(() => online.block(p, false)) : _confirmBlock(p);
+            p.blocked
+                ? _friend(() => online.block(p, false))
+                : _confirmBlock(p);
         }
       },
       itemBuilder: (_) => [
@@ -717,7 +720,8 @@ class _OnlinePageState extends State<OnlinePage> {
             const PopupMenuItem(
                 value: 'friend', child: Text('Annuler ma demande d\'ami')),
           if (p.isFriend)
-            const PopupMenuItem(value: 'friend', child: Text('Retirer cet ami')),
+            const PopupMenuItem(
+                value: 'friend', child: Text('Retirer cet ami')),
           PopupMenuItem(
               value: 'want',
               child: Text(p.wanted
@@ -924,12 +928,13 @@ class _OnlinePageState extends State<OnlinePage> {
           controller: ctl,
           autofocus: true,
           maxLength: 60,
-          decoration: const InputDecoration(
-              hintText: 'Visible par les autres joueurs'),
+          decoration:
+              const InputDecoration(hintText: 'Visible par les autres joueurs'),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('ANNULER')),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('ANNULER')),
           FilledButton(
               key: const ValueKey('motto-ok'),
               onPressed: () => Navigator.pop(ctx, ctl.text),
@@ -975,8 +980,7 @@ class _OnlinePageState extends State<OnlinePage> {
                         : d.mine
                             ? 'EN ATTENTE DE SA RÉPONSE'
                             : 'TE PROPOSE CE RENDEZ-VOUS',
-                    style: Tv.label(10,
-                        color: d.ok || wait ? Tv.green : null)),
+                    style: Tv.label(10, color: d.ok || wait ? Tv.green : null)),
               ],
             ),
           ),
@@ -1088,6 +1092,7 @@ class _OnlinePageState extends State<OnlinePage> {
           ),
           for (final d in online.dates) _dateRow(d),
         ],
+        const LobbiesBox(),
         if (room != null) ...[
           const SizedBox(height: 12),
           FilledButton.icon(
@@ -1118,6 +1123,10 @@ class _OnlinePageState extends State<OnlinePage> {
             'dire à un absent que tu veux jouer, les 3 points pour le reste '
             '(rendez-vous, regarder la partie d\'un ami, bloquer).\n'
             '1 contre 1 ou 2 contre 2, chacun chez soi sur sa cible.\n'
+            'Salon : jusqu\'à 4 maisons, chacune avec ses joueurs ; '
+            'l\'hôte choisit le jeu et lance.\n'
+            'Salon : jusqu\'à 4 maisons (chacune avec ses joueurs) ; '
+            'l\'hôte choisit le jeu et lance.\n'
             'Touche DÉFIER, choisis le jeu : ton adversaire a 45 s pour '
             'accepter.\n'
             'Pendant la partie, vous vous voyez en vidéo : touche l\'image '

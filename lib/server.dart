@@ -73,6 +73,24 @@ class ApiError implements Exception {
         return 'Ce match n\'est plus à jouer';
       case 'tn_owner':
         return 'Seul le créateur du tournoi peut faire ça';
+      case 'lb_gone':
+        return 'Ce salon n\'existe plus';
+      case 'lb_private':
+        return 'Ce salon est privé : il faut une invitation';
+      case 'lb_full':
+        return 'Ce salon est complet (4 maisons)';
+      case 'lb_host':
+        return 'Seul l\'hôte du salon peut faire ça';
+      case 'lb_started':
+        return 'La partie du salon a déjà commencé';
+      case 'lb_alone':
+        return 'Il faut au moins 2 maisons pour lancer';
+      case 'lb_players':
+        return 'Les joueurs du salon ont changé : relance';
+      case 'on_player':
+        return 'Joueur introuvable';
+      case 'on_game':
+        return 'Partie refusée par le serveur';
     }
     return offline ? 'Pas de connexion au serveur' : 'Erreur serveur ($code)';
   }

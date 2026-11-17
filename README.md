@@ -41,7 +41,7 @@ Dans la fenêtre TV du téléphone :
 
 1 contre 1 ou 2 contre 2, chacun chez soi sur sa cible. Tuile **En ligne** : tous les joueurs du serveur avec leur état (libre, en partie, hors ligne), filtres et recherche, demandes d'ami (**+ AMI**) ; **Défier** un joueur en ligne, choisis le jeu, l'autre a 45 s pour accepter. La vidéo de l'adversaire est dans une vignette (déplaçable ; caméra, micro, caméra arrière). Il faut un profil sur chaque téléphone.
 
-La vidéo passe en direct entre les 2 téléphones (WebRTC) ; le serveur ne fait que la mise en relation. Si elle ne s'établit pas sur certains réseaux (4G, certaines box), il faut ajouter un relais TURN dans `gb_config` (clé `ice`).
+La vidéo passe en direct entre les 2 téléphones (WebRTC) ; le serveur ne fait que la mise en relation. Si elle ne peut pas passer en direct (4G, certaines box), elle passe par le relais TURN du serveur maison : voir `tools/turn/README.md` (exe Windows, ports à ouvrir, clé `turn` de `gb_config`).
 
 ## Personnalisation
 
@@ -80,6 +80,7 @@ Stats, rangs, classements, photos, sons, cibles des joueurs, écran TV, jeu en l
 13. `2026-11-15_amis.sql`
 14. `2026-11-15_social.sql`
 15. `2026-11-17_historique.sql`
+16. `2026-11-17_salons.sql`
 
 `psql -U postgres -d postgres -f fichier.sql`
 

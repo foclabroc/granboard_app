@@ -8,20 +8,21 @@ import 'package:permission_handler/permission_handler.dart';
 import '../ui/theme.dart';
 import 'online.dart';
 
-/// Appel vidéo avec l'adversaire d'une partie en ligne (WebRTC) : image et
-/// son passent en direct entre les 2 téléphones ; le serveur ne transporte
+/// Appel vidéo avec les autres maisons d'une partie en ligne (WebRTC) :
+/// image et son passent en direct entre les téléphones (ou par le relais
+/// TURN du serveur maison si c'est impossible) ; le serveur ne transporte
 /// que les messages de mise en relation (par la salle).
 ///
-/// Mise en relation : chacun annonce sa session (« ready », avec un
-/// identifiant tiré au hasard) ; le joueur « a » envoie l'offre dès qu'il
-/// connaît la session de l'autre. Les messages d'une ancienne session (appli
+/// Une liaison par autre maison (salon : jusqu'à 3). Mise en relation :
+/// chacun annonce sa session (« ready », avec un identifiant tiré au hasard
+/// et sa maison) ; pour chaque paire, la maison la plus petite (a avant b,
+/// h1 avant h2) envoie l'offre. Les messages d'une ancienne session (appli
 /// relancée) sont ignorés grâce à ces identifiants.
 class VideoCall extends ChangeNotifier {
   VideoCall(this.room);
   final OnlineRoom room;
 
   final local = RTCVideoRenderer();
-  final remote = RTCVideoRenderer();
 
   bool camOn = true;
   bool micOn = true;
@@ -29,24 +30,29 @@ class VideoCall extends ChangeNotifier {
 
   /// Caméra et micro disponibles (autorisations données).
   bool ready = false;
-
-  /// L'image de l'adversaire arrive.
-  bool connected = false;
   String? error;
 
+  /// Liaisons avec les autres maisons (clé = maison : b, a, h2…).
+  final peers = <String, VideoPeer>{};
+
+  /// L'image d'au moins une autre maison arrive.
+  bool get connected => peers.values.any((p) => p.connected);
+
+  /// Image de la maison [home] (1 contre 1 : la seule).
+  VideoPeer? peerOf(String home) => peers[home];
+
+  /// 1 contre 1 : image de l'adversaire.
+  RTCVideoRenderer? get remote =>
+      peers.isEmpty ? null : peers.values.first.renderer;
+
   final _sid = '${Random().nextInt(1 << 31)}';
-  String? _peerSid;
-  RTCPeerConnection? _pc;
   MediaStream? _stream;
   StreamSubscription<Map<String, dynamic>>? _sub;
-  final _candidates = <RTCIceCandidate>[];
-  bool _remoteSet = false;
   bool _closed = false;
 
   Future<void> start() async {
     try {
       await local.initialize();
-      await remote.initialize();
       final perms = await [Permission.camera, Permission.microphone].request();
       final cam = perms[Permission.camera]?.isGranted ?? false;
       final mic = perms[Permission.microphone]?.isGranted ?? false;
@@ -56,6 +62,8 @@ class VideoCall extends ChangeNotifier {
       } else {
         camOn = cam;
         micOn = mic;
+        // Salon : image plus petite (jusqu'à 3 envois en même temps)
+        final many = room.isSalon && room.homes.length > 2;
         _stream = await navigator.mediaDevices.getUserMedia({
           'audio': mic
               ? {
@@ -67,9 +75,9 @@ class VideoCall extends ChangeNotifier {
           'video': cam
               ? {
                   'facingMode': 'user',
-                  'width': {'ideal': 480},
-                  'height': {'ideal': 360},
-                  'frameRate': {'ideal': 15},
+                  'width': {'ideal': many ? 320 : 480},
+                  'height': {'ideal': many ? 240 : 360},
+                  'frameRate': {'ideal': many ? 12 : 15},
                 }
               : false,
         });
@@ -80,9 +88,10 @@ class VideoCall extends ChangeNotifier {
       }
       if (_closed) return;
       ready = true;
-      // Même sans caméra ni micro, on reçoit l'image de l'autre
+      room.addListener(_onRoom);
+      // Même sans caméra ni micro, on reçoit l'image des autres
       _sub = room.signals.listen(_onSignal);
-      await room.signal({'type': 'ready', 'sid': _sid});
+      await _ready();
       notifyListeners();
     } catch (e) {
       error = 'Vidéo indisponible';
@@ -90,19 +99,47 @@ class VideoCall extends ChangeNotifier {
     }
   }
 
-  Future<void> _newPeer() async {
-    final old = _pc;
-    _pc = null;
-    _remoteSet = false;
-    _candidates.clear();
-    try {
-      await old?.close();
-    } catch (_) {}
+  String get _me => room.side;
+
+  /// Maison qui envoie le message : donnée par le serveur (salon), écrite
+  /// dans le message, sinon l'autre côté du 1 contre 1.
+  String _homeOf(Map<String, dynamic> m) {
+    final h = m['_from'] ?? m['home'];
+    if (h != null) return '$h';
+    return _me == 'a' ? 'b' : 'a';
+  }
+
+  Future<void> _ready({String? ack}) => room.signal(
+      {'type': 'ready', 'sid': _sid, 'home': _me, if (ack != null) 'ack': ack});
+
+  /// Une maison a quitté la partie : sa liaison est fermée.
+  void _onRoom() {
+    var changed = false;
+    for (final h in room.homes) {
+      if (!h.left) continue;
+      final p = peers.remove(h.home);
+      if (p != null) {
+        p.dispose();
+        changed = true;
+      }
+    }
+    if (changed) notifyListeners();
+  }
+
+  Future<VideoPeer> _newPeer(String home, String sid) async {
+    peers.remove(home)?.dispose();
+    final peer = VideoPeer(home, sid);
+    peers[home] = peer;
+    await peer.renderer.initialize();
     final pc = await createPeerConnection({
       'iceServers': room.ice,
       'sdpSemantics': 'unified-plan',
     });
-    _pc = pc;
+    if (!identical(peers[home], peer) || _closed) {
+      await pc.close();
+      return peer;
+    }
+    peer.pc = pc;
     final s = _stream;
     if (s != null) {
       for (final t in s.getTracks()) {
@@ -110,31 +147,32 @@ class VideoCall extends ChangeNotifier {
       }
     }
     pc.onIceCandidate = (c) {
-      if (c.candidate == null || !identical(pc, _pc)) return;
-      _send({'type': 'ice', 'c': c.toMap()});
+      if (c.candidate == null || !identical(peers[home], peer)) return;
+      _send(peer, {'type': 'ice', 'c': c.toMap()});
     };
     pc.onTrack = (e) {
-      if (e.streams.isEmpty || !identical(pc, _pc)) return;
-      remote.srcObject = e.streams.first;
+      if (e.streams.isEmpty || !identical(peers[home], peer)) return;
+      peer.renderer.srcObject = e.streams.first;
       notifyListeners();
     };
     pc.onConnectionState = (st) {
-      if (!identical(pc, _pc)) return;
+      if (!identical(peers[home], peer)) return;
       final ok = st == RTCPeerConnectionState.RTCPeerConnectionStateConnected;
-      if (ok != connected) {
-        connected = ok;
+      if (ok != peer.connected) {
+        peer.connected = ok;
         notifyListeners();
       }
       if (st == RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
         // Connexion perdue : on recommence la mise en relation
-        _peerSid = null;
-        room.signal({'type': 'ready', 'sid': _sid});
+        peer.sid = null;
+        _ready();
       }
     };
+    return peer;
   }
 
-  void _send(Map<String, dynamic> m) =>
-      room.signal({...m, 'from': _sid, 'to': _peerSid});
+  void _send(VideoPeer p, Map<String, dynamic> m) =>
+      room.signal({...m, 'from': _sid, 'to': p.sid, 'home': _me});
 
   Future<void> _queue = Future.value();
 
@@ -144,59 +182,53 @@ class VideoCall extends ChangeNotifier {
 
   Future<void> _handle(Map<String, dynamic> m) async {
     if (_closed) return;
+    final home = _homeOf(m);
+    if (home == _me || room.goneHome(home)) return;
     try {
       switch (m['type']) {
         case 'ready':
           final sid = '${m['sid']}';
-          if (sid == _peerSid) return;
-          _peerSid = sid;
-          connected = false;
-          await _newPeer();
-          if (m['ack'] != _sid) {
-            await room.signal({'type': 'ready', 'sid': _sid, 'ack': sid});
-          }
-          if (room.side == 'a') {
-            final offer = await _pc!.createOffer(
+          if (sid == peers[home]?.sid) return;
+          final peer = await _newPeer(home, sid);
+          if (m['ack'] != _sid) await _ready(ack: sid);
+          // Pour chaque paire, la plus petite maison fait l'offre
+          if (_me.compareTo(home) < 0 && peer.pc != null) {
+            final offer = await peer.pc!.createOffer(
                 {'offerToReceiveAudio': true, 'offerToReceiveVideo': true});
-            await _pc!.setLocalDescription(offer);
-            _send({'type': 'offer', 'sdp': offer.sdp});
+            await peer.pc!.setLocalDescription(offer);
+            _send(peer, {'type': 'offer', 'sdp': offer.sdp});
           }
           notifyListeners();
         case 'offer':
-          if (m['to'] != _sid || m['from'] != _peerSid || _pc == null) return;
-          await _pc!.setRemoteDescription(
+          final p = peers[home];
+          if (p?.pc == null || m['to'] != _sid || m['from'] != p!.sid) return;
+          await p.pc!.setRemoteDescription(
               RTCSessionDescription('${m['sdp']}', 'offer'));
-          await _drain();
-          final answer = await _pc!.createAnswer();
-          await _pc!.setLocalDescription(answer);
-          _send({'type': 'answer', 'sdp': answer.sdp});
+          await p.drain();
+          final answer = await p.pc!.createAnswer();
+          await p.pc!.setLocalDescription(answer);
+          _send(p, {'type': 'answer', 'sdp': answer.sdp});
         case 'answer':
-          if (m['to'] != _sid || m['from'] != _peerSid || _pc == null) return;
-          await _pc!.setRemoteDescription(
+          final p = peers[home];
+          if (p?.pc == null || m['to'] != _sid || m['from'] != p!.sid) return;
+          await p.pc!.setRemoteDescription(
               RTCSessionDescription('${m['sdp']}', 'answer'));
-          await _drain();
+          await p.drain();
         case 'ice':
-          if (m['to'] != _sid || m['from'] != _peerSid || _pc == null) return;
+          final p = peers[home];
+          if (p?.pc == null || m['to'] != _sid || m['from'] != p!.sid) return;
           final c = Map<String, dynamic>.from(m['c'] as Map);
           final cand = RTCIceCandidate('${c['candidate']}',
               c['sdpMid'] as String?, (c['sdpMLineIndex'] as num?)?.toInt());
-          if (_remoteSet) {
-            await _pc!.addCandidate(cand);
+          if (p.remoteSet) {
+            await p.pc!.addCandidate(cand);
           } else {
-            _candidates.add(cand);
+            p.candidates.add(cand);
           }
       }
     } catch (_) {
       // Message d'une ancienne session ou arrivé trop tard : sans effet
     }
-  }
-
-  Future<void> _drain() async {
-    _remoteSet = true;
-    for (final c in _candidates) {
-      await _pc?.addCandidate(c);
-    }
-    _candidates.clear();
   }
 
   void toggleCam() {
@@ -233,28 +265,63 @@ class VideoCall extends ChangeNotifier {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    room.removeListener(_onRoom);
     await _sub?.cancel();
     try {
       for (final t in _stream?.getTracks() ?? const <MediaStreamTrack>[]) {
         await t.stop();
       }
       await _stream?.dispose();
-      await _pc?.close();
+      for (final p in peers.values) {
+        await p.dispose();
+      }
+      peers.clear();
       local.srcObject = null;
-      remote.srcObject = null;
       await local.dispose();
-      await remote.dispose();
     } catch (_) {}
   }
 }
 
-/// Vignette vidéo de l'adversaire, à poser dans un Stack : on la déplace au
-/// doigt, on la touche pour afficher les boutons (caméra, micro, selfie /
-/// arrière, taille).
+/// Liaison vidéo avec une autre maison.
+class VideoPeer {
+  VideoPeer(this.home, this.sid);
+  final String home;
+
+  /// Session annoncée par l'autre maison (null = à refaire).
+  String? sid;
+  RTCPeerConnection? pc;
+  final renderer = RTCVideoRenderer();
+  bool connected = false;
+  bool remoteSet = false;
+  final candidates = <RTCIceCandidate>[];
+
+  Future<void> drain() async {
+    remoteSet = true;
+    for (final c in candidates) {
+      await pc?.addCandidate(c);
+    }
+    candidates.clear();
+  }
+
+  Future<void> dispose() async {
+    try {
+      await pc?.close();
+      renderer.srcObject = null;
+      await renderer.dispose();
+    } catch (_) {}
+  }
+}
+
+/// Vignettes vidéo des autres maisons (une seule en 1 contre 1, jusqu'à 3
+/// en salon, les unes sous les autres), à poser dans un Stack : on les
+/// déplace au doigt, on les touche pour afficher les boutons (caméra,
+/// micro, selfie / arrière, taille).
 class VideoBubble extends StatefulWidget {
   final VideoCall call;
-  final String peerName;
-  const VideoBubble({super.key, required this.call, required this.peerName});
+
+  /// Maison → nom affiché (1 contre 1 : une seule entrée).
+  final Map<String, String> names;
+  const VideoBubble({super.key, required this.call, required this.names});
 
   @override
   State<VideoBubble> createState() => _VideoBubbleState();
@@ -289,14 +356,80 @@ class _VideoBubbleState extends State<VideoBubble> {
     });
   }
 
+  /// Une vignette : image de la maison [home] (ou du seul adversaire),
+  /// avec mon image en petit dans la 1re.
+  Widget _tile(VideoCall call, double w, double h, VideoPeer? peer, String name,
+      bool first) {
+    final on = peer != null && peer.connected;
+    return Container(
+      width: w,
+      height: h,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: on ? Tv.gold : Tv.line, width: 2),
+        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 8)],
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (on)
+            RTCVideoView(peer.renderer,
+                objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover)
+          else
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Text(call.error ?? 'Vidéo de $name…',
+                    textAlign: TextAlign.center,
+                    style: Tv.label(11, color: Tv.text)),
+              ),
+            ),
+          if (widget.names.length > 1)
+            Positioned(
+              left: 4,
+              top: 3,
+              child: Text(name.toUpperCase(),
+                  style: Tv.label(10, color: Colors.white)
+                      .copyWith(shadows: const [Shadow(blurRadius: 3)])),
+            ),
+          // Mon image, en petit
+          if (first && call.ready && call.camOn)
+            Positioned(
+              right: 4,
+              bottom: 4,
+              width: w * 0.3,
+              height: h * 0.3,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(5),
+                child: RTCVideoView(call.local,
+                    mirror: call.front,
+                    objectFit:
+                        RTCVideoViewObjectFit.RTCVideoViewObjectFitCover),
+              ),
+            ),
+          if (first && !call.micOn)
+            const Positioned(
+                left: 4,
+                bottom: 4,
+                child: Icon(Icons.mic_off, size: 16, color: Tv.red)),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final call = widget.call;
+    final names = widget.names;
+    final many = names.length > 1;
     return LayoutBuilder(builder: (context, box) {
-      final w = _big ? 248.0 : 140.0;
+      final w = many ? (_big ? 168.0 : 112.0) : (_big ? 248.0 : 140.0);
       final h = w * 3 / 4;
-      final maxX = max(0.0, box.maxWidth - w);
-      final maxY = max(0.0, box.maxHeight - h - (_tools ? 40 : 0));
+      final total = names.isEmpty ? h : names.length * (h + 4) - 4;
+      final maxX = max(0.0, box.maxWidth - max(w, _tools ? 176.0 : 0));
+      final maxY = max(0.0, box.maxHeight - total - (_tools ? 40 : 0));
       final pos = Offset(_pos.dx.clamp(0.0, maxX), _pos.dy.clamp(0.0, maxY));
       return Stack(
         children: [
@@ -312,63 +445,25 @@ class _VideoBubbleState extends State<VideoBubble> {
                 listenable: call,
                 builder: (context, _) => Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: w,
-                      height: h,
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: call.connected ? Tv.gold : Tv.line,
-                            width: 2),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black54, blurRadius: 8)
-                        ],
-                      ),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          if (call.connected)
-                            RTCVideoView(call.remote,
-                                objectFit: RTCVideoViewObjectFit
-                                    .RTCVideoViewObjectFitCover)
-                          else
-                            Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(6),
-                                child: Text(
-                                    call.error ??
-                                        'Vidéo de ${widget.peerName}…',
-                                    textAlign: TextAlign.center,
-                                    style: Tv.label(11, color: Tv.text)),
-                              ),
-                            ),
-                          // Mon image, en petit
-                          if (call.ready && call.camOn)
-                            Positioned(
-                              right: 4,
-                              bottom: 4,
-                              width: w * 0.3,
-                              height: h * 0.3,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(5),
-                                child: RTCVideoView(call.local,
-                                    mirror: call.front,
-                                    objectFit: RTCVideoViewObjectFit
-                                        .RTCVideoViewObjectFitCover),
-                              ),
-                            ),
-                          if (!call.micOn)
-                            const Positioned(
-                                left: 4,
-                                bottom: 4,
-                                child: Icon(Icons.mic_off,
-                                    size: 16, color: Tv.red)),
-                        ],
-                      ),
-                    ),
+                    if (names.isEmpty)
+                      _tile(call, w, h, null, '…', true)
+                    else
+                      for (final (i, e) in names.entries.indexed) ...[
+                        if (i > 0) const SizedBox(height: 4),
+                        _tile(
+                            call,
+                            w,
+                            h,
+                            many
+                                ? call.peerOf(e.key)
+                                : (call.peers.isEmpty
+                                    ? null
+                                    : call.peers.values.first),
+                            e.value,
+                            i == 0),
+                      ],
                     if (_tools)
                       Container(
                         width: max(w, 176),

@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.18
+
+- Salons en ligne : de 2 à 4 maisons, chacune sur sa cible avec 1 à 4 joueurs (comptes du téléphone ou invités). Le salon est privé (sur invitation) ou public (visible dans la liste « Salons » de l'écran En ligne). L'hôte choisit le jeu, l'ordre (maisons en alternance ou au hasard) et lance la partie, qui s'ouvre chez tout le monde. On revient au salon après la partie.
+- Vidéo à plusieurs : une vignette par autre maison, jusqu'à 3, image allégée à partir de 3 maisons.
+- Si une maison quitte une partie de salon, la partie continue : ses joueurs passent leur tour. Elle s'arrête quand il ne reste qu'une maison.
+- Relais TURN sur le serveur maison (`tools/turn`, identifiants temporaires donnés par le serveur) : la vidéo passe aussi en 4G et derrière les box strictes. SQL `2026-11-17_salons.sql`
+
 ## v0.6.17
 
 - Sous-menus des tuiles : présentation en tableau, bandeau de configuration et nombre de joueurs, avec les couleurs du thème choisi.

@@ -9,7 +9,8 @@ class FakeServer {
   final games = <String, Map<String, dynamic>>{}; // cid → partie
   final statsOf = <int, Map<String, dynamic>>{}; // réponses de gb_stats
   final recentOf = <int, List<Map<String, dynamic>>>{}; // gb_profile.recent
-  final tournaments = <int, Map<String, dynamic>>{}; // id → tournoi (comme gb__tn_json)
+  final tournaments =
+      <int, Map<String, dynamic>>{}; // id → tournoi (comme gb__tn_json)
 
   Map<String, dynamic> _tnJson(int id) {
     final t = tournaments[id]!;
@@ -30,6 +31,7 @@ class FakeServer {
     final next = ms.firstWhere((m) => m['r'] == r + 1 && m['s'] == sl ~/ 2);
     next[sl.isEven ? 'a' : 'b'] = w;
   }
+
   final settings = <int, Map<String, dynamic>>{}; // réglages des comptes
   final friends = <Map<String, dynamic>>[]; // {a: demandeur, b, ok}
   final blocks = <(int, int)>{}; // (qui bloque, qui est bloqué)
@@ -45,11 +47,16 @@ class FakeServer {
 
   String _friend(int me, int other) {
     for (final f in friends) {
-      if (f['a'] == me && f['b'] == other) return f['ok'] == true ? 'ok' : 'sent';
-      if (f['a'] == other && f['b'] == me) return f['ok'] == true ? 'ok' : 'ask';
+      if (f['a'] == me && f['b'] == other) {
+        return f['ok'] == true ? 'ok' : 'sent';
+      }
+      if (f['a'] == other && f['b'] == me) {
+        return f['ok'] == true ? 'ok' : 'ask';
+      }
     }
     return '';
   }
+
   bool offline = false;
   final tvSignals = <Map<String, dynamic>>[];
   final tvRooms =
@@ -61,6 +68,99 @@ class FakeServer {
   final online = <int, bool>{}; // id → occupé
   final invites = <int, Map<String, dynamic>>{};
   final rooms = <int, Map<String, dynamic>>{};
+
+  // Salons : id → {host, public, game, status, room, members: [{pid,
+  // players, joined}], invites: {pid: {from, status}}}
+  final lobbies = <int, Map<String, dynamic>>{};
+
+  List<Map<String, dynamic>> _members(int id) =>
+      (lobbies[id]!['members'] as List).cast<Map<String, dynamic>>();
+
+  bool _isMember(int id, int me) => _members(id).any((m) => m['pid'] == me);
+
+  /// Maison du joueur dans la salle (salon), sinon null.
+  Map<String, dynamic>? _home(Map<String, dynamic> r, int me) {
+    for (final h in (r['homes'] as List? ?? const [])) {
+      if ((h as Map)['pid'] == me) return h.cast<String, dynamic>();
+    }
+    return null;
+  }
+
+  bool _inRoom(Map<String, dynamic> r, int me, {bool active = false}) {
+    final h = _home(r, me);
+    if (h != null) return !active || h['left'] != true;
+    return r['homes'] == null && (r['a'] == me || r['b'] == me);
+  }
+
+  Map<String, dynamic> _lbView(int id) {
+    final l = lobbies[id]!;
+    final members = _members(id);
+    final hostFirst = [
+      ...members.where((m) => m['pid'] == l['host']),
+      ...members.where((m) => m['pid'] != l['host']),
+    ];
+    return _json({
+      'id': id,
+      'host': l['host'],
+      'public': l['public'],
+      'game': l['game'],
+      'status': l['status'],
+      'room': l['room'],
+      'topic': 'rc_l$id',
+      'members': [
+        for (final m in hostFirst)
+          {..._onPlayer(m['pid'] as int), 'players': m['players'], 'age': 0}
+      ],
+      'invited': [
+        for (final e in (l['invites'] as Map<int, Map>).entries)
+          if (!_isMember(id, e.key))
+            {..._onPlayer(e.key), 'status': e.value['status']}
+      ],
+    }) as Map<String, dynamic>;
+  }
+
+  Map<String, dynamic> _lbCard(int id, [int? from]) {
+    final l = lobbies[id]!;
+    final members = _members(id);
+    return {
+      'id': id,
+      'host': _onPlayer(l['host'] as int),
+      'public': l['public'],
+      'label': (l['game'] as Map?)?['label'],
+      'homes': members.length,
+      'players':
+          members.fold<int>(0, (a, m) => a + (m['players'] as List).length),
+      if (from != null) 'from': _onPlayer(from),
+    };
+  }
+
+  void _lbDrop(int me, [int? keep]) {
+    for (final e in lobbies.entries) {
+      if (e.key == keep || e.value['status'] != 'open') continue;
+      if (_isMember(e.key, me)) _lbLeave(e.key, me);
+    }
+  }
+
+  void _lbLeave(int id, int me) {
+    final l = lobbies[id]!;
+    _members(id).removeWhere((m) => m['pid'] == me);
+    if (l['host'] == me) {
+      final ms = _members(id);
+      if (ms.isEmpty) {
+        l['status'] = 'closed';
+      } else {
+        l['host'] = ms.first['pid'];
+      }
+    }
+  }
+
+  Map<String, dynamic> _lbMe(dynamic id, int me) {
+    final l = lobbies[id];
+    if (l == null || l['status'] == 'closed' || !_isMember(id as int, me)) {
+      throw const ApiError('lb_gone');
+    }
+    return l;
+  }
 
   /// Copie comme après un passage par le réseau.
   dynamic _json(dynamic v) => jsonDecode(jsonEncode(v));
@@ -545,8 +645,7 @@ class FakeServer {
         final snt = invites.values.where((i) => i['from'] == me).lastOrNull;
         final room = rooms.entries
             .where((r) =>
-                (r.value['a'] == me || r.value['b'] == me) &&
-                r.value['left'] == null)
+                _inRoom(r.value, me, active: true) && r.value['left'] == null)
             .lastOrNull;
         return _json({
           'me': me,
@@ -571,8 +670,8 @@ class FakeServer {
                   'at': d['at'],
                   'ok': d['ok'],
                   'mine': d['from'] == me,
-                  'with': _onPlayer(
-                      (d['from'] == me ? d['to'] : d['from']) as int),
+                  'with':
+                      _onPlayer((d['from'] == me ? d['to'] : d['from']) as int),
                 }
           ],
           'dnd': dnd.contains(me),
@@ -594,6 +693,17 @@ class FakeServer {
                   'room': snt['room']
                 },
           'room': room?.key,
+          'lobby_invites': [
+            for (final e in lobbies.entries)
+              if (e.value['status'] == 'open' &&
+                  (e.value['invites'] as Map)[me]?['status'] == 'pending')
+                _lbCard(e.key, (e.value['invites'] as Map)[me]['from'] as int)
+          ],
+          'lobby': lobbies.entries
+              .where(
+                  (e) => e.value['status'] != 'closed' && _isMember(e.key, me))
+              .lastOrNull
+              ?.key,
         });
       case 'gb_on_bye':
         online.remove(_auth(b['p_token']));
@@ -629,7 +739,8 @@ class FakeServer {
               'label': t['label'],
               'status': t['status'],
               'owner': _onPlayer(t['owner'] as int),
-              'winner': t['winner'] == null ? null : _onPlayer(t['winner'] as int),
+              'winner':
+                  t['winner'] == null ? null : _onPlayer(t['winner'] as int),
               'count': (t['ids'] as List).length,
               'joined': (t['ids'] as List).contains(me),
             }
@@ -658,13 +769,16 @@ class FakeServer {
         return null;
       case 'gb_tn_delete':
         final me = _auth(b['p_token']);
-        if (tournaments[b['p_id']]?['owner'] == me) tournaments.remove(b['p_id']);
+        if (tournaments[b['p_id']]?['owner'] == me) {
+          tournaments.remove(b['p_id']);
+        }
         return null;
       case 'gb_tn_start':
         final me = _auth(b['p_token']);
         final t = tournaments[b['p_id']];
         if (t == null || t['owner'] != me) return {'error': 'tn_gone'};
-        final ids = List<int>.from(t['ids'] as List<int>); // sans tirage : ordre d'inscription
+        final ids = List<int>.from(
+            t['ids'] as List<int>); // sans tirage : ordre d'inscription
         if (ids.length < 2) return {'error': 'tn_few'};
         var size = 2, rounds = 1;
         while (size < ids.length) {
@@ -675,7 +789,15 @@ class FakeServer {
         final ms = <Map<String, dynamic>>[];
         for (var r = 1; r <= rounds; r++) {
           for (var sl = 0; sl < size >> r; sl++) {
-            ms.add({'r': r, 's': sl, 'a': null, 'b': null, 'bye': false, 'winner': null, 'forfeit': false});
+            ms.add({
+              'r': r,
+              's': sl,
+              'a': null,
+              'b': null,
+              'bye': false,
+              'winner': null,
+              'forfeit': false
+            });
           }
         }
         var i = 0;
@@ -700,9 +822,14 @@ class FakeServer {
       case 'gb_tn_challenge':
         final me = _auth(b['p_token']);
         final t = tournaments[b['p_id']];
-        final m = (t?['matches'] as List?)?.cast<Map<String, dynamic>>().where(
-            (m) => m['r'] == b['p_round'] && m['s'] == b['p_slot']).firstOrNull;
-        if (t == null || m == null || m['winner'] != null || (m['a'] != me && m['b'] != me)) {
+        final m = (t?['matches'] as List?)
+            ?.cast<Map<String, dynamic>>()
+            .where((m) => m['r'] == b['p_round'] && m['s'] == b['p_slot'])
+            .firstOrNull;
+        if (t == null ||
+            m == null ||
+            m['winner'] != null ||
+            (m['a'] != me && m['b'] != me)) {
           return {'error': 'tn_match'};
         }
         final opp = (m['a'] == me ? m['b'] : m['a']) as int;
@@ -719,7 +846,13 @@ class FakeServer {
               {'id': '$opp', 'name': accounts[opp]!['pseudo'], 'team': 1},
             ],
             'actions': [],
-            'tn': {'t': t['id'], 'r': m['r'], 's': m['s'], 'name': t['name'], 'rounds': t['rounds']},
+            'tn': {
+              't': t['id'],
+              'r': m['r'],
+              's': m['s'],
+              'name': t['name'],
+              'rounds': t['rounds']
+            },
           },
           'status': 'pending',
           'room': null
@@ -729,13 +862,18 @@ class FakeServer {
       case 'gb_tn_set_winner':
         final me = _auth(b['p_token']);
         final t = tournaments[b['p_id']];
-        final m = (t?['matches'] as List?)?.cast<Map<String, dynamic>>().where(
-            (m) => m['r'] == b['p_round'] && m['s'] == b['p_slot']).firstOrNull;
+        final m = (t?['matches'] as List?)
+            ?.cast<Map<String, dynamic>>()
+            .where((m) => m['r'] == b['p_round'] && m['s'] == b['p_slot'])
+            .firstOrNull;
         final w = b['p_winner'] as int;
         final allowed = fn == 'gb_tn_report'
             ? (m?['a'] == me || m?['b'] == me)
             : t?['owner'] == me;
-        if (t == null || m == null || !allowed || (m['a'] != w && m['b'] != w)) {
+        if (t == null ||
+            m == null ||
+            !allowed ||
+            (m['a'] != w && m['b'] != w)) {
           return {'error': fn == 'gb_tn_report' ? 'tn_match' : 'tn_owner'};
         }
         if (m['winner'] == null) {
@@ -805,8 +943,46 @@ class FakeServer {
       case 'gb_on_get':
         final me = _auth(b['p_token']);
         final r = rooms[b['p_room']];
-        if (r == null || (r['a'] != me && r['b'] != me)) {
+        if (r == null || !_inRoom(r, me)) {
           return {'error': 'on_room'};
+        }
+        final h = _home(r, me);
+        if (h != null) {
+          final homes = (r['homes'] as List).cast<Map<String, dynamic>>();
+          String? homeOf(int pid) =>
+              homes.where((x) => x['pid'] == pid).firstOrNull?['home']
+                  as String?;
+          final peer = homes.firstWhere(
+              (x) => x['pid'] != me && x['left'] != true,
+              orElse: () => homes.firstWhere((x) => x['pid'] != me));
+          return _json({
+            'seq': r['seq'],
+            'side': h['home'],
+            'peer': _onPlayer(peer['pid'] as int),
+            'peer_age': r['age'],
+            'left': r['left'] != null,
+            'topic': 'rc_r${b['p_room']}',
+            'ice': [],
+            'homes': [
+              for (final x in homes)
+                {
+                  'home': x['home'],
+                  'player': _onPlayer(x['pid'] as int),
+                  'age': x['age'] ?? 0,
+                  'left': x['left'] == true,
+                }
+            ],
+            'signals': [
+              for (final s in (r['signals'] as List))
+                if (s['from'] != me && (s['id'] as int) > (b['p_sig'] as int))
+                  {
+                    'id': s['id'],
+                    'data': s['data'],
+                    'from': homeOf(s['from'] as int)
+                  }
+            ],
+            if ((r['seq'] as int) > (b['p_since'] as int)) 'game': r['game'],
+          });
         }
         final a = r['a'] == me;
         return _json({
@@ -827,7 +1003,7 @@ class FakeServer {
       case 'gb_on_push':
         final me = _auth(b['p_token']);
         final r = rooms[b['p_room']];
-        if (r == null || (r['a'] != me && r['b'] != me) || r['left'] != null) {
+        if (r == null || !_inRoom(r, me, active: true) || r['left'] != null) {
           return {'error': 'on_room'};
         }
         final g = Map<String, dynamic>.from(_json(b['p_game']) as Map);
@@ -850,9 +1026,180 @@ class FakeServer {
       case 'gb_on_leave':
         final me = _auth(b['p_token']);
         final r = rooms[b['p_room']];
-        if (r != null) r['left'] ??= me;
+        final h = r == null ? null : _home(r, me);
+        if (h != null) {
+          h['left'] = true;
+          final still = (r!['homes'] as List)
+              .where((x) => (x as Map)['left'] != true)
+              .length;
+          if (still < 2) r['left'] ??= me;
+        } else if (r != null) {
+          r['left'] ??= me;
+        }
         online[me] = false;
         return null;
+
+      // ─── Salons ───
+      case 'gb_lb_create':
+        final me = _auth(b['p_token']);
+        _lbDrop(me);
+        final id = lobbies.length + 1;
+        lobbies[id] = {
+          'host': me,
+          'public': b['p_public'] == true,
+          'game': null,
+          'status': 'open',
+          'room': null,
+          'members': [
+            {'pid': me, 'players': _json(b['p_players'])}
+          ],
+          'invites': <int, Map>{},
+        };
+        return _lbView(id);
+      case 'gb_lb_list':
+        final me = _auth(b['p_token']);
+        return _json({
+          'public': [
+            for (final e in lobbies.entries)
+              if (e.value['public'] == true &&
+                  e.value['status'] == 'open' &&
+                  !_isMember(e.key, me) &&
+                  _members(e.key).length < 4)
+                _lbCard(e.key)
+          ],
+          'invites': [],
+          'mine': lobbies.entries
+              .where(
+                  (e) => e.value['status'] != 'closed' && _isMember(e.key, me))
+              .lastOrNull
+              ?.key,
+        });
+      case 'gb_lb_get':
+        final me = _auth(b['p_token']);
+        _lbMe(b['p_id'], me);
+        return _lbView(b['p_id'] as int);
+      case 'gb_lb_join':
+        final me = _auth(b['p_token']);
+        final id = b['p_id'] as int;
+        final l = lobbies[id];
+        if (l == null || l['status'] != 'open') throw const ApiError('lb_gone');
+        final inv = l['invites'] as Map<int, Map>;
+        if (_isMember(id, me)) {
+          _members(id).firstWhere((m) => m['pid'] == me)['players'] =
+              _json(b['p_players']);
+        } else {
+          if (l['public'] != true && inv[me]?['status'] != 'pending') {
+            throw const ApiError('lb_private');
+          }
+          if (_members(id).length >= 4) throw const ApiError('lb_full');
+          _lbDrop(me, id);
+          _members(id).add({'pid': me, 'players': _json(b['p_players'])});
+        }
+        inv.remove(me);
+        return _lbView(id);
+      case 'gb_lb_players':
+        final me = _auth(b['p_token']);
+        final l = _lbMe(b['p_id'], me);
+        if (l['status'] != 'open') throw const ApiError('lb_started');
+        _members(b['p_id'] as int)
+                .firstWhere((m) => m['pid'] == me)['players'] =
+            _json(b['p_players']);
+        return _lbView(b['p_id'] as int);
+      case 'gb_lb_set':
+        final me = _auth(b['p_token']);
+        final l = _lbMe(b['p_id'], me);
+        if (l['host'] != me) throw const ApiError('lb_host');
+        final g = b['p_game'];
+        if (g is Map) {
+          l['game'] = _json(g)
+            ..remove('players')
+            ..remove('actions')
+            ..remove('home');
+        }
+        if (b['p_public'] != null) l['public'] = b['p_public'];
+        return _lbView(b['p_id'] as int);
+      case 'gb_lb_invite':
+        final me = _auth(b['p_token']);
+        final l = _lbMe(b['p_id'], me);
+        final to = b['p_to'] as int;
+        if (_blocked(me, to)) throw const ApiError('on_blocked');
+        if (dnd.contains(to)) throw const ApiError('on_dnd');
+        (l['invites'] as Map<int, Map>)[to] = {'from': me, 'status': 'pending'};
+        return _lbView(b['p_id'] as int);
+      case 'gb_lb_decline':
+        final me = _auth(b['p_token']);
+        final l = lobbies[b['p_id']];
+        final i = (l?['invites'] as Map<int, Map>?)?[me];
+        if (i != null) i['status'] = 'declined';
+        return null;
+      case 'gb_lb_kick':
+        final me = _auth(b['p_token']);
+        final l = _lbMe(b['p_id'], me);
+        if (l['host'] != me) throw const ApiError('lb_host');
+        final who = b['p_player'] as int;
+        if (who != me) {
+          _members(b['p_id'] as int).removeWhere((m) => m['pid'] == who);
+          (l['invites'] as Map).remove(who);
+        }
+        return _lbView(b['p_id'] as int);
+      case 'gb_lb_leave':
+        final me = _auth(b['p_token']);
+        final id = b['p_id'] as int;
+        if (lobbies[id] != null && _isMember(id, me)) _lbLeave(id, me);
+        return null;
+      case 'gb_lb_start':
+        final me = _auth(b['p_token']);
+        final id = b['p_id'] as int;
+        final l = _lbMe(id, me);
+        if (l['host'] != me) throw const ApiError('lb_host');
+        if (l['status'] != 'open') throw const ApiError('lb_gone');
+        final ms = _members(id);
+        if (ms.length < 2) throw const ApiError('lb_alone');
+        final ordered = [
+          ...ms.where((m) => m['pid'] == me),
+          ...ms.where((m) => m['pid'] != me),
+        ];
+        final home = <String, String>{};
+        final homes = <Map<String, dynamic>>[];
+        for (final (i, m) in ordered.indexed) {
+          homes.add({'pid': m['pid'], 'home': 'h${i + 1}', 'left': false});
+          for (final p in m['players'] as List) {
+            home['${(p as Map)['id']}'] = 'h${i + 1}';
+          }
+        }
+        final g = Map<String, dynamic>.from(_json(b['p_game']) as Map);
+        final ids = {
+          for (final p in g['players'] as List) '${(p as Map)['id']}'
+        };
+        if (ids.length != home.length || !ids.containsAll(home.keys)) {
+          throw const ApiError('lb_players');
+        }
+        final rid = rooms.length + 1;
+        rooms[rid] = {
+          'a': me,
+          'b': ordered[1]['pid'],
+          'game': {...g, 'actions': [], 'home': home, 'salon': id},
+          'seq': 1,
+          'left': null,
+          'signals': <Map<String, dynamic>>[],
+          'age': 0,
+          'homes': homes,
+        };
+        for (final m in ms) {
+          online[m['pid'] as int] = true;
+        }
+        l['status'] = 'started';
+        l['room'] = rid;
+        (l['invites'] as Map).clear();
+        return {'room': rid};
+      case 'gb_lb_back':
+        final me = _auth(b['p_token']);
+        final l = _lbMe(b['p_id'], me);
+        if (l['status'] == 'started') {
+          l['status'] = 'open';
+          l['room'] = null;
+        }
+        return _lbView(b['p_id'] as int);
       case 'gb_top':
         return [
           for (final e in accounts.entries)

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/widgets.dart';
 
@@ -130,6 +131,40 @@ class SentInvite {
   const SentInvite(this.id, this.to, this.status, this.room);
 }
 
+/// Salon (liste des salons publics, invitation reçue).
+class LobbyCard {
+  final int id;
+  final OnlinePlayer host;
+  final bool public;
+  final String label;
+
+  /// Maisons (cibles) et joueurs déjà dans le salon.
+  final int homes, players;
+
+  /// Qui m'a invité (invitation reçue).
+  final OnlinePlayer? from;
+  const LobbyCard(this.id, this.host,
+      {this.public = false,
+      this.label = '',
+      this.homes = 1,
+      this.players = 1,
+      this.from});
+
+  factory LobbyCard.fromJson(Map j) => LobbyCard(
+        (j['id'] as num).toInt(),
+        OnlinePlayer.fromJson(j['host'] as Map),
+        public: j['public'] == true,
+        label: '${j['label'] ?? ''}',
+        homes: (j['homes'] as num?)?.toInt() ?? 1,
+        players: (j['players'] as num?)?.toInt() ?? 1,
+        from: j['from'] is Map ? OnlinePlayer.fromJson(j['from'] as Map) : null,
+      );
+}
+
+/// Maisons d'un salon : 4 au plus, chacune avec 4 joueurs au plus.
+const kLobbyHomes = 4;
+const kLobbyHomePlayers = 4;
+
 /// Présence en ligne et défis du profil principal du téléphone.
 /// Tourne tant que l'appli est ouverte (au premier plan).
 class OnlineService extends ChangeNotifier with WidgetsBindingObserver {
@@ -171,6 +206,13 @@ class OnlineService extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Partie en ligne interrompue qu'on peut reprendre.
   int? resumeRoom;
+
+  /// Invitations reçues dans un salon, et mon salon ouvert.
+  List<LobbyCard> lobbyInvites = const [];
+  int? lobby;
+
+  /// Salons publics ouverts (relus tant que l'écran « En ligne » est ouvert).
+  List<LobbyCard> lobbies = const [];
 
   /// Dernier appel réussi (sinon [error] dit pourquoi).
   bool connected = false;
@@ -270,6 +312,8 @@ class OnlineService extends ChangeNotifier with WidgetsBindingObserver {
         dates = const [];
         invite = null;
         sent = null;
+        lobbyInvites = const [];
+        lobby = null;
         connected = false;
         notifyListeners();
       }
@@ -302,6 +346,13 @@ class OnlineService extends ChangeNotifier with WidgetsBindingObserver {
               '${s['status']}', (s['room'] as num?)?.toInt())
           : null;
       resumeRoom = (r['room'] as num?)?.toInt();
+      lobbyInvites = inGame > 0
+          ? const []
+          : [
+              for (final l in (r['lobby_invites'] as List? ?? const []))
+                LobbyCard.fromJson(l as Map)
+            ];
+      lobby = (r['lobby'] as num?)?.toInt();
       asks = [
         for (final p in (r['asks'] as List? ?? const []))
           OnlinePlayer.fromJson(p as Map)
@@ -342,10 +393,11 @@ class OnlineService extends ChangeNotifier with WidgetsBindingObserver {
     if (_watchers > 0 && connected) await loadPeople();
   }
 
-  /// Relit tous les joueurs du serveur.
+  /// Relit tous les joueurs du serveur (et les salons publics).
   Future<void> loadPeople() async {
     final m = me;
     if (m == null) return;
+    loadLobbies();
     try {
       final r = await GbServer.rpc('gb_on_people', {'p_token': m.token});
       people = [for (final p in r as List) OnlinePlayer.fromJson(p as Map)];
@@ -505,12 +557,324 @@ class OnlineService extends ChangeNotifier with WidgetsBindingObserver {
     return r is Map ? (r['room'] as num?)?.toInt() : null;
   }
 
+  /// Relit les salons publics ouverts.
+  Future<void> loadLobbies() async {
+    final m = me;
+    if (m == null) return;
+    try {
+      final r = Map<String, dynamic>.from(
+          await GbServer.rpc('gb_lb_list', {'p_token': m.token}) as Map);
+      lobbies = [
+        for (final l in (r['public'] as List? ?? const []))
+          LobbyCard.fromJson(l as Map)
+      ];
+      lobby = (r['mine'] as num?)?.toInt();
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Joueurs de ma maison par défaut : mon profil.
+  List<X01Player> get homePlayers {
+    final m = me;
+    return m == null ? const [] : [X01Player(id: m.key, name: m.name)];
+  }
+
+  /// Crée un salon (je quitte les autres) ; lève ApiError.
+  Future<Lobby> createLobby(bool public, [List<X01Player>? players]) async {
+    final r = await GbServer.rpc('gb_lb_create', {
+      'p_token': me!.token,
+      'p_public': public,
+      'p_players': Lobby.playersJson(players ?? homePlayers),
+    });
+    final j = Map<String, dynamic>.from(r as Map);
+    final l = Lobby((j['id'] as num).toInt(), me!)..apply(j);
+    lobby = l.id;
+    notifyListeners();
+    return l;
+  }
+
+  /// Rejoint le salon [id] (public ou invité) ; lève ApiError.
+  Future<Lobby> joinLobby(int id, [List<X01Player>? players]) async {
+    final r = await GbServer.rpc('gb_lb_join', {
+      'p_token': me!.token,
+      'p_id': id,
+      'p_players': Lobby.playersJson(players ?? homePlayers),
+    });
+    lobbyInvites = [
+      for (final l in lobbyInvites)
+        if (l.id != id) l
+    ];
+    lobby = id;
+    notifyListeners();
+    return Lobby(id, me!)..apply(Map<String, dynamic>.from(r as Map));
+  }
+
+  /// Ouvre mon salon [id] (lève ApiError « lb_gone » s'il n'existe plus).
+  Future<Lobby> openLobby(int id) async {
+    final r =
+        await GbServer.rpc('gb_lb_get', {'p_token': me!.token, 'p_id': id});
+    return Lobby(id, me!)..apply(Map<String, dynamic>.from(r as Map));
+  }
+
+  /// Refuse l'invitation au salon [id].
+  Future<void> declineLobby(int id) async {
+    lobbyInvites = [
+      for (final l in lobbyInvites)
+        if (l.id != id) l
+    ];
+    notifyListeners();
+    final m = me;
+    if (m == null) return;
+    try {
+      await GbServer.rpc('gb_lb_decline', {'p_token': m.token, 'p_id': id});
+    } catch (_) {}
+  }
+
   /// Ouvre la salle [id] (lève ApiError si elle n'existe plus).
   Future<OnlineRoom> openRoom(int id) async {
     final room = OnlineRoom(id, me!);
     await room.start();
     return room;
   }
+}
+
+/// Maison d'un salon : le compte qui la tient et ses joueurs.
+class LobbyMember {
+  final OnlinePlayer player;
+  final List<X01Player> players;
+
+  /// Secondes depuis son dernier signe de vie.
+  final int age;
+  const LobbyMember(this.player, this.players, this.age);
+}
+
+/// Salon ouvert : 2 à 4 maisons (chacune sur sa cible, avec ses joueurs),
+/// l'hôte choisit le jeu et lance. Relu sur notification du relais et
+/// toutes les 4 s (ce qui dit aussi au serveur que je suis là).
+class Lobby extends ChangeNotifier {
+  Lobby(this.id, this.account);
+
+  /// Relecture régulière (fausse en test : appels à la main).
+  static bool pollEnabled = true;
+
+  final int id;
+  final PlayerProfile account;
+
+  int hostId = 0;
+  bool public = false;
+
+  /// Jeu choisi par l'hôte : {kind, settings, label, order} (sans joueurs).
+  Map<String, dynamic>? game;
+  String status = 'open';
+
+  /// Salle de la partie lancée.
+  int? room;
+  List<LobbyMember> members = const [];
+
+  /// Joueurs invités qui n'ont pas encore rejoint (status pending/declined).
+  List<(OnlinePlayer, String)> invited = const [];
+
+  /// Le salon n'existe plus (ou j'en ai été retiré).
+  bool gone = false;
+  String? error;
+
+  bool get isHost => hostId == account.id;
+  bool get started => status == 'started';
+  OnlinePlayer? get host {
+    for (final m in members) {
+      if (m.player.id == hostId) return m.player;
+    }
+    return null;
+  }
+
+  LobbyMember? get mine {
+    for (final m in members) {
+      if (m.player.id == account.id) return m;
+    }
+    return null;
+  }
+
+  /// Tous les joueurs du salon, maison par maison.
+  List<X01Player> get allPlayers => [
+        for (final m in members) ...m.players,
+      ];
+
+  bool get full => members.length >= kLobbyHomes;
+
+  static List<Map<String, dynamic>> playersJson(List<X01Player> ps) => [
+        for (final p in ps) {'id': p.id, 'name': p.name}
+      ];
+
+  void apply(Map<String, dynamic> j) {
+    hostId = (j['host'] as num?)?.toInt() ?? hostId;
+    public = j['public'] == true;
+    game =
+        j['game'] is Map ? Map<String, dynamic>.from(j['game'] as Map) : null;
+    status = '${j['status'] ?? status}';
+    room = (j['room'] as num?)?.toInt();
+    members = [
+      for (final m in (j['members'] as List? ?? const []))
+        LobbyMember(
+          OnlinePlayer.fromJson(m as Map),
+          [
+            for (final p in (m['players'] as List? ?? const []))
+              X01Player(id: '${(p as Map)['id']}', name: '${p['name']}')
+          ],
+          (m['age'] as num?)?.toInt() ?? 0,
+        )
+    ];
+    for (final m in members) {
+      PlayerStore.instance.remoteColors[m.player.key] = m.player.color;
+    }
+    invited = [
+      for (final i in (j['invited'] as List? ?? const []))
+        (OnlinePlayer.fromJson(i as Map), '${i['status'] ?? 'pending'}')
+    ];
+    final topic = j['topic'] as String?;
+    if (topic != null && topic != _topic && !_closed) {
+      _unlisten?.call();
+      _topic = topic;
+      _unlisten = Relay.instance.listen(topic, fetch);
+    }
+  }
+
+  Timer? _poll;
+  VoidCallback? _unlisten;
+  String? _topic;
+  bool _closed = false;
+  bool _fetching = false;
+
+  /// Lance la relecture régulière.
+  void listen() {
+    if (_closed) return;
+    _poll?.cancel();
+    if (pollEnabled) {
+      _poll = Timer.periodic(const Duration(seconds: 4), (_) => fetch());
+    }
+  }
+
+  Future<void> fetch() async {
+    if (_closed || _fetching) return;
+    _fetching = true;
+    try {
+      _set(await _rpc('gb_lb_get', {}));
+    } on ApiError catch (e) {
+      if (e.code == 'lb_gone') {
+        gone = true;
+      } else {
+        error = e.message;
+      }
+      notifyListeners();
+    } catch (_) {
+    } finally {
+      _fetching = false;
+    }
+  }
+
+  Future<dynamic> _rpc(String fn, Map<String, dynamic> args) =>
+      GbServer.rpc(fn, {'p_token': account.token, 'p_id': id, ...args});
+
+  void _set(dynamic r) {
+    if (_closed || r is! Map) return;
+    error = null;
+    apply(Map<String, dynamic>.from(r));
+    notifyListeners();
+  }
+
+  /// Joueurs de ma maison (1 à 4) ; lève ApiError.
+  Future<void> setPlayers(List<X01Player> players) async =>
+      _set(await _rpc('gb_lb_players', {'p_players': playersJson(players)}));
+
+  /// Jeu choisi (JSON d'une partie, ses joueurs ne sont pas gardés) et
+  /// ouverture : hôte seulement ; lève ApiError.
+  Future<void> setGame(Map<String, dynamic>? game, {bool? public}) async =>
+      _set(await _rpc('gb_lb_set', {'p_game': game, 'p_public': public}));
+
+  Future<void> invite(OnlinePlayer p) async =>
+      _set(await _rpc('gb_lb_invite', {'p_to': p.id}));
+
+  Future<void> kick(OnlinePlayer p) async =>
+      _set(await _rpc('gb_lb_kick', {'p_player': p.id}));
+
+  /// Partie complète à lancer : le jeu choisi avec les joueurs de toutes
+  /// les maisons, en alternance (1er joueur de chaque maison, puis le 2e…),
+  /// maisons tirées au hasard si l'hôte l'a demandé.
+  Map<String, dynamic>? buildGame([Random? rnd]) {
+    final g = game;
+    if (g == null) return null;
+    final homes = [for (final m in members) m.players];
+    if (g['order'] == 'random') homes.shuffle(rnd ?? Random());
+    final n = homes.fold<int>(0, (a, h) => max(a, h.length));
+    final order = [
+      for (var i = 0; i < n; i++)
+        for (final h in homes)
+          if (i < h.length) h[i]
+    ];
+    return {
+      ...g,
+      'players': [
+        for (var i = 0; i < order.length; i++)
+          X01Player(id: order[i].id, name: order[i].name, team: i).toJson()
+      ],
+      'actions': const <String>[],
+    };
+  }
+
+  /// L'hôte lance la partie ; renvoie la salle (lève ApiError).
+  Future<int> start(Map<String, dynamic> game) async {
+    final r = await _rpc('gb_lb_start', {'p_game': game});
+    room = ((r as Map)['room'] as num).toInt();
+    status = 'started';
+    notifyListeners();
+    return room!;
+  }
+
+  /// Retour au salon après la partie (il se rouvre pour tout le monde).
+  Future<void> back() async {
+    try {
+      _set(await _rpc('gb_lb_back', {}));
+    } on ApiError catch (e) {
+      if (e.code == 'lb_gone') {
+        gone = true;
+        notifyListeners();
+      }
+    }
+  }
+
+  /// Quitte le salon (l'hôte passe la main) et arrête la relecture.
+  Future<void> leave() async {
+    close();
+    try {
+      await _rpc('gb_lb_leave', {});
+    } catch (_) {}
+    final s = OnlineService.instance;
+    if (s.lobby == id) {
+      s.lobby = null;
+      s.ping();
+    }
+  }
+
+  void close() {
+    _closed = true;
+    _poll?.cancel();
+    _unlisten?.call();
+    _unlisten = null;
+  }
+
+  @override
+  void dispose() {
+    close();
+    super.dispose();
+  }
+}
+
+/// Maison d'une partie de salon (h1 = hôte).
+class RoomHome {
+  final String home;
+  final OnlinePlayer player;
+  final int age;
+  final bool left;
+  const RoomHome(this.home, this.player, this.age, this.left);
 }
 
 /// Salle d'une partie en ligne : la partie est sur le serveur, chaque
@@ -529,12 +893,51 @@ class OnlineRoom extends ChangeNotifier {
   String get myId => account.key;
 
   /// Le joueur [id] lance chez moi ? En double, la partie dit qui joue dans
-  /// quelle maison (« home » : a = qui a défié, b = l'autre).
+  /// quelle maison (« home » : a = qui a défié, b = l'autre). Salon : la
+  /// maison qui a quitté la partie est remplacée par la 1re maison encore
+  /// là (ses joueurs passent leur tour, voir [goneHome]).
   bool mine(String id) {
     final home = game['home'];
-    if (home is Map) return home[id] == side;
+    if (home is Map) {
+      final h = home[id];
+      if (h == side) return true;
+      return h != null && goneHome('$h') && side == firstPresent;
+    }
     return id == myId;
   }
+
+  /// Maisons d'une partie de salon (vide en 1 contre 1).
+  List<RoomHome> homes = const [];
+  bool get isSalon => homes.isNotEmpty;
+
+  /// Salon d'où vient la partie.
+  int? get salon => (game['salon'] as num?)?.toInt();
+
+  /// La maison [h] a quitté la partie.
+  bool goneHome(String h) => homes.any((x) => x.home == h && x.left);
+
+  /// Le joueur [id] est chez une maison partie (il passe son tour).
+  bool absent(String id) {
+    final home = game['home'];
+    return isSalon &&
+        home is Map &&
+        home[id] != null &&
+        goneHome('${home[id]}');
+  }
+
+  /// 1re maison encore dans la partie.
+  String? get firstPresent {
+    for (final h in homes) {
+      if (!h.left) return h.home;
+    }
+    return null;
+  }
+
+  /// Autres maisons encore là (vidéo).
+  List<RoomHome> get others => [
+        for (final h in homes)
+          if (h.home != side && !h.left) h
+      ];
 
   /// « a » = celui qui a défié (il lance l'appel vidéo).
   String side = 'a';
@@ -612,6 +1015,15 @@ class OnlineRoom extends ChangeNotifier {
       }
       peerAge = (r['peer_age'] as num?)?.toInt() ?? 0;
       left = r['left'] == true;
+      homes = [
+        for (final h in (r['homes'] as List? ?? const []))
+          if (h is Map && h['player'] is Map)
+            RoomHome('${h['home']}', OnlinePlayer.fromJson(h['player'] as Map),
+                (h['age'] as num?)?.toInt() ?? 0, h['left'] == true)
+      ];
+      for (final h in homes) {
+        PlayerStore.instance.remoteColors[h.player.key] = h.player.color;
+      }
       ice = r['ice'] as List? ?? const [];
       final topic = r['topic'] as String?;
       if (topic != null && topic != _topic) {
@@ -631,7 +1043,11 @@ class OnlineRoom extends ChangeNotifier {
         if (sid <= _sig) continue;
         _sig = sid;
         if (m['data'] is Map) {
-          _signals.add(Map<String, dynamic>.from(m['data'] as Map));
+          // Salon : maison qui envoie (donnée par le serveur)
+          _signals.add({
+            ...Map<String, dynamic>.from(m['data'] as Map),
+            if (m['from'] != null) '_from': '${m['from']}',
+          });
         }
       }
       notifyListeners();

@@ -43,7 +43,17 @@ class SetupPage extends StatefulWidget {
   /// 01 / Cricket / Match seulement, nom et taille du tableau ; renvoie
   /// {game, label, name, size}.
   final bool tournament;
-  const SetupPage({super.key, this.kind, this.online, this.tournament = false});
+
+  /// Jeu d'un salon en ligne ([online] = tous les joueurs du salon) :
+  /// renvoie le JSON de la partie avec « label » et « order »
+  /// (fixed = maisons en alternance, random = au hasard).
+  final bool salon;
+  const SetupPage(
+      {super.key,
+      this.kind,
+      this.online,
+      this.tournament = false,
+      this.salon = false});
 
   @override
   State<SetupPage> createState() => _SetupPageState();
@@ -91,7 +101,7 @@ class _SetupPageState extends State<SetupPage> {
 
   /// Défi en ligne en double (2 contre 2, une maison par équipe) : 01 avec
   /// score d'équipe ou Team Cricket.
-  bool get _double => (widget.online?.length ?? 0) == 3;
+  bool get _double => !widget.salon && (widget.online?.length ?? 0) == 3;
 
   /// Ouvert depuis une tuile de l'accueil : le choix du jeu est masqué.
   bool get _fixed => widget.kind != null && !_online;
@@ -252,7 +262,7 @@ class _SetupPageState extends State<SetupPage> {
           'ptarget': _pTarget,
           'popt': _pOptions.toList(),
           'mpattern': [for (final k in _mPattern) k.name],
-        'mstarts': _mStarts,
+          'mstarts': _mStarts,
           'players': _selected,
           'teams': _team,
         }));
@@ -384,6 +394,12 @@ class _SetupPageState extends State<SetupPage> {
       final mate = X01Player(id: on[2].id, name: on[2].name, team: 0);
       return swap ? [opp, me, mate] : [me, opp, mate];
     }
+    if (on != null && widget.salon) {
+      return [
+        for (var i = 0; i < on.length; i++)
+          X01Player(id: on[i].id, name: on[i].name, team: i)
+      ];
+    }
     if (on != null) {
       final swap = _first == 1 ||
           (_first == 2 && DateTime.now().microsecondsSinceEpoch.isOdd);
@@ -492,6 +508,10 @@ class _SetupPageState extends State<SetupPage> {
                   ? CricketGame(_cricket, _order)
                   : X01Game(_settings, _order);
       final json = g.toJson();
+      if (widget.salon) {
+        json['label'] = _gameName;
+        json['order'] = _first == 2 ? 'random' : 'fixed';
+      }
       if (_double) {
         final on = widget.online!;
         json['double'] = true;
@@ -531,11 +551,13 @@ class _SetupPageState extends State<SetupPage> {
       appBar: AppBar(
         title: Text(widget.tournament
             ? (_online ? 'NOUVEAU TOURNOI EN LIGNE' : 'TOURNOI À LA MAISON')
-            : _online
-                ? 'DÉFIER ${widget.online![1].name.toUpperCase()}${_double ? ' EN DOUBLE' : ''}'
-                : _fixed
-                    ? _familyName
-                    : 'NOUVELLE PARTIE'),
+            : widget.salon
+                ? 'PARTIE DU SALON'
+                : _online
+                    ? 'DÉFIER ${widget.online![1].name.toUpperCase()}${_double ? ' EN DOUBLE' : ''}'
+                    : _fixed
+                        ? _familyName
+                        : 'NOUVELLE PARTIE'),
         actions: [
           if (_fixed) ...[
             RulesButton(title: _gameName, text: _rulesText),
@@ -1414,6 +1436,7 @@ class _SetupPageState extends State<SetupPage> {
 
   /// Défi en ligne : l'adversaire, qui commence, bouton « Défier ».
   Widget _onlinePanel(String? problem) {
+    if (widget.salon) return _salonPanel(problem);
     final me = widget.online![0];
     final opp = widget.online![1];
     final mate = _double ? widget.online![2] : null;
@@ -1527,6 +1550,93 @@ class _SetupPageState extends State<SetupPage> {
                     label: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text('DÉFIER : ${_gameName.toUpperCase()}',
+                          style: Tv.title(22, color: Colors.black)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Salon : joueurs de toutes les maisons et ordre de jeu.
+  Widget _salonPanel(String? problem) {
+    final players = widget.online!;
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            children: [
+              TvSection('Joueurs du salon (${players.length})',
+                  padding: EdgeInsets.zero),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final p in players)
+                    Chip(
+                      avatar: PlayerAvatar(
+                          name: p.name,
+                          color: store.colorOf(p.id),
+                          size: 24,
+                          id: p.id),
+                      label: Text(p.name.toUpperCase(), style: Tv.title(15)),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const TvSection('Ordre', padding: EdgeInsets.zero),
+              const SizedBox(height: 6),
+              SegmentedButton<int>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                      value: 0,
+                      label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text('MAISONS EN ALTERNANCE'))),
+                  ButtonSegment(value: 2, label: Text('AU HASARD')),
+                ],
+                selected: {_first == 2 ? 2 : 0},
+                onSelectionChanged: (v) => setState(() => _first = v.first),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                  'Chaque maison joue chez elle sur sa cible, pour ses '
+                  'joueurs. Les joueurs qui changent dans le salon sont '
+                  'repris au lancement.',
+                  style: Tv.label(12)),
+            ],
+          ),
+        ),
+        SafeArea(
+          top: false,
+          left: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (problem != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(problem, style: Tv.title(15, color: Tv.red)),
+                  ),
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: FilledButton.icon(
+                    key: const ValueKey('salon-pick'),
+                    onPressed: problem == null ? _startGame : null,
+                    icon: const Icon(Icons.check),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('CHOISIR : ${_gameName.toUpperCase()}',
                           style: Tv.title(22, color: Colors.black)),
                     ),
                   ),
@@ -1687,10 +1797,8 @@ class _SetupPageState extends State<SetupPage> {
                   // 301 → 501 → 701 → 901 → Cricket → 301…
                   onPressed: () {
                     const order = [...kStartScores, 0];
-                    _setLegGame(
-                        i,
-                        order[(order.indexOf(_legGame(i)) + 1) %
-                            order.length]);
+                    _setLegGame(i,
+                        order[(order.indexOf(_legGame(i)) + 1) % order.length]);
                   },
                 ),
             ],
