@@ -773,6 +773,21 @@ class LobbiesBox extends StatelessWidget {
                 icon: const Icon(Icons.add_home),
                 label: Text('CRÉER UN SALON', style: Tv.title(16)),
               ),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                  'SALONS OUVERTS (${cards.where((l) => l.id != mine).length})',
+                  style: Tv.label(11, color: Tv.text)),
+            ),
+            if (cards.every((l) => l.id == mine))
+              Padding(
+                padding: const EdgeInsets.only(top: 2, bottom: 4),
+                child: Text(
+                    'Aucun salon public ouvert pour l\'instant. Les salons '
+                    'privés n\'apparaissent pas ici : on y entre sur '
+                    'invitation.',
+                    style: Tv.label(11)),
+              ),
             for (final l in cards)
               if (l.id != mine)
                 ListTile(
