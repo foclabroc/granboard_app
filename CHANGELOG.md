@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.25
+
+- Thème propre à chaque jeu (couleurs + fond animé), dans les réglages du jeu, pendant la partie, aux résultats et sur l'écran TV ; les menus gardent le thème choisi pour l'appli :
+  - 01 « Arène » (rouge et or, anneaux d'une cible géante, projecteurs) ; Cricket « Ardoise » (tableau noir, marques à la craie) ; Medley « Duel » (deux camps bleu / violet) ; Entraînement « Mire » (viseur et radar turquoise) ; Party « Confettis » ;
+  - jeux phares : Bowling (pistes en bois et néons), Golf « Green » (collines, drapeau, nuages), Football « Stade » (pelouse rayée, lignes du terrain, ballon), Le Chat et la Souris « Pattes » (empreintes qui traversent), Paint « Atelier » (taches de peinture), Contre la montre « Chrono » (cadran et trotteuse).
+
 ## v0.6.24
 
 - Joueur suivant (bouton rouge de la cible ou bouton à l'écran) : les annonces en cours ou en attente (« il reste … », commentaires) sont coupées, le son du joueur suivant et son bandeau partent tout de suite.

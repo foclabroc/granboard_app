@@ -38,6 +38,7 @@ import 'boot_page.dart' show warmPlayers;
 import 'widgets.dart';
 import '../format.dart';
 import '../tournament.dart';
+import 'game_theme.dart';
 
 /// Partie en cours (01 / Freeze avec [settings] + [players], ou [game] déjà
 /// prêt : Cricket…).
@@ -640,7 +641,10 @@ class _GamePageState extends State<GamePage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      GameThemeScope(skin: GameSkins.ofGame(game), child: _themedBuild(context));
+
+  Widget _themedBuild(BuildContext context) {
     final limit = game.roundLimit;
     final actionBar = _ActionBar(
       game: game,

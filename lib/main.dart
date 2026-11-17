@@ -148,9 +148,10 @@ class GranBoardAppState extends State<GranBoardApp> {
   @override
   Widget build(BuildContext context) {
     // Tout se redessine quand le thème change
-    return ValueListenableBuilder<AppSkin>(
-      valueListenable: Tv.skin,
-      builder: (context, skin, _) => _app(),
+    // (thème de l'appli, ou celui du jeu en cours)
+    return ListenableBuilder(
+      listenable: Tv.changes,
+      builder: (context, _) => _app(),
     );
   }
 

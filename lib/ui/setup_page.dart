@@ -18,6 +18,7 @@ import 'rules.dart';
 import 'setup_widgets.dart';
 import 'theme.dart';
 import 'widgets.dart';
+import 'game_theme.dart';
 
 const kSetupPrefKey = 'x01_setup_v1';
 const _prefKey = kSetupPrefKey;
@@ -641,7 +642,10 @@ class _SetupPageState extends State<SetupPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      GameThemeScope(skin: GameSkins.of(_kind, _kind == 'practice' ? _pKind : _kind == 'party' ? _fKind : null), child: _themedBuild(context));
+
+  Widget _themedBuild(BuildContext context) {
     final problem = _problem;
     final available =
         store.players.where((p) => !_selected.contains(p.key)).toList();

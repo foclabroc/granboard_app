@@ -6,6 +6,7 @@ import 'package:granboard_proto/game/practice.dart';
 import 'package:granboard_proto/players.dart';
 import 'package:granboard_proto/ui/setup_page.dart';
 import 'package:granboard_proto/ui/setup_widgets.dart';
+import 'package:granboard_proto/ui/game_theme.dart';
 import 'package:granboard_proto/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -133,16 +134,29 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Le tableau reprend les couleurs du thème choisi', (tester) async {
+  testWidgets('Le tableau prend le thème du jeu, pas celui de l\'appli',
+      (tester) async {
     final old = Tv.skin.value;
     addTearDown(() => Tv.skin.value = old);
     Tv.skin.value = AppSkin.neon;
-    await open(tester, 'x01');
-    final panel = find.byType(TableauPanel).first;
-    final container = tester.widget<Container>(
-        find.descendant(of: panel, matching: find.byType(Container)).first);
-    expect((container.decoration! as BoxDecoration).color,
-        AppSkin.neon.panel.withValues(alpha: 0.9));
+    for (final (k, skin) in [
+      ('x01', GameSkins.x01),
+      ('cricket', GameSkins.cricket),
+      ('party', GameSkins.party),
+    ]) {
+      await open(tester, k);
+      await tester.pump();
+      expect(Tv.current, same(skin), reason: k);
+      final panel = find.byType(TableauPanel).first;
+      final container = tester.widget<Container>(
+          find.descendant(of: panel, matching: find.byType(Container)).first);
+      expect((container.decoration! as BoxDecoration).color,
+          skin.panel.withValues(alpha: 0.9), reason: k);
+    }
+    // page fermée : le thème de l'appli revient
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(Tv.current, same(AppSkin.neon));
     expect(tester.takeException(), isNull);
   });
 

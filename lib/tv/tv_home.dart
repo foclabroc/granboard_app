@@ -16,6 +16,7 @@ import '../ui/game_page.dart' show NextMatchChip, gameView, resultsPageFor;
 import '../tournament.dart';
 import '../ui/theme.dart';
 import '../ui/turn_banner.dart';
+import '../ui/game_theme.dart';
 import '../ui/wallpaper.dart';
 import '../ui/tournament_page.dart' show TvTournamentView;
 import 'tv_client.dart';
@@ -170,11 +171,11 @@ class _TvHomeState extends State<TvHome> {
     if (screen == 'game' && s?['game'] is Map) {
       body = _TvGame(state: s!, code: client.code);
     } else if (screen == 'results' && s?['game'] is Map) {
+      final g = gameFromJson(Map<String, dynamic>.from(s!['game'] as Map));
       body = KeyedSubtree(
-        key: ValueKey(canonicalJson(s!['game']).hashCode),
-        child: resultsPageFor(
-            gameFromJson(Map<String, dynamic>.from(s['game'] as Map)),
-            tv: true),
+        key: ValueKey(canonicalJson(s['game']).hashCode),
+        child: GameThemeScope(
+            skin: GameSkins.ofGame(g), child: resultsPageFor(g, tv: true)),
       );
     } else if (screen == 'tournament' && s?['tournament'] is Map) {
       body = TvTournamentView(
@@ -534,7 +535,7 @@ class _TvGameState extends State<_TvGame> {
       g,
       g.actionLog.length,
       canonicalJson([s['colors'], s['boards'], s['skin'], s['cricket'], s['anim']]),
-      Tv.skin.value,
+      Tv.current,
     );
     if (_view == null || key != _viewKey) {
       _viewKey = key;
@@ -546,7 +547,10 @@ class _TvGameState extends State<_TvGame> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      GameThemeScope(skin: GameSkins.ofGame(_game!), child: _themedBuild(context));
+
+  Widget _themedBuild(BuildContext context) {
     final g = _game!;
     final limit = g.roundLimit;
     return Column(
