@@ -2,6 +2,7 @@
 
 ## v0.6.24
 
+- Partager l'appli : bouton « Envoyer par SMS » sous le QR code (ouvre les SMS avec un message et le lien de téléchargement, il ne reste qu'à choisir le contact).
 - Nouveau jeu de fête **Grand Prix** (2 à 6 joueurs, course en 9, 12 ou 15 cases) : chaque pilote tire au sort un numéro de la cible ; toucher son numéro fait avancer sa voiture (simple 1, double 2, triple 3), le bull donne un turbo (+2), toucher le numéro d'un adversaire le fait reculer d'une case (tête-à-queue). Le premier au drapeau à damier gagne (40 manches maxi).
   - Piste vue de dessus avec une ligne par joueur (numéro, nom, position), cases numérotées depuis le départ, voitures de F1 qui accélèrent (flammes, traînée) ou partent en tête-à-queue (fumée), badge P1 pour le leader ; même écran sur la TV.
   - Thème « Circuit » (asphalte, vibreurs rouge et blanc, traits de vitesse, damier).

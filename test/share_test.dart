@@ -19,6 +19,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('share-qr')), findsOneWidget);
     expect(find.text('PARTAGER FOCLABOARD'), findsOneWidget);
+    expect(find.byKey(const ValueKey('share-sms')), findsOneWidget);
+    expect(shareSmsText(), contains('Foclaboard.apk'));
     expect(tester.takeException(), isNull);
   });
 }
