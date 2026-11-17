@@ -15,9 +15,9 @@ import java.util.List;
  * Décodeurs des vidéos de Foclaboard.
  *
  * <p>Si un décodeur n'arrive pas à démarrer, ExoPlayer essaie le suivant (au lieu de s'arrêter en
- * erreur). Sur Android TV, les décodeurs logiciels passent en premier : le décodeur matériel de
- * certaines TV (TCL 55P615) échoue sur les vidéos de l'appli, que le décodeur logiciel lit sans
- * problème (720p).
+ * erreur). Sur Android TV, les décodeurs logiciels passent en premier si {@link
+ * FocVideoMode#softwareFirst} : le décodeur matériel de certaines TV (TCL 55P615) échouait sur
+ * les vidéos de l'appli, que le décodeur logiciel lit sans problème.
  */
 @UnstableApi
 public final class FocRenderers {
@@ -31,7 +31,7 @@ public final class FocRenderers {
   public static DefaultRenderersFactory create(@NonNull Context context) {
     DefaultRenderersFactory factory =
         new DefaultRenderersFactory(context).setEnableDecoderFallback(true);
-    if (isTv(context)) {
+    if (isTv(context) && FocVideoMode.softwareFirst) {
       factory.setMediaCodecSelector(SOFTWARE_FIRST);
     }
     return factory;

@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.22
+
+- Écran TV 4K : l'appli passe l'écran en 1080p au démarrage (4 fois moins de pixels à dessiner, la TV agrandit l'image). Rien ne change sur les TV dont l'interface tourne déjà en 1080p (la plupart).
+- Écran TV : vidéos lues par le décodeur de la TV (plus léger) ; si une vidéo ne se lit pas, l'écran repasse tout seul au décodeur logiciel et le garde. Réglage « Vidéos en décodage logiciel » dans la fenêtre TV du téléphone.
+- Écran TV : réglage « Moteur de rendu Skia » dans la fenêtre TV du téléphone (au lieu d'Impeller, à essayer si l'écran saccade ; l'écran redémarre tout seul). Moteur, décodeur et mode d'affichage écrits en petit en bas de l'écran d'attente.
+- Écran TV : moins de travail à chaque fléchette : l'écran de jeu n'est plus reconstruit quand l'état reçu ne change que la musique, le son ou la caméra ; bandeau du haut et écran de jeu dans des couches séparées ; « Ensuite » en 01 recalculé seulement au changement de joueur ; chrono de « Contre la montre » dans sa propre couche.
+
 ## v0.6.21
 
 - Vérification complète, corrections : en salon, la cible de la maison qui remplace une maison partie ne compte plus de fléchettes pour l'absent ; au retour d'une partie de salon, on rejoint la nouvelle partie si l'hôte l'a déjà relancée (au lieu de rouvrir le salon et de bloquer cette partie) ; une seule partie ouverte à la fois par-dessus le salon ; plus de plantage possible si on ferme l'écran pendant le chargement des réglages, la liaison TV, l'enregistrement de la voix ou le réglage des lumières ; numéros des cases allumées mis en cache (effets plus légers sur la TV).

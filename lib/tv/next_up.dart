@@ -55,16 +55,36 @@ class NextUpChip extends StatefulWidget {
 }
 
 class _NextUpChipState extends State<NextUpChip> {
-  int _len = -1;
+  Object? _key;
   DartsGame? _of;
   (X01Player, String)? _next;
+
+  /// Quand recalculer (nextUp rejoue toute la partie) : en 01, ce qu'il
+  /// reste au joueur suivant ne bouge pas pendant le tour d'un autre, donc
+  /// seulement au changement de joueur ; ailleurs (Cut Throat, Paint…) à
+  /// chaque action.
+  Object _keyOf(DartsGame g) {
+    final cur = g is MatchGame ? g.leg : g;
+    if (cur is X01Game) {
+      return (
+        g is MatchGame ? g.legs.length : 0,
+        cur.current,
+        cur.round,
+        cur.finished,
+        g.finished,
+        g is MatchGame && g.betweenLegs,
+      );
+    }
+    return g.actionLog.length;
+  }
 
   @override
   Widget build(BuildContext context) {
     final g = widget.game;
-    if (!identical(g, _of) || g.actionLog.length != _len) {
+    final key = _keyOf(g);
+    if (!identical(g, _of) || key != _key) {
       _of = g;
-      _len = g.actionLog.length;
+      _key = key;
       _next = nextUp(g);
     }
     final n = _next;

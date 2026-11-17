@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 
 import '../audio.dart';
 import '../granboard.dart';
+import '../tv/tv_gfx.dart';
 
 /// Coups réussis fêtés par une animation plein écran.
 enum Award {
@@ -241,6 +242,8 @@ class _AwardVideoState extends State<_AwardVideo> {
   /// Pas lue : le son habituel à la place (une seule fois).
   void _fail() {
     if (_closing) return;
+    // Écran TV en décodeur matériel : les prochaines vidéos en logiciel
+    TvGfx.videoFailed();
     final f = widget.onFail;
     _close();
     f?.call();

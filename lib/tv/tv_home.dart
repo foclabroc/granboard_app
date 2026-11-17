@@ -19,6 +19,7 @@ import '../ui/theme.dart';
 import '../ui/wallpaper.dart';
 import '../ui/tournament_page.dart' show TvTournamentView;
 import 'tv_client.dart';
+import 'tv_gfx.dart';
 import 'next_up.dart';
 import 'screen_cam.dart';
 import 'tv_idle.dart';
@@ -126,6 +127,8 @@ class _TvHomeState extends State<TvHome> {
     // qu'aucun téléphone n'a rien dit)
     if (s?['anim'] is bool) Perf.lite = !(s!['anim'] as bool);
     if (s?['tease'] is bool) AudioService.instance.teasing = s!['tease'];
+    // moteur de rendu et décodeur vidéo de l'écran (Android TV)
+    TvGfx.apply(s?['gfx']);
     if (s?['pron'] is Map) {
       AudioService.instance.pronunciations
         ..clear()
@@ -428,6 +431,10 @@ class _Corner extends StatelessWidget {
         Icon(Icons.circle, size: 10, color: client.live ? Tv.green : Tv.gold),
         const SizedBox(width: 6),
         Text('CODE ${client.code ?? '—'}', style: Tv.label(13)),
+        if (TvGfx.label case final g when g.isNotEmpty) ...[
+          const SizedBox(width: 10),
+          Text(g, style: Tv.label(11, color: Tv.muted)),
+        ],
       ],
     );
   }
@@ -449,6 +456,12 @@ class _TvGameState extends State<_TvGame> {
   late final _fx = GameFx(_splash, haptics: false);
   DartsGame? _game;
   String? _sig;
+
+  // Écran de jeu gardé tel quel tant que rien de visible n'a changé : un
+  // état qui ne change que la musique, la caméra ou le son ne le
+  // reconstruit pas (le widget identique arrête la reconstruction).
+  Widget? _view;
+  Object? _viewKey;
 
   @override
   void initState() {
@@ -502,6 +515,23 @@ class _TvGameState extends State<_TvGame> {
         if (mounted && identical(_game, g)) _fx.afterAction(g, a);
       });
     }
+  }
+
+  Widget _gameView(DartsGame g) {
+    final s = widget.state;
+    final key = (
+      g,
+      g.actionLog.length,
+      canonicalJson([s['colors'], s['boards'], s['skin'], s['cricket'], s['anim']]),
+      Tv.skin.value,
+    );
+    if (_view == null || key != _viewKey) {
+      _viewKey = key;
+      // Couche à part : le bandeau du haut et l'écran de jeu ne se
+      // redessinent pas l'un l'autre
+      _view = RepaintBoundary(child: gameView(g, _splash));
+    }
+    return _view!;
   }
 
   @override
@@ -576,7 +606,7 @@ class _TvGameState extends State<_TvGame> {
             ],
           ),
         ),
-        Expanded(child: gameView(g, _splash)),
+        Expanded(child: _gameView(g)),
       ],
     );
   }

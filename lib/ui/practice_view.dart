@@ -603,6 +603,8 @@ class _TickingState extends State<_Ticking> {
   }
 
   @override
-  Widget build(BuildContext context) => Text(widget.text(),
-      maxLines: 1, overflow: TextOverflow.ellipsis, style: widget.style);
+  // Sa propre couche : redessiné 4 fois par seconde sans le reste de l'écran
+  Widget build(BuildContext context) => RepaintBoundary(
+      child: Text(widget.text(),
+          maxLines: 1, overflow: TextOverflow.ellipsis, style: widget.style));
 }

@@ -208,11 +208,36 @@ class _TvSheetState extends State<_TvSheet> {
                 title: Text('Animations complètes sur l\'écran',
                     style: Tv.title(17)),
                 subtitle: const Text(
-                    'Fond animé, cible qui pulse et anneau de LED. Coupé : '
+                    'Fond animé et cible qui pulse. Coupé : '
                     'plus fluide sur une TV peu puissante (les fléchettes, '
                     'vidéos et bandeaux restent animés).'),
                 value: link.fullAnim,
                 onChanged: (v) => link.setFullAnim(v),
+              ),
+              SwitchListTile(
+                key: const ValueKey('tv-skia'),
+                contentPadding: EdgeInsets.zero,
+                title: Text('Moteur de rendu Skia (Android TV)',
+                    style: Tv.title(17)),
+                subtitle: const Text(
+                    'Au lieu d\'Impeller : à essayer si l\'écran saccade. '
+                    'L\'écran redémarre tout seul (le moteur actuel est '
+                    'affiché en bas de son écran d\'attente).'),
+                value: link.engine == 'skia',
+                onChanged: (v) =>
+                    link.setGfx(engine: v ? 'skia' : 'impeller'),
+              ),
+              SwitchListTile(
+                key: const ValueKey('tv-video-sw'),
+                contentPadding: EdgeInsets.zero,
+                title: Text('Vidéos en décodage logiciel',
+                    style: Tv.title(17)),
+                subtitle: const Text(
+                    'Coupé : décodeur de la TV, plus léger ; l\'écran passe '
+                    'tout seul au logiciel si une vidéo ne se lit pas. '
+                    'Allumer puis couper pour réessayer le décodeur de la TV.'),
+                value: link.video == 'sw',
+                onChanged: (v) => link.setGfx(video: v ? 'sw' : 'auto'),
               ),
               if (link.camScreens.isNotEmpty) const CamPanel(),
             ] else ...[

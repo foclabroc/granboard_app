@@ -83,6 +83,21 @@ class TvLink extends ChangeNotifier {
     await _save();
   }
 
+  /// Écran Android TV : moteur de rendu (impeller | skia) ; un changement
+  /// fait redémarrer l'écran.
+  String engine = 'impeller';
+
+  /// Décodeur des vidéos de l'écran : auto (matériel, logiciel si une vidéo
+  /// échoue) | sw (toujours logiciel).
+  String video = 'auto';
+
+  Future<void> setGfx({String? engine, String? video}) async {
+    if (engine != null) this.engine = engine;
+    if (video != null) this.video = video;
+    _resend();
+    await _save();
+  }
+
   bool soundsOn(String target) => soundOn.contains(target);
 
   void _setSound(Iterable<String> targets) {
@@ -113,6 +128,8 @@ class TvLink extends ChangeNotifier {
         }
         // Avant la 0.6.3 : un seul appareil (texte)
         fullAnim = j['anim'] as bool? ?? false;
+        engine = j['engine'] == 'skia' ? 'skia' : 'impeller';
+        video = j['video'] == 'sw' ? 'sw' : 'auto';
         final snd = j['sound'];
         _setSound(
             snd is List ? snd.map((e) => '$e') : [snd is String ? snd : phone]);
@@ -146,6 +163,8 @@ class TvLink extends ChangeNotifier {
           'screens': [for (final s in screens) s.toJson()],
           'sound': soundOn.toList(),
           'anim': fullAnim,
+          'engine': engine,
+          'video': video,
         }));
   }
 
@@ -398,6 +417,7 @@ class TvLink extends ChangeNotifier {
         'theme': Tv.skin.value.id,
         'calls': AudioService.instance.dartCalls,
         'anim': fullAnim,
+        'gfx': {'engine': engine, 'video': video},
         'tease': AudioService.instance.teasing,
         'pron': AudioService.instance.pronunciations,
         'wall': Wallpaper.instance.forTv,
