@@ -145,4 +145,23 @@ void main() {
       expect(plan(t), '#', reason: t);
     }
   });
+
+  test('Commentaires (v0.6.19) : tout est enregistré', () {
+    for (final t in [
+      ...kPraise100,
+      ...kPraise140,
+      ...kMissedDouble,
+      ...kTonStreak.where((t) => t.isNotEmpty),
+      'Encore un ton !',
+      'Tout est fermé !',
+      'Leg décisif !',
+      'Neuf fléchettes en vue !',
+    ]) {
+      expect(plan('Il reste 81, $t'), isNot(contains(RegExp('[a-z]'))),
+          reason: t);
+    }
+    expect(plan('Foc prend la tête !. Sophie, à toi'), 'Foc|#|Sophie|#');
+    expect(plan('triple 20, plus que double 16'),
+        isNot(contains(RegExp('[a-z]'))));
+  });
 }

@@ -44,6 +44,20 @@ const kZeroMarkTeases = [
   'Petit tour pour rien.',
 ];
 
+/// Commentaires de l'annonceur (mêmes textes que COMMENTS dans
+/// tools/make_voice.py) : coupés avec le chambrage.
+const kPraise100 = ['Belle volée !', 'Joli tour !', 'Très beau tour !'];
+const kPraise140 = ['Magnifique !', 'Superbe volée !', 'Quelle volée !'];
+const kMissedDouble = [
+  'Le double se refuse.',
+  'Ça ne veut pas rentrer.',
+  'Si près du but.',
+];
+const kTonStreak = [
+  '', '', 'Deuxième ton d\'affilée !', 'Troisième ton d\'affilée !', //
+  'Quatrième ton d\'affilée !',
+];
+
 class GameFx {
   final AudioService audio;
 
@@ -64,6 +78,14 @@ class GameFx {
     _lastTease = t;
     return t;
   }
+
+  /// Commentaires (compliments, prise de tête…) : même réglage que le
+  /// chambrage.
+  bool get _comments => audio.teasing && audio.voice;
+
+  /// Joueur (ou équipe) en tête au dernier tour, pour annoncer qu'un autre
+  /// prend la tête.
+  int? _leader;
 
   final GlobalKey<GameSplashState> splash;
   final bool haptics;
@@ -179,6 +201,7 @@ class GameFx {
 
   void start(DartsGame game) {
     _names(game);
+    _leader = null;
     final title = game is MatchGame
         ? 'Medley en ${game.settings.legs} legs. Leg 1, ${game.leg.title}'
         : game.title;
@@ -346,8 +369,14 @@ class GameFx {
         } else if (m.betweenLegs) {
           _legWon(m); // limite de manches atteinte
         } else if (m.leg.actionLog.isEmpty) {
+          _leader = null;
+          final decisive = _comments &&
+              m.players.length == 2 &&
+              List.generate(m.players.length, m.legWinsOf)
+                  .every((w) => w == m.settings.winsNeeded - 1);
           _turn(
               m,
+              '${decisive ? 'Leg décisif ! ' : ''}'
               'Leg ${m.legNumber}, ${m.leg.title}. '
               '${m.currentPlayer.name}, à toi.',
               300);
@@ -483,16 +512,53 @@ class GameFx {
         _show('180', Tv.gold, big: true);
       } else if (total >= 100) {
         audio.play(Sfx.ton);
-        audio.sayLater(_join(call, left), 400 + _wait);
+        // 2e, 3e… ton d'affilée, sinon un compliment
+        final streak = _tonStreak(game, turn.player);
+        final c = !_comments
+            ? ''
+            : streak >= 2
+                ? (streak < kTonStreak.length
+                    ? kTonStreak[streak]
+                    : 'Encore un ton !')
+                : tease(total >= 140 ? kPraise140 : kPraise100);
+        audio.sayLater(_join(_join(call, left), c), 400 + _wait);
         _show('$total', Tv.gold);
       } else {
-        // Moins de 20 en 3 fléchettes : on chambre
-        final t = total < 20 ? tease(kLowTeases) : '';
+        // Il pouvait finir et n'a pas fini : le double se refuse ; moins de
+        // 20 en 3 fléchettes : on chambre
+        final couldFinish = turn.openedBefore &&
+            turn.scoreBefore <= 170 &&
+            checkoutRoutes(turn.scoreBefore, 3, game.settings.outRule,
+                    game.settings.bullMode,
+                    max: 1)
+                .isNotEmpty;
+        final t = couldFinish && _comments
+            ? tease(kMissedDouble)
+            : total < 20
+                ? tease(kLowTeases)
+                : '';
         audio.sayLater(_join(_join(call, left), t), 400 + _wait);
       }
-    } else if (call.isNotEmpty) {
-      audio.sayLater(call, 150 + _wait);
+    } else {
+      // Fin en une fléchette possible : « plus que double 16 »
+      final opts = game.checkoutOptions;
+      final fin = opts.isNotEmpty && opts.first.length == 1
+          ? 'plus que ${_route(opts.first)}'
+          : '';
+      final text = _join(call, fin);
+      if (text.isNotEmpty) audio.sayLater(text, 150 + _wait);
     }
+  }
+
+  /// Manches de 100 ou plus d'affilée du joueur [p] (la dernière comprise).
+  static int _tonStreak(X01Game g, int p) {
+    var n = 0;
+    for (final t in g.turns.reversed) {
+      if (t.player != p) continue;
+      if (t.total < 100) break;
+      n++;
+    }
+    return n;
   }
 
   /// Après « joueur suivant ».
@@ -503,6 +569,27 @@ class GameFx {
     }
     final p = game.currentPlayer;
     final s = game.currentState;
+    if (_comments && !game.settings.teamPlay && game.players.length > 1) {
+      // Un autre joueur prend la tête (le plus petit reste, seul)
+      final rem = [
+        for (var i = 0; i < game.players.length; i++) game.stateOf(i).remaining
+      ];
+      final best = rem.reduce(min);
+      final lead = rem.indexOf(best);
+      if (rem.where((r) => r == best).length == 1) {
+        if (_leader != null && _leader != lead) {
+          _lead.add('${game.players[lead].name} prend la tête !');
+        }
+        _leader = lead;
+      }
+      // 6 fléchettes parfaites en 501 : neuf fléchettes en vue
+      if (game.settings.startScore == 501 &&
+          s.darts == 6 &&
+          s.remaining > 0 &&
+          s.remaining <= 141) {
+        _lead.add('Neuf fléchettes en vue !');
+      }
+    }
     var text = '${p.name}, à toi';
     if (game.isFrozen(game.current)) {
       text += '. Ton équipe est gelée';
@@ -551,7 +638,13 @@ class GameFx {
         _show('WHITE HORSE', Tv.gold, big: true);
       } else if (m >= 5) {
         audio.play(Sfx.ton);
-        audio.sayLater(_join(call, '$m marques !'), 400 + _wait);
+        audio.sayLater(
+            _join(_join(call, '$m marques !'), _closedAll(game)), 400 + _wait);
+      } else if (_closedAll(game).isNotEmpty) {
+        audio.sayLater(
+            _join(_join(call, m == 1 ? 'Une marque' : '$m marques'),
+                _closedAll(game)),
+            400 + _wait);
       } else {
         audio.sayLater(
             _join(
@@ -568,10 +661,30 @@ class GameFx {
     }
   }
 
+  /// « Tout est fermé ! » quand le joueur qui vient de lancer a fermé son
+  /// dernier numéro (sans gagner : il doit encore marquer).
+  String _closedAll(CricketGame game) {
+    if (!_comments || game.finished) return '';
+    final t = game.currentTurn;
+    final side = game.sideOf(game.current);
+    if (!game.allClosed(side) || t.marks == 0) return '';
+    return 'Tout est fermé !';
+  }
+
   void afterCricketNext(CricketGame game) {
     if (game.finished) {
       win(game);
       return;
+    }
+    if (_comments && game.settings.variant.scoring && !game.settings.teams) {
+      // Un autre joueur prend la tête aux points
+      final r = game.sideRanking;
+      if (r.length > 1 && game.scoreOf(r[0]) != game.scoreOf(r[1])) {
+        if (_leader != null && _leader != r[0]) {
+          _lead.add('${game.players[r[0]].name} prend la tête !');
+        }
+        _leader = r[0];
+      }
     }
     var text = '${game.currentPlayer.name}, à toi';
     final side = game.sideOf(game.current);

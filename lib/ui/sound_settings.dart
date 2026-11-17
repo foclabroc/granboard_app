@@ -55,9 +55,10 @@ class _SoundSheet extends StatelessWidget {
               SwitchListTile(
                 key: const ValueKey('teasing'),
                 secondary: const Icon(Icons.sentiment_very_satisfied),
-                title: Text('Chambrage', style: Tv.title(18)),
+                title: Text('Commentaires et chambrage', style: Tv.title(18)),
                 subtitle: const Text(
-                    'Une petite phrase moqueuse sur un tour raté ou un bust'),
+                    'Compliments, séries de tons, prise de tête, double qui se '
+                    'refuse… et petite phrase moqueuse sur un tour raté'),
                 value: a.teasing,
                 onChanged: a.voice ? a.setTeasing : null,
               ),

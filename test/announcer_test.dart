@@ -82,6 +82,45 @@ void main() {
     await close(tester);
   });
 
+  testWidgets('Commentaires : ton, série, prise de tête, double refusé',
+      (tester) async {
+    audio.teasing = true;
+    GameFx.random = _Always1();
+    addTearDown(() => GameFx.random = Random());
+    await open(tester,
+        const GamePage(settings: X01Settings(startScore: 301), players: two));
+    // Ana : 100 → compliment
+    await dart(tester, 20, Ring.triple);
+    await dart(tester, 20, Ring.singleOuter);
+    await dart(tester, 20, Ring.singleOuter);
+    expect(audio.said.last, startsWith('20, Il reste 201, '));
+    expect(kPraise100.any(audio.said.last.endsWith), isTrue);
+    await next(tester);
+    // Bob : 140 → il prend la tête
+    await dart(tester, 20, Ring.triple);
+    await dart(tester, 20, Ring.triple);
+    await dart(tester, 20, Ring.singleOuter);
+    expect(kPraise140.any(audio.said.last.endsWith), isTrue);
+    await next(tester);
+    expect(audio.said.last, startsWith('Bob prend la tête !. Ana, à toi'));
+    // Ana : 2e ton d'affilée
+    await dart(tester, 20, Ring.triple);
+    await dart(tester, 20, Ring.triple);
+    await dart(tester, 20, Ring.singleOuter);
+    expect(audio.said.last, endsWith('Deuxième ton d\'affilée !'));
+    await next(tester);
+    // Bob (161) : fin possible, il rate → le double se refuse
+    await dart(tester, 1, Ring.singleOuter);
+    await dart(tester, 1, Ring.singleOuter);
+    await dart(tester, 1, Ring.singleOuter);
+    expect(kMissedDouble.any(audio.said.last.endsWith), isTrue);
+    await next(tester);
+    // Ana (61) : T15 puis « plus que double 8 »
+    await dart(tester, 15, Ring.triple);
+    expect(audio.said.last, 'triple 15, plus que double 8');
+    await close(tester);
+  });
+
   testWidgets('Chambrage : tour à moins de 20, aucune marque, coupé',
       (tester) async {
     audio.teasing = true;

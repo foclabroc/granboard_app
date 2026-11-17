@@ -214,6 +214,24 @@ TEASES = [
 ]
 for t in TEASES:
     add(t)
+# ─── Commentaires de l'annonceur (v0.6.19, lib/ui/game_fx.dart kPraise100,
+# kPraise140, kMissedDouble, kTonStreak : mêmes textes) ───
+COMMENTS = [
+    'Belle volée !', 'Joli tour !', 'Très beau tour !',
+    'Magnifique !', 'Superbe volée !', 'Quelle volée !',
+    'Le double se refuse.', 'Ça ne veut pas rentrer.', 'Si près du but.',
+    'prend la tête !', 'Tout est fermé !', 'Leg décisif !',
+    'Neuf fléchettes en vue !',
+]
+for t in COMMENTS:
+    add(t)
+# « ton » à l'anglaise
+add("Deuxième ton d'affilée !", "Deuxième tonne d'affilée !")
+add("Troisième ton d'affilée !", "Troisième tonne d'affilée !")
+add("Quatrième ton d'affilée !", "Quatrième tonne d'affilée !")
+add('Encore un ton !', 'Encore une tonne !')
+add('Leg décisif !', 'Lègue décisif !')
+
 # Bowling, Paint
 add('strike !', 'Straïke !')
 add('spare !', 'Spère !')
