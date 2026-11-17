@@ -13,7 +13,7 @@ class TvGfx {
 
   /// Clés lues aussi par MainActivity.kt (préfixe « flutter. »).
   /// Moteur gardé : impeller | skia (absent = skia, défaut depuis la
-  /// 0.6.24 ; l'ancienne clé tv_engine n'est plus lue).
+  /// 0.6.23 ; l'ancienne clé tv_engine n'est plus lue).
   static const kEngine = 'tv_render';
   static const kVideo = 'tv_video';
   static const kHwFail = 'tv_video_hwfail';
@@ -64,7 +64,7 @@ class TvGfx {
   }
 
   /// Réglages envoyés par le téléphone dans l'état ({render, video} ;
-  /// `engine` des téléphones en 0.6.22-0.6.23 ignoré : il valait impeller
+  /// `engine` des téléphones en 0.6.22 ignoré : il valait impeller
   /// sans que personne l'ait choisi).
   /// Moteur différent : gardé puis l'appli redémarre (le moteur se choisit
   /// au lancement).

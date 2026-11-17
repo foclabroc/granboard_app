@@ -44,7 +44,7 @@ void main() {
   test('Skia par défaut ; Impeller demandé : gardé puis redémarrage', () async {
     await TvGfx.load();
     expect(TvGfx.engine, 'skia');
-    // téléphone en 0.6.22-0.6.23 : « engine » impeller ignoré
+    // téléphone en 0.6.22 : « engine » impeller ignoré
     await TvGfx.apply({'engine': 'impeller', 'video': 'auto'});
     await TvGfx.apply({'render': 'skia', 'video': 'auto'});
     expect(calls.where((c) => c.method == 'restart'), isEmpty);

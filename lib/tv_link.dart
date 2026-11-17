@@ -128,7 +128,7 @@ class TvLink extends ChangeNotifier {
         }
         // Avant la 0.6.3 : un seul appareil (texte)
         fullAnim = j['anim'] as bool? ?? false;
-        // « render » depuis la 0.6.24 (Skia par défaut) ; l'ancien « engine »
+        // « render » depuis la 0.6.23 (Skia par défaut) ; l'ancien « engine »
         // valait impeller sans choix de l'utilisateur
         engine = j['render'] == 'impeller' ? 'impeller' : 'skia';
         video = j['video'] == 'sw' ? 'sw' : 'auto';
@@ -419,7 +419,7 @@ class TvLink extends ChangeNotifier {
         'theme': Tv.skin.value.id,
         'calls': AudioService.instance.dartCalls,
         'anim': fullAnim,
-        // engine : pour les écrans en 0.6.22-0.6.23
+        // engine : pour les écrans en 0.6.22
         'gfx': {'render': engine, 'engine': engine, 'video': video},
         'tease': AudioService.instance.teasing,
         'names': AudioService.instance.turnNames,

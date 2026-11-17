@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.6.24
+## v0.6.23
 
 - Démarrage : petite barre de chargement avant l'accueil, le temps de tout préparer pour que la partie ne cale pas :
   - annonces enregistrées recopiées une fois hors de l'appli (avant, chaque morceau était recopié à sa 1re lecture à chaque lancement, d'où des annonces en retard en début de soirée) ; refait seulement quand les voix changent ;
@@ -10,9 +10,6 @@
 - Pseudos : chaque pseudo est enregistré une fois par la voix de synthèse puis rejoué comme les autres annonces (plus d'attente de la voix de synthèse à chaque « X, à toi », surtout sur la TV).
 - Écran TV : moteur de rendu Skia par défaut (bien plus fluide qu'Impeller sur la TV de test), aussi pour les TV qui se mettent à jour ; l'interrupteur de la fenêtre TV du téléphone devient « Moteur de rendu Skia » allumé d'office (le couper repasse en Impeller).
 - Écran TV : si le décodeur de la TV n'arrive pas à lire une vidéo, la même vidéo repart aussitôt en décodage logiciel, sans message d'erreur (les suivantes restent en logiciel).
-
-## v0.6.23
-
 - Son : nouveau réglage « Annoncer le joueur » (« Ana, à toi » à chaque tour). Coupé : seulement le son du joueur, le bandeau et ce qu'il lui reste (« Il te reste 40, double 20 »). Suivi par les écrans TV.
 - Partie abandonnée : la TV ne dit plus « X, à toi » après coup (annonces en attente, son du joueur et bandeau annulés). L'annonce du tour attend au plus 2,5 s la fin de l'annonce précédente (4 s avant).
 
