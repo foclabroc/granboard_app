@@ -7,7 +7,6 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../audio.dart';
 import '../game/darts_game.dart';
-import '../media.dart';
 import '../players.dart';
 import '../ui/cricket_view.dart' show CricketStyle;
 import '../ui/dartboard.dart';
@@ -21,6 +20,7 @@ import '../ui/wallpaper.dart';
 import '../ui/tournament_page.dart' show TvTournamentView;
 import 'tv_client.dart';
 import 'tv_gfx.dart';
+import '../ui/boot_page.dart' show warmPlayers;
 import 'next_up.dart';
 import 'screen_cam.dart';
 import 'tv_idle.dart';
@@ -496,7 +496,8 @@ class _TvGameState extends State<_TvGame> {
     if (g == null || sig != _sig) {
       _sig = sig;
       _game = gameFromJson(j);
-      MediaStore.instance.ensure(_game!.players.map((p) => p.id));
+      // photos téléchargées puis décodées d'avance
+      warmPlayers(context, _game!.players.map((p) => p.id));
       if (actions.isEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _fx.start(_game!));
       }

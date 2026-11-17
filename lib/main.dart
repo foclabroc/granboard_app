@@ -18,6 +18,7 @@ import 'ui/cricket_view.dart' show CricketStyle;
 import 'ui/dartboard.dart' show BoardSkin;
 import 'ui/game_page.dart' show AutoNext;
 import 'tv/tv_gfx.dart';
+import 'ui/boot_page.dart';
 import 'ui/home_page.dart';
 import 'ui/theme.dart';
 import 'ui/wallpaper.dart';
@@ -172,13 +173,17 @@ class GranBoardAppState extends State<GranBoardApp> {
           ])),
       home: UpdateGate(
         key: updateGateKey,
-        child: tv
-            ? TvHome(
-                key: const ValueKey('tv'),
-                deviceName: widget.androidTv ? 'TV' : 'Tablette',
-                onPhoneMode: widget.androidTv ? null : () => setTvMode(false),
-              )
-            : const HomePage(key: ValueKey('phone')),
+        // petite barre de chargement : sons, images et effets préparés
+        child: BootGate(
+          child: tv
+              ? TvHome(
+                  key: const ValueKey('tv'),
+                  deviceName: widget.androidTv ? 'TV' : 'Tablette',
+                  onPhoneMode:
+                      widget.androidTv ? null : () => setTvMode(false),
+                )
+              : const HomePage(key: ValueKey('phone')),
+        ),
       ),
     );
   }

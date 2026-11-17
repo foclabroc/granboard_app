@@ -16,7 +16,6 @@ import '../game/match.dart';
 import '../game/practice.dart';
 import '../game/x01.dart';
 import '../granboard.dart';
-import '../media.dart';
 import '../online/online.dart';
 import '../online/video.dart';
 import '../server.dart';
@@ -35,6 +34,7 @@ import 'setup_page.dart' show kTeamColors, kTeamNames;
 import 'sound_settings.dart';
 import 'theme.dart';
 import 'turn_banner.dart';
+import 'boot_page.dart' show warmPlayers;
 import 'widgets.dart';
 import '../format.dart';
 import '../tournament.dart';
@@ -111,7 +111,9 @@ class _GamePageState extends State<GamePage> {
     AutoNext.on.addListener(_onAutoChanged);
     PlayerStore.instance.setGameColors([for (final p in game.players) p.id]);
     audio.stopMusic();
-    MediaStore.instance.ensure(game.players.map((p) => p.id));
+    // photos téléchargées puis décodées d'avance
+    WidgetsBinding.instance.addPostFrameCallback(
+        (_) => mounted ? warmPlayers(context, game.players.map((p) => p.id)) : null);
     PlayerStore.instance.ensureRatings(game.players.map((p) => p.id));
     _fx.start(game);
     WidgetsBinding.instance.addPostFrameCallback((_) {

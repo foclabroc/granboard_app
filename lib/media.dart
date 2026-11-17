@@ -80,6 +80,9 @@ class MediaStore extends ChangeNotifier {
   Directory? _dir;
 
   PlayerMedia? of(String id) => _media[id];
+
+  /// Joueurs dont on a la photo / le son en cache.
+  Iterable<String> get ids => _media.keys;
   ImageProvider? imageOf(String id) => _media[id]?.image;
 
   /// Son du tour du joueur : '' (aucun), id d'un son fourni ou 'voice'.

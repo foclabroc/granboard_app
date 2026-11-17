@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show AssetManifest, rootBundle;
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'voice.dart';
@@ -82,7 +84,123 @@ class AudioService extends ChangeNotifier {
   int _sayId = 0;
 
   /// Pseudos des joueurs : lus par la synthèse vocale (pas d'enregistrement).
-  Iterable<String> names = const [];
+  Iterable<String> _names = const [];
+
+  /// Pseudos de la partie : lus par la synthèse vocale. Enregistrés une fois
+  /// dans un fichier (prepareNames) puis rejoués comme la voix enregistrée :
+  /// plus d'attente de la synthèse vocale (lente sur Android TV).
+  Iterable<String> get names => _names;
+  set names(Iterable<String> v) {
+    _names = v;
+    prepareNames(v);
+  }
+
+  // ─── Préchargement (écran de démarrage) ───
+
+  /// Copie des annonces enregistrées hors de l'APK (lues comme fichiers) ;
+  /// null = lues depuis l'APK (recopiées à chaque 1re lecture par le
+  /// lecteur audio).
+  String? _voiceDir;
+
+  /// Pseudo dit (prononciation comprise) → fichier .wav enregistré.
+  final _nameFiles = <String, String>{};
+  bool _synthBusy = false;
+  Future<void> _synthQueue = Future.value();
+
+  static int _fnv(String s) {
+    var h = 0x811c9dc5;
+    for (final c in utf8.encode(s)) {
+      h = ((h ^ c) * 0x01000193) & 0xffffffff;
+    }
+    return h;
+  }
+
+  /// Annonces enregistrées copiées une fois dans les fichiers de l'appli
+  /// (refaites seulement quand elles changent : empreinte de l'index).
+  /// [progress] de 0 à 1.
+  Future<void> prepareVoiceFiles(void Function(double) progress) async {
+    try {
+      final index = await rootBundle.loadString('assets/voice/index.json');
+      final files = (jsonDecode(index) as Map).values.map((v) => '$v').toSet().toList();
+      final base = await getApplicationSupportDirectory();
+      final dir = Directory('${base.path}/voice');
+      final mark = File('${dir.path}/.ok');
+      final want = '${_fnv(index)}:${files.length}';
+      if (mark.existsSync() && mark.readAsStringSync() == want) {
+        _voiceDir = dir.path;
+        progress(1);
+        return;
+      }
+      dir.createSync(recursive: true);
+      var done = 0;
+      const batch = 24;
+      for (var i = 0; i < files.length; i += batch) {
+        await Future.wait([
+          for (final f in files.skip(i).take(batch))
+            () async {
+              final data = await rootBundle.load('assets/voice/$f');
+              await File('${dir.path}/$f').writeAsBytes(
+                  data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+                  flush: false);
+            }(),
+        ]);
+        done = min(files.length, i + batch);
+        progress(done / files.length);
+      }
+      mark.writeAsStringSync(want);
+      _voiceDir = dir.path;
+    } catch (_) {
+      // lues depuis l'APK comme avant
+    }
+  }
+
+  /// Bruitages, sons du tour : copiés d'avance par le lecteur audio (sinon
+  /// à leur 1re lecture, pendant la partie).
+  Future<void> prepareSounds() async {
+    try {
+      final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+      final list = [
+        for (final a in manifest.listAssets())
+          if (a.startsWith('assets/sounds/')) a.substring('assets/'.length)
+      ];
+      await AudioCache.instance.loadAll(list);
+    } catch (_) {}
+  }
+
+  /// Enregistre chaque pseudo une fois (fichier gardé d'un lancement à
+  /// l'autre) ; les suivants attendent leur tour.
+  void prepareNames(Iterable<String> names) {
+    if (_tts == null) return;
+    final todo = names.map(spokenName).where((n) => n.trim().isNotEmpty).toList();
+    _synthQueue = _synthQueue.then((_) async {
+      for (final n in todo) {
+        if (_nameFiles.containsKey(n)) continue;
+        try {
+          final base = await getApplicationSupportDirectory();
+          final dir = Directory('${base.path}/names')..createSync(recursive: true);
+          final f = File('${dir.path}/${_fnv(n).toRadixString(16)}.wav');
+          if (!f.existsSync() || f.lengthSync() < 2000) {
+            final tts = _tts!;
+            _synthBusy = true;
+            await tts.awaitSynthCompletion(true);
+            // fichier provisoire renommé seulement si l'enregistrement va
+            // au bout (jamais de pseudo coupé gardé)
+            final tmp = File('${f.path}.tmp');
+            if (tmp.existsSync()) tmp.deleteSync();
+            await tts
+                .synthesizeToFile(n, tmp.path, true)
+                .timeout(const Duration(seconds: 6));
+            if (tmp.existsSync() && tmp.lengthSync() >= 2000) tmp.renameSync(f.path);
+          }
+          if (f.existsSync() && f.lengthSync() >= 2000) _nameFiles[n] = f.path;
+        } catch (_) {
+        } finally {
+          _synthBusy = false;
+        }
+      }
+    });
+  }
+
 
   /// Prononciation choisie pour un pseudo (clé : pseudo en minuscules),
   /// pref `pron_v1` ; envoyée aux écrans TV.
@@ -252,6 +370,8 @@ class AudioService extends ChangeNotifier {
       await tts.setPitch(0.95);
       await tts.awaitSpeakCompletion(true);
       _tts = tts;
+      // pseudos déjà connus (partie lancée pendant le démarrage)
+      prepareNames(_names);
     } catch (_) {}
   }
 
@@ -402,7 +522,7 @@ class AudioService extends ChangeNotifier {
     _speakingId = 0;
     _sayId++;
     _speaker?.stop().catchError((_) {});
-    _tts?.stop().catchError((_) => 0);
+    if (!_synthBusy) _tts?.stop().catchError((_) => 0);
   }
 
   /// Annonce vocale (coupe l'annonce précédente) : voix enregistrée pour
@@ -424,14 +544,25 @@ class AudioService extends ChangeNotifier {
       try {
         try {
           await sp?.stop();
-          await tts?.stop();
+          // (pas pendant l'enregistrement d'un pseudo : il serait coupé)
+          if (!_synthBusy) await tts?.stop();
         } catch (_) {}
         for (final p in parts ?? [VoicePart.tts(text)]) {
           if (id != _sayId || _muted || !voice) return;
           try {
-            if (p.clip != null) {
+            final name = p.clip == null && _isName(p.text!)
+                ? _nameFiles[spokenName(p.text!)]
+                : null;
+            if (p.clip != null || (name != null && sp != null)) {
               final done = sp!.onPlayerComplete.first;
-              await sp.play(AssetSource('voice/${p.clip}'), volume: 1.0);
+              final dir = _voiceDir;
+              await sp.play(
+                  name != null
+                      ? DeviceFileSource(name)
+                      : dir != null
+                          ? DeviceFileSource('$dir/${p.clip}')
+                          : AssetSource('voice/${p.clip}'),
+                  volume: 1.0);
               await done.timeout(const Duration(seconds: 6));
             } else if (tts != null) {
               await tts

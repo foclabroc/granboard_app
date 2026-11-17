@@ -2,6 +2,12 @@
 
 ## v0.6.24
 
+- Démarrage : petite barre de chargement avant l'accueil, le temps de tout préparer pour que la partie ne cale pas :
+  - annonces enregistrées recopiées une fois hors de l'appli (avant, chaque morceau était recopié à sa 1re lecture à chaque lancement, d'où des annonces en retard en début de soirée) ; refait seulement quand les voix changent ;
+  - bruitages et sons des joueurs chargés d'avance ;
+  - photos, avatars et fond d'écran décodés d'avance (et les photos des joueurs au début de chaque partie) ;
+  - effets graphiques (cible animée, grand texte des coups) dessinés une fois derrière la barre.
+- Pseudos : chaque pseudo est enregistré une fois par la voix de synthèse puis rejoué comme les autres annonces (plus d'attente de la voix de synthèse à chaque « X, à toi », surtout sur la TV).
 - Écran TV : moteur de rendu Skia par défaut (bien plus fluide qu'Impeller sur la TV de test), aussi pour les TV qui se mettent à jour ; l'interrupteur de la fenêtre TV du téléphone devient « Moteur de rendu Skia » allumé d'office (le couper repasse en Impeller).
 - Écran TV : si le décodeur de la TV n'arrive pas à lire une vidéo, la même vidéo repart aussitôt en décodage logiciel, sans message d'erreur (les suivantes restent en logiciel).
 
