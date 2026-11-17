@@ -11,6 +11,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_server.dart';
 
+/// Ajoute un joueur virtuel par la fenêtre « Ajouter ».
+Future<void> addBot(WidgetTester tester) async {
+  await tester.ensureVisible(find.byKey(const ValueKey('players-add')));
+  await tester.tap(find.byKey(const ValueKey('players-add')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const ValueKey('add-bot')));
+  await tester.pump();
+  await tester.tap(find.byKey(const ValueKey('add-done')));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
@@ -69,9 +80,7 @@ void main() {
     await open(tester, 'x01');
     for (final n in [1, 2, 3, 4]) {
       if (n > 1) {
-        await tester.ensureVisible(find.byKey(const ValueKey('add-bot')));
-        await tester.tap(find.byKey(const ValueKey('add-bot')));
-        await tester.pump();
+        await addBot(tester);
       }
       if (n == 1) {
         await tester.ensureVisible(find.text('Freeze (équipes)'));
@@ -93,9 +102,7 @@ void main() {
     await open(tester, 'x01');
     // le profil principal est coché d'office ; on ajoute un joueur virtuel
     expect(find.text('JOUEURS (1)'), findsOneWidget);
-    await tester.ensureVisible(find.byKey(const ValueKey('add-bot')));
-    await tester.tap(find.byKey(const ValueKey('add-bot')));
-    await tester.pump();
+    await addBot(tester);
     expect(find.text('JOUEURS (2)'), findsOneWidget);
     await tester.ensureVisible(find.byKey(const ValueKey('players-clear')));
     await tester.tap(find.byKey(const ValueKey('players-clear')));

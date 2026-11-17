@@ -465,6 +465,108 @@ class _SetupPageState extends State<SetupPage> {
     }
   }
 
+  /// Fenêtre « Ajouter des joueurs » : mes joueurs (un toucher = ajouté),
+  /// invité, joueur virtuel, nouveau compte. Reste ouverte pour en ajouter
+  /// plusieurs.
+  Future<void> _addSheet() async {
+    await showAppSheet<void>(
+      context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, set) {
+        final full = _selected.length >= _maxPlayers;
+        final available =
+            store.players.where((p) => !_selected.contains(p.key)).toList();
+        void act(VoidCallback f) {
+          f();
+          set(() {});
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text('AJOUTER DES JOUEURS',
+                        style: Tv.title(22, color: Tv.goldLight)),
+                  ),
+                  Text('${_selected.length}/$_maxPlayers',
+                      style: Tv.title(18, color: full ? Tv.red : Tv.text)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text('MES JOUEURS', style: Tv.label(12, color: Tv.gold)),
+              const SizedBox(height: 6),
+              if (available.isEmpty)
+                Text('Tous tes joueurs sont déjà dans la partie.',
+                    style: Tv.label(12))
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final p in available)
+                      ActionChip(
+                        key: ValueKey('add-${p.key}'),
+                        avatar: PlayerAvatar.of(p, size: 24),
+                        label: Text(p.expired ? '${p.name} ⚠' : p.name,
+                            style: Tv.title(16)),
+                        onPressed:
+                            full ? null : () => act(() => _select(p.key)),
+                      ),
+                  ],
+                ),
+              const SizedBox(height: 14),
+              Text('AUTRES', style: Tv.label(12, color: Tv.gold)),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ActionChip(
+                    key: const ValueKey('add-guest'),
+                    avatar: const Icon(Icons.person_outline, size: 20),
+                    label: Text('Invité', style: Tv.title(16)),
+                    onPressed: full ? null : () => act(_addGuest),
+                  ),
+                  ActionChip(
+                    key: const ValueKey('add-bot'),
+                    avatar: const Icon(Icons.smart_toy_outlined, size: 20),
+                    label: Text('Joueur virtuel', style: Tv.title(16)),
+                    onPressed: full ? null : () => act(_addBot),
+                  ),
+                  ActionChip(
+                    key: const ValueKey('add-account'),
+                    avatar: const Icon(Icons.person_add, size: 20),
+                    label: Text('Nouveau joueur', style: Tv.title(16)),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _newPlayer();
+                    },
+                  ),
+                ],
+              ),
+              const SetupNote('Invités et joueurs virtuels jouent sans stats. '
+                  'Le joueur virtuel prend le niveau de ses adversaires.'),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 46,
+                child: FilledButton(
+                  key: const ValueKey('add-done'),
+                  onPressed: () => Navigator.pop(ctx),
+                  child:
+                      Text('TERMINÉ', style: Tv.title(20, color: Colors.black)),
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
   /// Retire tous les joueurs choisis.
   void _clearPlayers() => setState(() {
         _selected.clear();
@@ -1037,58 +1139,41 @@ class _SetupPageState extends State<SetupPage> {
                                     _playerTile(i, _selected[i]),
                                 ],
                               ),
-                            const SizedBox(height: 6),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: [
-                                if (!full)
-                                  for (final p in available)
-                                    ActionChip(
-                                      visualDensity: chipDensity,
-                                      avatar: PlayerAvatar.of(p, size: 22),
+                            if (_selected.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.fromLTRB(4, 8, 4, 4),
+                                child:
+                                    SetupNote('Aucun joueur pour l\'instant.'),
+                              ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(2, 8, 2, 0),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      key: const ValueKey('players-add'),
+                                      onPressed: full ? null : _addSheet,
+                                      icon: const Icon(Icons.person_add_alt_1,
+                                          size: 20),
                                       label: Text(
-                                          p.expired ? '${p.name} ⚠' : p.name),
-                                      onPressed: () => _select(p.key),
+                                          full
+                                              ? 'COMPLET ($_maxPlayers MAX)'
+                                              : 'AJOUTER',
+                                          style: Tv.title(16)),
                                     ),
-                                if (!full)
-                                  ActionChip(
-                                    visualDensity: VisualDensity.compact,
-                                    avatar: const Icon(Icons.person_outline,
-                                        size: 18),
-                                    label: const Text('Invité'),
-                                    onPressed: _addGuest,
                                   ),
-                                if (!full)
-                                  ActionChip(
-                                    key: const ValueKey('add-bot'),
-                                    visualDensity: VisualDensity.compact,
-                                    avatar: const Icon(Icons.smart_toy_outlined,
-                                        size: 18),
-                                    label: const Text('Joueur virtuel'),
-                                    onPressed: _addBot,
-                                  ),
-                                ActionChip(
-                                  visualDensity: VisualDensity.compact,
-                                  avatar:
-                                      const Icon(Icons.person_add, size: 18),
-                                  label: const Text('Ajouter un joueur'),
-                                  onPressed: _newPlayer,
-                                ),
-                                if (_selected.isNotEmpty)
-                                  ActionChip(
-                                    key: const ValueKey('players-clear'),
-                                    visualDensity: VisualDensity.compact,
-                                    avatar:
-                                        const Icon(Icons.clear_all, size: 18),
-                                    label: const Text('Tout vider'),
-                                    onPressed: _clearPlayers,
-                                  ),
-                              ],
+                                  if (_selected.isNotEmpty) ...[
+                                    const SizedBox(width: 6),
+                                    IconButton(
+                                      key: const ValueKey('players-clear'),
+                                      tooltip: 'Tout vider',
+                                      onPressed: _clearPlayers,
+                                      icon: const Icon(Icons.delete_sweep),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
-                            const SetupNote('Invités et bots jouent sans '
-                                'stats. Le bot prend le niveau de ses '
-                                'adversaires.'),
                           ],
                         ),
                       ),
@@ -1404,9 +1489,10 @@ class _SetupPageState extends State<SetupPage> {
                 overflow: TextOverflow.ellipsis, style: Tv.title(18)),
           ),
           // Étiquettes : rognées quand la colonne est étroite (équipes)
-          if (guest)
+          // (le joueur virtuel a déjà son avatar robot)
+          if (guest && !isBotId(id))
             Flexible(
-              child: Text(isBotId(id) ? '  VIRTUEL' : '  INVITÉ',
+              child: Text('  INVITÉ',
                   maxLines: 1,
                   overflow: TextOverflow.clip,
                   softWrap: false,
