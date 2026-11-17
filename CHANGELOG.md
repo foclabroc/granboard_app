@@ -1,8 +1,11 @@
 # Changelog
 
-## v0.6.20
+## v0.6.21
 
 - Vérification complète, corrections : en salon, la cible de la maison qui remplace une maison partie ne compte plus de fléchettes pour l'absent ; au retour d'une partie de salon, on rejoint la nouvelle partie si l'hôte l'a déjà relancée (au lieu de rouvrir le salon et de bloquer cette partie) ; une seule partie ouverte à la fois par-dessus le salon ; plus de plantage possible si on ferme l'écran pendant le chargement des réglages, la liaison TV, l'enregistrement de la voix ou le réglage des lumières ; numéros des cases allumées mis en cache (effets plus légers sur la TV).
+
+## v0.6.20
+
 - Cible : message de connexion lisible (« Cible introuvable : allume-la et rapproche-toi »…) au lieu de l'erreur technique Flutter Blue Plus.
 - Annonceur, nouveaux commentaires : compliment après un ton (« Belle volée ! », « Magnifique ! » à 140+), série (« Deuxième ton d'affilée ! »), « X prend la tête ! » (01 et Cricket à points), « Le double se refuse » quand une fin possible est ratée, « plus que double 16 » en cours de tour, « Tout est fermé ! » au Cricket, « Leg décisif ! » au Medley, « Neuf fléchettes en vue ! » en 501. Réglage « Commentaires et chambrage » (ex-« Chambrage »). 17 nouvelles annonces enregistrées (voix Piper).
 
