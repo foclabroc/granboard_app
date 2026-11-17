@@ -1,5 +1,9 @@
 # Changelog
 
+## À venir
+
+- Sous-menus des tuiles : présentation en tableau, bandeau de configuration et nombre de joueurs, avec les couleurs du thème choisi.
+
 ## v0.6.16
 
 - Sous-menu Tournois : onglets maison et en ligne, création selon le mode choisi, cartes avec aperçu du tableau et prochain match personnel à la maison lorsqu'il est connu.

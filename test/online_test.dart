@@ -226,6 +226,23 @@ void main() {
     expect(find.text('SOPHIE'), findsOneWidget);
     expect(find.text('DÉFIER'), findsOneWidget);
     expect(find.text('LIBRE'), findsOneWidget);
+    expect(find.text('JOUEURS (1)'), findsOneWidget);
+    expect(find.text('MON ESPACE'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Écran En ligne : tableau sur petit écran', (tester) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    await tester.runAsync(() => b.ping());
+    await tester
+        .pumpWidget(MaterialApp(theme: Tv.theme(), home: const OnlinePage()));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('JOUEURS (1)'), findsOneWidget);
+    expect(find.byKey(const ValueKey('people-search')), findsOneWidget);
+    expect(find.text('DÉFIER'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });

@@ -1093,7 +1093,19 @@ class _SetupPageState extends State<SetupPage> {
               sub: 'Configuration',
               actions: [RulesButton(title: _gameName, text: _rulesText)],
             ),
-            _favBar(),
+            Row(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 14),
+                  child: Text(
+                      _localTournament
+                          ? 'PRÉPARE TON TOURNOI'
+                          : 'PRÉPARE TA PARTIE',
+                      style: Tv.title(16, color: Tv.text)),
+                ),
+                Expanded(child: _favBar()),
+              ],
+            ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 2, 10, 8),
@@ -1102,13 +1114,7 @@ class _SetupPageState extends State<SetupPage> {
                   children: [
                     Expanded(
                       child: SetupColumn(
-                        title: _practiceOn
-                            ? 'Jeu (${_gameItems().length})'
-                            : _cricketOn
-                                ? 'Variante'
-                                : _matchOn
-                                    ? 'Legs'
-                                    : 'Jeu',
+                        title: 'Choisir le jeu',
                         children: [
                           if (!_fixed)
                             Padding(
@@ -1161,14 +1167,14 @@ class _SetupPageState extends State<SetupPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: SetupColumn(
-                        title: _practiceOn ? 'Réglages' : 'Règles',
+                        title: 'Règles',
                         children: _ruleItems(),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: SetupColumn(
-                        title: 'Joueurs ${_selected.length}/$_maxPlayers',
+                        title: 'Joueurs (${_selected.length})',
                         children: [
                           if (_selected.isNotEmpty)
                             ReorderableListView(

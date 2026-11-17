@@ -5,6 +5,7 @@ import 'package:granboard_proto/players.dart';
 import 'package:granboard_proto/ui/home_page.dart';
 import 'package:granboard_proto/ui/options_page.dart';
 import 'package:granboard_proto/ui/players_page.dart';
+import 'package:granboard_proto/ui/setup_widgets.dart';
 import 'package:granboard_proto/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -43,6 +44,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('tile-options')));
     await frames(tester);
     expect(find.byType(OptionsPage), findsOneWidget);
+    expect(tester.widget<SetupBand>(find.byType(SetupBand)).title, 'Options');
     expect(tester.takeException(), isNull);
     expect(find.text('JOUEURS (2)'), findsOneWidget);
     expect(find.text('FOC'), findsOneWidget);
@@ -60,6 +62,23 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('opt-theme')));
     await frames(tester);
     expect(find.text('THÈME DE L\'APPLI'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Options : tableau sur petit écran et actions conservées',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    await PlayerStore.instance.register('Foc', '1234');
+    await tester.pumpWidget(
+        MaterialApp(theme: Tv.theme(), home: const OptionsPage()));
+    await frames(tester);
+    expect(find.text('JOUEURS (1)'), findsOneWidget);
+    expect(find.byKey(const ValueKey('opt-theme')), findsOneWidget);
+    expect(find.byKey(const ValueKey('opt-board')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('opt-settings')));
+    expect(find.byKey(const ValueKey('opt-settings')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

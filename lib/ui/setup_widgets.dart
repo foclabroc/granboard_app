@@ -78,7 +78,49 @@ class _Bevel extends CustomClipper<Path> {
   bool shouldReclip(_) => false;
 }
 
-/// Une colonne : panneau du thème avec un titre et un contenu qui défile.
+/// Panneau compact du tableau, avec un contenu éventuellement défilant.
+class TableauPanel extends StatelessWidget {
+  final String title;
+  final Widget child;
+  final Widget? action;
+  const TableauPanel(
+      {super.key, required this.title, required this.child, this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Tv.panel.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Tv.line),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 6, 6, 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(title.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Tv.title(16, color: Tv.text)),
+                ),
+                if (action != null) action!,
+              ],
+            ),
+          ),
+          Expanded(
+              child: Material(type: MaterialType.transparency, child: child)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Une colonne du tableau de configuration.
 class SetupColumn extends StatelessWidget {
   final String title;
   final List<Widget> children;
@@ -87,33 +129,13 @@ class SetupColumn extends StatelessWidget {
       {super.key, required this.title, required this.children, this.header});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: Tv.skin.value.panelColors,
+  Widget build(BuildContext context) => TableauPanel(
+        title: title,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
+          children: [if (header != null) header!, ...children],
         ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Tv.line),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TvSection(title, padding: const EdgeInsets.fromLTRB(10, 8, 10, 4)),
-          if (header != null) header!,
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
-              children: children,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+      );
 }
 
 /// Ligne de choix : icône, nom, valeur à droite ; surlignée si choisie.
@@ -124,6 +146,7 @@ class SetupItem extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
   final Widget? trailing;
+  final bool simple;
   const SetupItem(
       {super.key,
       required this.label,
@@ -131,7 +154,8 @@ class SetupItem extends StatelessWidget {
       this.icon,
       this.selected = false,
       this.onTap,
-      this.trailing});
+      this.trailing,
+      this.simple = false});
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +163,11 @@ class SetupItem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 4),
       child: Material(
-        color: selected ? Color.lerp(Tv.panel2, Tv.gold, 0.16) : Tv.panel2,
+        color: simple
+            ? Colors.transparent
+            : selected
+                ? Color.lerp(Tv.panel2, Tv.gold, 0.16)
+                : Tv.panel2,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
@@ -147,11 +175,16 @@ class SetupItem extends StatelessWidget {
           child: Container(
             constraints: const BoxConstraints(minHeight: 38),
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-            decoration: selected
+            decoration: selected && !simple
                 ? BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    border: Border(left: BorderSide(color: Tv.gold, width: 3)))
-                : null,
+                    border: Border.all(color: Tv.gold))
+                : simple
+                    ? BoxDecoration(
+                        border: Border(
+                            bottom: BorderSide(
+                                color: Tv.line.withValues(alpha: 0.6))))
+                    : null,
             child: Row(
               children: [
                 if (icon != null) ...[
@@ -178,7 +211,7 @@ class SetupItem extends StatelessWidget {
                   ),
                 if (trailing != null) trailing!,
                 if (selected && value == null && trailing == null)
-                  Icon(Icons.circle, size: 8, color: Tv.gold),
+                  Icon(Icons.check, size: 17, color: Tv.gold),
               ],
             ),
           ),
@@ -224,6 +257,7 @@ class SetupPick<T> extends StatelessWidget {
             label: label,
             value: text(value),
             icon: icon,
+            simple: true,
             trailing: Padding(
               padding: const EdgeInsets.only(left: 2),
               child: Icon(Icons.arrow_drop_down, size: 18, color: Tv.muted),

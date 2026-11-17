@@ -15,6 +15,7 @@ import 'diagnostic_page.dart';
 import 'lights_sheet.dart';
 import 'players_page.dart';
 import 'share_sheet.dart';
+import 'setup_widgets.dart';
 import 'sound_settings.dart';
 import 'theme.dart';
 import 'tv_sheet.dart';
@@ -29,20 +30,25 @@ class OptionsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('OPTIONS · JOUEURS')),
-      body: const SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(14, 0, 14, 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(flex: 5, child: _PlayersPanel()),
-              SizedBox(width: 12),
-              Expanded(flex: 6, child: _OptionsPanel()),
-            ],
-          ),
+    return const Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            SetupBand(title: 'Options', sub: 'Configuration'),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(14, 10, 14, 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(flex: 5, child: _PlayersPanel()),
+                    SizedBox(width: 12),
+                    Expanded(flex: 6, child: _OptionsPanel()),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -51,45 +57,18 @@ class OptionsPage extends StatelessWidget {
 
 class _Panel extends StatelessWidget {
   final String title;
-  final IconData icon;
   final Widget child;
   final Widget? action;
   const _Panel(
       {required this.title,
-      required this.icon,
       required this.child,
       this.action});
 
   @override
-  Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-          color: Tv.panel.withValues(alpha: 0.85),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Tv.line),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              height: 44,
-              padding: const EdgeInsets.only(left: 14, right: 6),
-              decoration: BoxDecoration(gradient: Tv.goldGradient),
-              child: Row(
-                children: [
-                  Icon(icon, color: Colors.black, size: 22),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: Text(title,
-                          style: Tv.title(20, color: Colors.black))),
-                  if (action != null) action!,
-                ],
-              ),
-            ),
-            Expanded(
-                child: Material(type: MaterialType.transparency, child: child)),
-          ],
-        ),
+  Widget build(BuildContext context) => TableauPanel(
+        title: title,
+        action: action,
+        child: Material(type: MaterialType.transparency, child: child),
       );
 }
 
@@ -105,13 +84,12 @@ class _PlayersPanel extends StatelessWidget {
       listenable: store,
       builder: (context, _) => _Panel(
         title: 'JOUEURS (${store.players.length})',
-        icon: Icons.groups,
         action: TextButton.icon(
           key: const ValueKey('opt-add-player'),
-          style: TextButton.styleFrom(foregroundColor: Colors.black),
+          style: TextButton.styleFrom(foregroundColor: Tv.gold),
           onPressed: () => showAccountPage(context),
           icon: const Icon(Icons.person_add, size: 20),
-          label: Text('AJOUTER', style: Tv.title(15, color: Colors.black)),
+          label: Text('AJOUTER', style: Tv.title(15, color: Tv.gold)),
         ),
         child: store.players.isEmpty
             ? Center(
@@ -127,12 +105,8 @@ class _PlayersPanel extends StatelessWidget {
             : Column(
                 children: [
                   Expanded(
-                    child: GridView.extent(
-                      maxCrossAxisExtent: 104,
-                      childAspectRatio: 0.78,
-                      mainAxisSpacing: 8,
-                      crossAxisSpacing: 8,
-                      padding: const EdgeInsets.all(10),
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
                       children: [
                         for (final p in store.players)
                           _PlayerCard(
@@ -167,7 +141,7 @@ class _PlayersPanel extends StatelessWidget {
   }
 }
 
-/// Carte d'un joueur dans la grille : photo, nom, rang.
+/// Ligne d'un joueur : photo, nom et rang.
 class _PlayerCard extends StatelessWidget {
   final PlayerProfile player;
   final bool owner;
@@ -181,55 +155,28 @@ class _PlayerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = player;
-    final color = PlayerStore.instance.colorOf(p.key);
-    return Material(
-      color: Tv.panel2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-            color: owner ? Tv.gold : color.withValues(alpha: 0.5),
-            width: owner ? 1.5 : 1),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(6, 8, 6, 6),
-          child: Column(
-            children: [
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, c) => Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      PlayerAvatar.of(p,
-                          size: c.maxHeight.clamp(24.0, 64.0).toDouble()),
-                      if (owner)
-                        Positioned(
-                          right: -4,
-                          top: -4,
-                          child: Icon(Icons.star, size: 18, color: Tv.gold),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(p.name.toUpperCase(),
-                    maxLines: 1, style: Tv.title(16)),
-              ),
-              SizedBox(
-                height: 18,
-                child: p.expired
-                    ? FittedBox(
-                        child: Text('À RECONNECTER',
-                            style: Tv.label(10, color: Tv.red)))
-                    : FittedBox(child: RankChip(p.key, size: 11)),
-              ),
-            ],
-          ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: Tv.panel2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: owner ? Tv.gold : Tv.line),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          leading: PlayerAvatar.of(p, size: 34),
+          title: Text(p.name.toUpperCase(),
+              maxLines: 1, overflow: TextOverflow.ellipsis, style: Tv.title(16)),
+          subtitle: owner
+              ? Text('PROFIL PRINCIPAL', style: Tv.label(10, color: Tv.gold))
+              : null,
+          trailing: p.expired
+              ? Text('À RECONNECTER', style: Tv.label(10, color: Tv.red))
+              : RankChip(p.key, size: 11),
+          onTap: onTap,
         ),
       ),
     );
@@ -246,7 +193,6 @@ class _OptionsPanel extends StatelessWidget {
     final board = BoardService.instance;
     return _Panel(
       title: 'OPTIONS',
-      icon: Icons.tune,
       child: ListenableBuilder(
         listenable: Listenable.merge([
           board,
@@ -255,97 +201,116 @@ class _OptionsPanel extends StatelessWidget {
           BoardSkin.current,
           SettingsSync.instance
         ]),
-        builder: (context, _) => ListView(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          children: [
-            const _Group('AFFICHAGE'),
-            _Item(
-              id: 'theme',
-              icon: Icons.palette,
-              title: 'Thème de l\'appli',
-              value: Tv.skin.value.name,
-              onTap: () => showThemeSheet(context),
-            ),
-            _Item(
-              id: 'skin',
-              icon: Icons.track_changes,
-              title: 'Style de la cible',
-              value: BoardSkin.current.value.name,
-              onTap: () => showBoardSkinSheet(context),
-            ),
-            const _Group('SON'),
-            _Item(
-              id: 'sound',
-              icon: Icons.volume_up,
-              title: 'Sons, musique et annonceur',
-              value: AudioService.instance.muted ? 'Coupé ici' : null,
-              onTap: () => showSoundSettings(context),
-            ),
-            const _Group('ÉCRANS'),
-            _Item(
-              id: 'tv',
-              icon: TvLink.instance.linked ? Icons.connected_tv : Icons.tv,
-              title: 'Écran TV / tablette',
-              value: TvLink.instance.linked
-                  ? TvLink.instance.screens.map((s) => s.label).join(', ')
-                  : 'Pas relié',
-              onTap: () => showTvSheet(context),
-            ),
-            const _Group('CIBLE'),
-            _Item(
-              id: 'board',
-              icon: Icons.bluetooth,
-              title: 'Cible Bluetooth',
-              value: board.isConnected
-                  ? (board.deviceName ?? 'GranBoard')
-                  : 'Pas de cible',
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const ConnectPage())),
-            ),
-            if (board.isConnected)
-              _Item(
-                id: 'calibrate',
-                icon: Icons.tune,
-                title: 'Calibrer la cible',
-                value: board.hasCustomTable ? 'Calibrée' : 'Table standard',
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const CalibrationPage())),
+        builder: (context, _) => SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(children: [
+                  const _Group('AFFICHAGE'),
+                  _Item(
+                    id: 'theme',
+                    icon: Icons.palette,
+                    title: 'Thème de l\'appli',
+                    value: Tv.skin.value.name,
+                    onTap: () => showThemeSheet(context),
+                  ),
+                  _Item(
+                    id: 'skin',
+                    icon: Icons.track_changes,
+                    title: 'Style de la cible',
+                    value: BoardSkin.current.value.name,
+                    onTap: () => showBoardSkinSheet(context),
+                  ),
+                  const _Group('SON'),
+                  _Item(
+                    id: 'sound',
+                    icon: Icons.volume_up,
+                    title: 'Sons, musique et annonceur',
+                    value: AudioService.instance.muted ? 'Coupé ici' : null,
+                    onTap: () => showSoundSettings(context),
+                  ),
+                  const _Group('ÉCRANS'),
+                  _Item(
+                    id: 'tv',
+                    icon: TvLink.instance.linked ? Icons.connected_tv : Icons.tv,
+                    title: 'Écran TV / tablette',
+                    value: TvLink.instance.linked
+                        ? TvLink.instance.screens.map((s) => s.label).join(', ')
+                        : 'Pas relié',
+                    onTap: () => showTvSheet(context),
+                  ),
+                ]),
               ),
-            _Item(
-              id: 'lights',
-              icon: Icons.lightbulb,
-              title: 'Lumières de la cible (3s)',
-              onTap: () => showLightsSheet(context),
-            ),
-            _Item(
-              id: 'diag',
-              icon: Icons.bug_report,
-              title: 'Diagnostic',
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const DiagnosticPage())),
-            ),
-            const _Group('APPLI'),
-            _Item(
-              id: 'settings',
-              icon: Icons.cloud_sync,
-              title: 'Mes réglages sur mon compte',
-              value: settingsSyncLabel(),
-              onTap: () => showSettingsSyncSheet(context),
-            ),
-            _Item(
-              id: 'share',
-              icon: Icons.qr_code_2,
-              title: 'Partager l\'appli (QR code)',
-              onTap: () => showShareSheet(context),
-            ),
-            _Item(
-              id: 'update',
-              icon: Icons.system_update,
-              title: 'Mises à jour',
-              value: 'v$kAppVersion',
-              onTap: () => checkForUpdate(context),
-            ),
-          ],
+              const SizedBox(width: 4),
+              Expanded(
+                child: Column(children: [
+                  const _Group('CIBLE'),
+                  _Item(
+                    id: 'board',
+                    icon: Icons.bluetooth,
+                    title: 'Cible Bluetooth',
+                    value: board.isConnected
+                        ? (board.deviceName ?? 'GranBoard')
+                        : 'Pas de cible',
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const ConnectPage())),
+                  ),
+                  if (board.isConnected)
+                    _Item(
+                      id: 'calibrate',
+                      icon: Icons.tune,
+                      title: 'Calibrer la cible',
+                      value:
+                          board.hasCustomTable ? 'Calibrée' : 'Table standard',
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const CalibrationPage())),
+                    ),
+                  _Item(
+                    id: 'lights',
+                    icon: Icons.lightbulb,
+                    title: 'Lumières de la cible (3s)',
+                    onTap: () => showLightsSheet(context),
+                  ),
+                  _Item(
+                    id: 'diag',
+                    icon: Icons.bug_report,
+                    title: 'Diagnostic',
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const DiagnosticPage())),
+                  ),
+                  const _Group('APPLI'),
+                  _Item(
+                    id: 'settings',
+                    icon: Icons.cloud_sync,
+                    title: 'Mes réglages sur mon compte',
+                    value: settingsSyncLabel(),
+                    onTap: () => showSettingsSyncSheet(context),
+                  ),
+                  _Item(
+                    id: 'share',
+                    icon: Icons.qr_code_2,
+                    title: 'Partager l\'appli (QR code)',
+                    onTap: () => showShareSheet(context),
+                  ),
+                  _Item(
+                    id: 'update',
+                    icon: Icons.system_update,
+                    title: 'Mises à jour',
+                    value: 'v$kAppVersion',
+                    onTap: () => checkForUpdate(context),
+                  ),
+                ]),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -358,8 +323,11 @@ class _Group extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 2),
-        child: Text(text, style: Tv.label(12, color: Tv.gold)),
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 2),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(text, style: Tv.label(12, color: Tv.gold)),
+        ),
       );
 }
 
@@ -380,22 +348,19 @@ class _Item extends StatelessWidget {
   Widget build(BuildContext context) => ListTile(
         key: ValueKey('opt-$id'),
         dense: true,
-        leading: Icon(icon, color: Tv.goldLight),
-        title: Text(title, style: Tv.title(17)),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (value != null)
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 160),
-                child: Text(value!.toUpperCase(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Tv.label(12, color: Tv.text)),
-              ),
-            const Icon(Icons.chevron_right),
-          ],
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 6),
+        horizontalTitleGap: 6,
+        minLeadingWidth: 20,
+        leading: Icon(icon, size: 20, color: Tv.goldLight),
+        title: Text(title,
+            maxLines: 2, overflow: TextOverflow.ellipsis, style: Tv.title(15)),
+        subtitle: value == null
+            ? null
+            : Text(value!.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Tv.label(11)),
+        trailing: Icon(Icons.chevron_right, size: 18, color: Tv.muted),
         onTap: onTap,
       );
 }

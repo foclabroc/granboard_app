@@ -14,6 +14,7 @@ import '../tv/tv_home.dart' show TvGameView;
 import 'game_page.dart';
 import 'players_page.dart' show RatingBadge;
 import 'setup_page.dart';
+import 'setup_widgets.dart';
 import 'theme.dart';
 import 'widgets.dart';
 import 'stats_page.dart';
@@ -420,36 +421,58 @@ class _OnlinePageState extends State<OnlinePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(toolbarHeight: 46, title: const Text('EN LIGNE')),
-      body: TvBackground(
-        child: ListenableBuilder(
-          listenable: Listenable.merge([online, PlayerStore.instance]),
-          builder: (context, _) {
-            final me = online.me;
-            if (me == null) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                      PlayerStore.instance.owner == null
-                          ? 'Crée d\'abord ton profil (Accueil › Joueurs) '
-                              'pour jouer en ligne.'
-                          : 'Reconnecte ton profil (Accueil › Joueurs) '
-                              'pour jouer en ligne.',
-                      textAlign: TextAlign.center,
-                      style: Tv.title(20)),
+      body: SafeArea(
+        child: Column(
+          children: [
+            const SetupBand(title: 'En ligne', sub: 'Configuration'),
+            Expanded(
+              child: TvBackground(
+                child: ListenableBuilder(
+                  listenable: Listenable.merge([online, PlayerStore.instance]),
+                  builder: (context, _) {
+                    final me = online.me;
+                    if (me == null) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                              PlayerStore.instance.owner == null
+                                  ? 'Crée d\'abord ton profil (Accueil › Joueurs) '
+                                      'pour jouer en ligne.'
+                                  : 'Reconnecte ton profil (Accueil › Joueurs) '
+                                      'pour jouer en ligne.',
+                              textAlign: TextAlign.center,
+                              style: Tv.title(20)),
+                        ),
+                      );
+                    }
+                    final count = online.people.isNotEmpty
+                        ? online.people.length
+                        : online.players.length;
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: TableauPanel(
+                                title: 'Joueurs ($count)', child: _list()),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 2,
+                            child: TableauPanel(
+                                title: 'Mon espace', child: _side(me)),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
-              );
-            }
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(flex: 3, child: _list()),
-                const VerticalDivider(width: 1),
-                Expanded(flex: 2, child: _side(me)),
-              ],
-            );
-          },
+              ),
+            ),
+          ],
         ),
       ),
     );

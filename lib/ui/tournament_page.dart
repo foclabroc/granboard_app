@@ -13,6 +13,7 @@ import '../game/darts_game.dart';
 import 'game_page.dart';
 import 'online_page.dart' show waitForAnswer;
 import 'setup_page.dart';
+import 'setup_widgets.dart';
 import 'stats_page.dart' show openPlayerStats;
 import 'theme.dart';
 import 'widgets.dart';
@@ -127,48 +128,56 @@ class _TournamentsPageState extends State<TournamentsPage> {
   Widget build(BuildContext context) {
     final me = _me;
     return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 46,
-        title: const Text('TOURNOIS'),
-        actions: [
-          if (_online && me != null)
-            IconButton(
-              key: const ValueKey('tn-refresh'),
-              tooltip: 'Actualiser',
-              onPressed: _load,
-              icon: const Icon(Icons.refresh),
-            ),
-        ],
-      ),
-      body: ListenableBuilder(
-        listenable: _local,
-        builder: (context, _) => Column(
+      body: SafeArea(
+        child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        _tab('À LA MAISON', false, Icons.home),
-                        const SizedBox(width: 6),
-                        _tab('EN LIGNE', true, Icons.public),
-                      ],
+            SetupBand(
+              title: 'Tournois',
+              sub: 'Configuration',
+              actions: [
+                if (_online && me != null)
+                  IconButton(
+                    key: const ValueKey('tn-refresh'),
+                    tooltip: 'Actualiser',
+                    onPressed: _load,
+                    icon: const Icon(Icons.refresh),
+                  ),
+              ],
+            ),
+            Expanded(
+              child: ListenableBuilder(
+                listenable: _local,
+                builder: (context, _) => Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                _tab('À LA MAISON', false, Icons.home),
+                                const SizedBox(width: 6),
+                                _tab('EN LIGNE', true, Icons.public),
+                              ],
+                            ),
+                          ),
+                          FilledButton.icon(
+                            key: ValueKey(_online ? 'tn-new' : 'tn-new-local'),
+                            onPressed: _online
+                                ? (me == null ? null : _create)
+                                : _createLocal,
+                            icon: const Icon(Icons.add, size: 19),
+                            label: const Text('CRÉER UN TOURNOI'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  FilledButton.icon(
-                    key: ValueKey(_online ? 'tn-new' : 'tn-new-local'),
-                    onPressed: _online
-                        ? (me == null ? null : _create)
-                        : _createLocal,
-                    icon: const Icon(Icons.add, size: 19),
-                    label: const Text('CRÉER UN TOURNOI'),
-                  ),
-                ],
+                    Expanded(child: _online ? _onlineList(me) : _localList(me)),
+                  ],
+                ),
               ),
             ),
-            Expanded(child: _online ? _onlineList(me) : _localList(me)),
           ],
         ),
       ),

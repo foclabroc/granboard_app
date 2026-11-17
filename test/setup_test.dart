@@ -92,15 +92,15 @@ void main() {
       (tester) async {
     await open(tester, 'x01');
     // le profil principal est coché d'office ; on ajoute un joueur virtuel
-    expect(find.text('JOUEURS 1/8'), findsOneWidget);
+    expect(find.text('JOUEURS (1)'), findsOneWidget);
     await tester.ensureVisible(find.byKey(const ValueKey('add-bot')));
     await tester.tap(find.byKey(const ValueKey('add-bot')));
     await tester.pump();
-    expect(find.text('JOUEURS 2/8'), findsOneWidget);
+    expect(find.text('JOUEURS (2)'), findsOneWidget);
     await tester.ensureVisible(find.byKey(const ValueKey('players-clear')));
     await tester.tap(find.byKey(const ValueKey('players-clear')));
     await tester.pump();
-    expect(find.text('JOUEURS 0/8'), findsOneWidget);
+    expect(find.text('JOUEURS (0)'), findsOneWidget);
     expect(find.byKey(const ValueKey('players-clear')), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -109,6 +109,11 @@ void main() {
       (tester) async {
     for (final k in ['x01', 'cricket', 'match', 'practice', 'party']) {
       await open(tester, k);
+      expect(find.text('CHOISIR LE JEU'), findsOneWidget);
+      expect(find.text('RÈGLES'), findsWidgets);
+      expect(find.text('JOUEURS (1)'), findsOneWidget);
+      final band = tester.widget<SetupBand>(find.byType(SetupBand));
+      expect(band.sub, 'Configuration');
       expect(find.byKey(const ValueKey('fav-add')), findsOneWidget);
       expect(tester.takeException(), isNull, reason: k);
     }
@@ -119,6 +124,31 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Nom du tournoi'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Le tableau reprend les couleurs du thème choisi', (tester) async {
+    final old = Tv.skin.value;
+    addTearDown(() => Tv.skin.value = old);
+    Tv.skin.value = AppSkin.neon;
+    await open(tester, 'x01');
+    final panel = find.byType(TableauPanel).first;
+    final container = tester.widget<Container>(
+        find.descendant(of: panel, matching: find.byType(Container)).first);
+    expect((container.decoration! as BoxDecoration).color,
+        AppSkin.neon.panel.withValues(alpha: 0.9));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Configurations en tableau sur petit écran', (tester) async {
+    for (final k in ['x01', 'cricket', 'match', 'practice', 'party']) {
+      await open(tester, k);
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 2;
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('JOUEURS (1)'), findsOneWidget, reason: k);
+      expect(find.byKey(const ValueKey('fav-add')), findsOneWidget, reason: k);
+      expect(tester.takeException(), isNull, reason: k);
+    }
   });
 
   testWidgets('Chaque jeu : ses réglages s\'affichent sans débordement',
