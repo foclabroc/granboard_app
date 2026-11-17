@@ -45,7 +45,7 @@ class _LightsSheetState extends State<_LightsSheet> {
           value: lights.enabled,
           onChanged: (v) async {
             await lights.setEnabled(v);
-            setState(() {});
+            if (mounted) setState(() {});
           },
         ),
         SwitchListTile(
@@ -58,7 +58,7 @@ class _LightsSheetState extends State<_LightsSheet> {
           value: lights.numbers,
           onChanged: (v) async {
             await lights.setNumbers(v);
-            setState(() {});
+            if (mounted) setState(() {});
           },
         ),
         const SizedBox(height: 8),

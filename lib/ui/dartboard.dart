@@ -1083,6 +1083,40 @@ class _HitsPainter extends CustomPainter {
   /// tour (flash à l'impact), les numéros à viser clignotent en blanc, une
   /// petite lumière fait le tour quand rien n'est touché, tout passe au rouge
   /// sur un bust et en arc-en-ciel qui tourne à la victoire.
+  static final _numberCache = <String, TextPainter>{};
+
+  /// Numéro blanc d'une case allumée : ombre sombre ([dark], case pleine)
+  /// ou halo à la couleur de la case.
+  static TextPainter _numberPainter(
+          int n, double band, bool dark, Color? col) =>
+      TextPainter(
+        text: TextSpan(
+          text: '$n',
+          style: TextStyle(
+            fontFamily: Tv.font,
+            fontWeight: FontWeight.w800,
+            fontSize: band * 0.74,
+            color: Colors.white,
+            shadows: dark
+                ? [
+                    Shadow(
+                        color: Colors.black.withValues(alpha: 0.85),
+                        blurRadius: band * 0.18),
+                    Shadow(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        offset: Offset(0, band * 0.03),
+                        blurRadius: band * 0.05),
+                  ]
+                : [
+                    Shadow(
+                        color: (col ?? Colors.white).withValues(alpha: 0.9),
+                        blurRadius: band * 0.25),
+                  ],
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+
   /// Effet rapide sur la case [i] (index dans kBoardOrder) : intensité
   /// 0 → 1 et couleur.
   (double, Color) _fxOf(int i) {
@@ -1241,35 +1275,13 @@ class _HitsPainter extends CustomPainter {
       if (on > 0.3 || aim.contains(n)) {
         final mid = a0 + seg / 2;
         final pos = c + Offset(math.cos(mid), math.sin(mid)) * (r + band / 2);
-        final tp = TextPainter(
-          text: TextSpan(
-            text: '$n',
-            style: TextStyle(
-              fontFamily: Tv.font,
-              fontWeight: FontWeight.w800,
-              fontSize: band * 0.74,
-              color: Colors.white,
-              // sur la case allumée : ombre sombre pour que le numéro
-              // blanc reste bien lisible
-              shadows: aimed || fe > 0.5
-                  ? [
-                      Shadow(
-                          color: Colors.black.withValues(alpha: 0.85),
-                          blurRadius: band * 0.18),
-                      Shadow(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          offset: Offset(0, band * 0.03),
-                          blurRadius: band * 0.05),
-                    ]
-                  : [
-                      Shadow(
-                          color: (col ?? Colors.white).withValues(alpha: 0.9),
-                          blurRadius: band * 0.25),
-                    ],
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-        )..layout();
+        // Mis en cache : pendant les effets, les mêmes numéros sont
+        // redessinés à chaque image (coûteux sur la TV)
+        final dark = aimed || fe > 0.5;
+        final glow = (col ?? Colors.white).toARGB32();
+        final key = '$n|${band.round()}|${dark ? 'd' : glow}';
+        final tp = _numberCache[key] ??= _numberPainter(n, band, dark, col);
+        if (_numberCache.length > 400) _numberCache.clear();
         tp.paint(canvas, pos - Offset(tp.width / 2, tp.height / 2));
       }
     }

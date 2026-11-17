@@ -128,6 +128,7 @@ class _SetupPageState extends State<SetupPage> {
   Future<void> _load() async {
     if (widget.kind != null) setState(() => _kind = widget.kind!);
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     final raw = prefs.getString(_prefKey);
     if (raw == null) {
       if (_double) setState(() => _kind = 'x01');

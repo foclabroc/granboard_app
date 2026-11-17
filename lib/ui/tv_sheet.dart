@@ -86,8 +86,9 @@ class _TvSheetState extends State<_TvSheet> {
       await link.link(_code.text);
       link.pushLobby();
       _code.clear();
-      setState(() => _busy = false);
+      if (mounted) setState(() => _busy = false);
     } on ApiError catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.code == 'tv_code'
             ? 'Code inconnu : vérifie l\'écran'

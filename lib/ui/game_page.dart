@@ -160,7 +160,10 @@ class _GamePageState extends State<GamePage> {
     if (room == null) return !_botTurn || _botMove;
     final g = game;
     if (g is MatchGame && g.betweenLegs) return true;
-    return room.mine(g.currentPlayer.id);
+    // Joueur d'une maison partie : son tour passe tout seul, la cible de
+    // la maison qui le remplace ne compte pas pour lui
+    final id = g.currentPlayer.id;
+    return room.mine(id) && !room.absent(id);
   }
 
   DateTime _lastHint = DateTime(2000);

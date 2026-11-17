@@ -339,6 +339,7 @@ class _RecordDialogState extends State<_RecordDialog>
   Future<void> _start() async {
     try {
       if (!await _rec.hasPermission()) {
+        if (!mounted) return;
         setState(() => _error = 'Micro refusé : autorise-le dans les réglages');
         return;
       }
@@ -351,6 +352,7 @@ class _RecordDialogState extends State<_RecordDialog>
             numChannels: 1),
         path: '${dir.path}/voix_tour.m4a',
       );
+      if (!mounted) return;
       setState(() {
         _recording = true;
         _voice = null;
@@ -358,7 +360,7 @@ class _RecordDialogState extends State<_RecordDialog>
       });
       _progress.forward(from: 0);
     } catch (e) {
-      setState(() => _error = 'Enregistrement impossible : $e');
+      if (mounted) setState(() => _error = 'Enregistrement impossible : $e');
     }
   }
 
@@ -368,6 +370,7 @@ class _RecordDialogState extends State<_RecordDialog>
     try {
       final path = await _rec.stop();
       final bytes = path == null ? null : await File(path).readAsBytes();
+      if (!mounted) return;
       setState(() {
         _recording = false;
         _voice = bytes;
@@ -376,6 +379,7 @@ class _RecordDialogState extends State<_RecordDialog>
         AudioService.instance.preview(kVoiceSound, voice: bytes);
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _recording = false;
         _error = 'Enregistrement impossible : $e';

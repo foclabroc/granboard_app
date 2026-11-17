@@ -271,6 +271,9 @@ class _LobbyPageState extends State<LobbyPage> {
   int? _opened;
   bool _busy = false;
 
+  /// Une partie est ouverte par-dessus le salon : pas d'autre en même temps.
+  bool _playing = false;
+
   @override
   void initState() {
     super.initState();
@@ -298,7 +301,7 @@ class _LobbyPageState extends State<LobbyPage> {
       return;
     }
     final room = lobby.room;
-    if (lobby.started && room != null && room != _opened) {
+    if (lobby.started && room != null && room != _opened && !_playing) {
       _opened = room;
       _play(room);
     }
@@ -306,8 +309,24 @@ class _LobbyPageState extends State<LobbyPage> {
   }
 
   Future<void> _play(int room) async {
-    await openOnlineGame(context, room);
+    if (_playing) return;
+    _playing = true;
+    try {
+      await openOnlineGame(context, room);
+    } finally {
+      _playing = false;
+    }
     if (!mounted) return;
+    // L'hôte a déjà relancé une autre partie (on jouait encore) : on la
+    // rejoint au lieu de rouvrir le salon
+    await lobby.fetch();
+    final next = lobby.room;
+    if (!mounted) return;
+    if (lobby.started && next != null && next != room) {
+      _opened = next;
+      _play(next);
+      return;
+    }
     // Partie finie ou quittée : le salon se rouvre pour tout le monde
     await lobby.back();
   }
