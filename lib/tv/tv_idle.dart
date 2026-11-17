@@ -39,7 +39,11 @@ class _FloatingBoardState extends State<FloatingBoard>
   Widget build(BuildContext context) {
     final s = widget.size;
     final lift = s * 0.05;
-    return SizedBox(
+    final lite = Perf.lite;
+    // Isolée : sans ça, chaque image de l'animation redessinait tout
+    // l'écran d'attente (titre, classements, photos)
+    return RepaintBoundary(
+        child: SizedBox(
       width: s,
       height: s + lift * 2 + s * 0.08,
       child: AnimatedBuilder(
@@ -50,20 +54,18 @@ class _FloatingBoardState extends State<FloatingBoard>
           return Stack(
             alignment: Alignment.topCenter,
             children: [
-              // ombre qui rétrécit quand la cible monte
+              // ombre qui rétrécit quand la cible monte (dégradé : bien
+              // moins coûteux qu'une ombre floue sur la TV)
               Positioned(
                 bottom: 0,
                 child: Container(
-                  width: s * (0.62 - 0.12 * t),
-                  height: s * 0.06,
+                  width: s * (0.66 - 0.12 * t),
+                  height: s * 0.08,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(s),
-                    boxShadow: [
-                      BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.55 - 0.2 * t),
-                          blurRadius: s * 0.06,
-                          spreadRadius: s * 0.01)
-                    ],
+                    gradient: RadialGradient(colors: [
+                      Colors.black.withValues(alpha: 0.6 - 0.2 * t),
+                      Colors.black.withValues(alpha: 0),
+                    ]),
                   ),
                 ),
               ),
@@ -74,15 +76,18 @@ class _FloatingBoardState extends State<FloatingBoard>
             ],
           );
         },
-        child: Container(
+        child: RepaintBoundary(
+            child: Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                  color: Tv.gold.withValues(alpha: 0.25),
-                  blurRadius: s * 0.15,
-                  spreadRadius: 4)
-            ],
+            boxShadow: lite
+                ? null
+                : [
+                    BoxShadow(
+                        color: Tv.gold.withValues(alpha: 0.25),
+                        blurRadius: s * 0.15,
+                        spreadRadius: 4)
+                  ],
           ),
           // cible du profil principal du téléphone
           child: ListenableBuilder(
@@ -90,9 +95,9 @@ class _FloatingBoardState extends State<FloatingBoard>
             builder: (context, _) =>
                 Dartboard(size: s, skin: PlayerBoards.instance.idle),
           ),
-        ),
+        )),
       ),
-    );
+    ));
   }
 }
 

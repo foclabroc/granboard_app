@@ -669,6 +669,11 @@ class GameSplashState extends State<GameSplash>
 
   @override
   Widget build(BuildContext context) {
+    // Isolé : l'animation ne redessine pas tout l'écran de jeu
+    return RepaintBoundary(child: _build(context));
+  }
+
+  Widget _build(BuildContext context) {
     return AnimatedBuilder(
       animation: _c,
       builder: (context, _) {
@@ -691,10 +696,14 @@ class GameSplashState extends State<GameSplash>
                   decoration: BoxDecoration(
                     color: Colors.black,
                     border: Border.all(color: _color, width: 4),
-                    boxShadow: [
-                      BoxShadow(
-                          color: _color.withValues(alpha: 0.6), blurRadius: 40)
-                    ],
+                    // ombre floue animée : trop lourde pour la TV
+                    boxShadow: Perf.lite
+                        ? null
+                        : [
+                            BoxShadow(
+                                color: _color.withValues(alpha: 0.6),
+                                blurRadius: 40)
+                          ],
                   ),
                   child: FittedBox(
                     child: Text(

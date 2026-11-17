@@ -89,6 +89,11 @@ class _BannerState extends State<_Banner> with SingleTickerProviderStateMixin {
   }
 
   Widget _animated(Color color) {
+    // Isolé : l'animation ne redessine pas l'écran de jeu derrière
+    return RepaintBoundary(child: _animatedBody(color));
+  }
+
+  Widget _animatedBody(Color color) {
     return SizedBox.expand(
       child: AnimatedBuilder(
         animation: _c,

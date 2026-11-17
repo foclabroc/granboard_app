@@ -167,7 +167,9 @@ class _CricketLayoutState extends State<CricketLayout>
         ),
         Positioned.fill(
           child: IgnorePointer(
-            child: AnimatedBuilder(
+            // Isolé : les grandes marques ne redessinent pas tout l'écran
+            child: RepaintBoundary(
+                child: AnimatedBuilder(
               animation: _anim,
               builder: (context, _) {
                 final v = _anim.value;
@@ -206,7 +208,7 @@ class _CricketLayoutState extends State<CricketLayout>
                   );
                 });
               },
-            ),
+            )),
           ),
         ),
         Positioned.fill(
@@ -1074,7 +1076,8 @@ class _PlayersBar extends StatelessWidget {
                                       style: Tv.title(18,
                                           color: active
                                               ? Colors.white
-                                              : Tv.text.withValues(alpha: 0.8))),
+                                              : Tv.text
+                                                  .withValues(alpha: 0.8))),
                                   const SizedBox(width: 6),
                                   RankChip(g.players[shown].id, size: 14),
                                 ],
