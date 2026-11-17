@@ -85,7 +85,7 @@ class TvLink extends ChangeNotifier {
 
   /// Écran Android TV : moteur de rendu (impeller | skia) ; un changement
   /// fait redémarrer l'écran.
-  String engine = 'impeller';
+  String engine = 'skia';
 
   /// Décodeur des vidéos de l'écran : auto (matériel, logiciel si une vidéo
   /// échoue) | sw (toujours logiciel).
@@ -128,7 +128,9 @@ class TvLink extends ChangeNotifier {
         }
         // Avant la 0.6.3 : un seul appareil (texte)
         fullAnim = j['anim'] as bool? ?? false;
-        engine = j['engine'] == 'skia' ? 'skia' : 'impeller';
+        // « render » depuis la 0.6.24 (Skia par défaut) ; l'ancien « engine »
+        // valait impeller sans choix de l'utilisateur
+        engine = j['render'] == 'impeller' ? 'impeller' : 'skia';
         video = j['video'] == 'sw' ? 'sw' : 'auto';
         final snd = j['sound'];
         _setSound(
@@ -163,7 +165,7 @@ class TvLink extends ChangeNotifier {
           'screens': [for (final s in screens) s.toJson()],
           'sound': soundOn.toList(),
           'anim': fullAnim,
-          'engine': engine,
+          'render': engine,
           'video': video,
         }));
   }
@@ -417,7 +419,8 @@ class TvLink extends ChangeNotifier {
         'theme': Tv.skin.value.id,
         'calls': AudioService.instance.dartCalls,
         'anim': fullAnim,
-        'gfx': {'engine': engine, 'video': video},
+        // engine : pour les écrans en 0.6.22-0.6.23
+        'gfx': {'render': engine, 'engine': engine, 'video': video},
         'tease': AudioService.instance.teasing,
         'names': AudioService.instance.turnNames,
         'pron': AudioService.instance.pronunciations,

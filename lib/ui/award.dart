@@ -181,28 +181,34 @@ class _AwardVideoState extends State<_AwardVideo> {
   Timer? _guard;
   bool _ready = false;
   bool _closing = false;
+  Timer? _startTimer;
+  bool _retried = false;
 
   @override
   void initState() {
     super.initState();
-    // Secours : jamais plus de 10 s à l'écran, même si la lecture cale
-    _guard = Timer(const Duration(seconds: 10), _close);
-    Timer(widget.startTimeout, () {
-      if (mounted && !_ready && !_closing) {
-        AwardPlayer.onError?.call('la vidéo ne démarre pas');
-        _fail();
-      }
-    });
+    _arm();
     _start();
   }
 
+  /// Délais : pas prête au bout de [startTimeout] = échec ; jamais plus de
+  /// 10 s à l'écran, même si la lecture cale.
+  void _arm() {
+    _guard?.cancel();
+    _guard = Timer(const Duration(seconds: 10), _close);
+    _startTimer?.cancel();
+    _startTimer = Timer(widget.startTimeout, () {
+      if (mounted && !_ready && !_closing) _error('la vidéo ne démarre pas');
+    });
+  }
+
   Future<void> _start() async {
+    final c = VideoPlayerController.asset(widget.asset,
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true));
+    _c = c;
     try {
-      final c = VideoPlayerController.asset(widget.asset,
-          videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true));
-      _c = c;
       await c.initialize();
-      if (!mounted) return;
+      if (!mounted || !identical(_c, c)) return;
       final audio = AudioService.instance;
       await c.setVolume(audio.muted || !audio.effects ? 0 : 1);
       c.addListener(_watch);
@@ -211,20 +217,46 @@ class _AwardVideoState extends State<_AwardVideo> {
       // certaines TV le décodeur échoue juste après le départ, l'écran
       // devenait noir un instant (comme une coupure)
     } catch (e) {
-      AwardPlayer.onError?.call('$e');
-      _fail();
+      if (identical(_c, c)) _error('$e');
     }
+  }
+
+  /// La vidéo ne démarre pas. Écran TV en décodeur matériel : on passe au
+  /// logiciel et on relance la même vidéo, sans message. Sinon : message
+  /// et son habituel à la place.
+  void _error(String msg) {
+    if (_closing) return;
+    if (!_ready && !_retried && TvGfx.enabled && !TvGfx.softwareVideo) {
+      _retried = true;
+      _retry();
+      return;
+    }
+    AwardPlayer.onError?.call(msg);
+    if (!_ready) _fail();
+  }
+
+  Future<void> _retry() async {
+    final old = _c;
+    _c = null;
+    old?.removeListener(_watch);
+    await TvGfx.videoFailed();
+    try {
+      await old?.dispose();
+    } catch (_) {}
+    if (!mounted || _closing) return;
+    _arm();
+    await _start();
   }
 
   void _watch() {
     final v = _c?.value;
     if (v == null) return;
     if (v.hasError && !_closing) {
-      AwardPlayer.onError?.call(v.errorDescription ?? 'erreur');
       if (!_ready) {
-        _fail();
+        _error(v.errorDescription ?? 'erreur');
         return;
       }
+      AwardPlayer.onError?.call(v.errorDescription ?? 'erreur');
     }
     if (!_ready &&
         !_closing &&
@@ -253,12 +285,14 @@ class _AwardVideoState extends State<_AwardVideo> {
     if (_closing) return;
     _closing = true;
     _guard?.cancel();
+    _startTimer?.cancel();
     widget.onDone();
   }
 
   @override
   void dispose() {
     _guard?.cancel();
+    _startTimer?.cancel();
     _c?.removeListener(_watch);
     _c?.dispose();
     super.dispose();

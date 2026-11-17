@@ -24,9 +24,10 @@ class MainActivity : FlutterActivity() {
     }
 
     /**
-     * Moteur de rendu choisi pour l'écran TV (réglage du téléphone, gardé par
-     * l'écran) : Skia au lieu d'Impeller. Lu au lancement du moteur, d'où le
-     * redémarrage de l'appli quand il change.
+     * Moteur de rendu de l'écran TV : Skia par défaut (bien plus fluide sur
+     * la TCL de foclabroc), Impeller si le téléphone le demande (gardé par
+     * l'écran). Lu au lancement du moteur, d'où le redémarrage de l'appli
+     * quand il change.
      */
     override fun getFlutterEngineFlags(): List<String> {
         val flags = ArrayList(super.getFlutterEngineFlags() ?: emptyList())
@@ -34,9 +35,10 @@ class MainActivity : FlutterActivity() {
         return flags
     }
 
-    private fun savedEngine(): String? =
-        getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            .getString("flutter.tv_engine", null)
+    private fun savedEngine(): String =
+        if (getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getString("flutter.tv_render", null) == "impeller"
+        ) "impeller" else "skia"
 
     /**
      * TV 4K : l'appli dessinée en 1920 × 1080 (4 fois moins de pixels), la

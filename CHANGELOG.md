@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.24
+
+- Écran TV : moteur de rendu Skia par défaut (bien plus fluide qu'Impeller sur la TV de test), aussi pour les TV qui se mettent à jour ; l'interrupteur de la fenêtre TV du téléphone devient « Moteur de rendu Skia » allumé d'office (le couper repasse en Impeller).
+- Écran TV : si le décodeur de la TV n'arrive pas à lire une vidéo, la même vidéo repart aussitôt en décodage logiciel, sans message d'erreur (les suivantes restent en logiciel).
+
 ## v0.6.23
 
 - Son : nouveau réglage « Annoncer le joueur » (« Ana, à toi » à chaque tour). Coupé : seulement le son du joueur, le bandeau et ce qu'il lui reste (« Il te reste 40, double 20 »). Suivi par les écrans TV.

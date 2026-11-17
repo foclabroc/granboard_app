@@ -12,7 +12,9 @@ class TvGfx {
   static const _ch = MethodChannel('granboard/device');
 
   /// Clés lues aussi par MainActivity.kt (préfixe « flutter. »).
-  static const kEngine = 'tv_engine';
+  /// Moteur gardé : impeller | skia (absent = skia, défaut depuis la
+  /// 0.6.24 ; l'ancienne clé tv_engine n'est plus lue).
+  static const kEngine = 'tv_render';
   static const kVideo = 'tv_video';
   static const kHwFail = 'tv_video_hwfail';
 
@@ -20,7 +22,7 @@ class TvGfx {
   static bool enabled = false;
 
   /// Moteur qui tourne : impeller | skia.
-  static String engine = 'impeller';
+  static String engine = 'skia';
 
   /// Mode d'affichage choisi au démarrage (« 1080p (au lieu de …) ») ou ''.
   static String display = '';
@@ -44,7 +46,7 @@ class TvGfx {
     if (!enabled) return;
     try {
       final info = await _ch.invokeMapMethod<String, dynamic>('gfxInfo');
-      engine = '${info?['engine'] ?? 'impeller'}';
+      engine = '${info?['engine'] ?? 'skia'}';
       display = '${info?['display'] ?? ''}';
       size = '${info?['size'] ?? ''}';
       final p = await SharedPreferences.getInstance();
@@ -61,7 +63,9 @@ class TvGfx {
     } catch (_) {}
   }
 
-  /// Réglages envoyés par le téléphone dans l'état ({engine, video}).
+  /// Réglages envoyés par le téléphone dans l'état ({render, video} ;
+  /// `engine` des téléphones en 0.6.22-0.6.23 ignoré : il valait impeller
+  /// sans que personne l'ait choisi).
   /// Moteur différent : gardé puis l'appli redémarre (le moteur se choisit
   /// au lancement).
   static Future<void> apply(Object? gfx) async {
@@ -76,7 +80,9 @@ class TvGfx {
       await p.setBool(kHwFail, false);
       await _pushVideo();
     }
-    final e = gfx['engine'] == 'skia' ? 'skia' : 'impeller';
+    final r = gfx['render'];
+    if (r is! String) return;
+    final e = r == 'impeller' ? 'impeller' : 'skia';
     if (e != engine && !_restarting) {
       _restarting = true;
       await p.setString(kEngine, e);

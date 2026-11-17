@@ -15,12 +15,12 @@ void main() {
             (c) async {
       calls.add(c);
       if (c.method == 'gfxInfo') {
-        return {'engine': 'impeller', 'display': '', 'size': '1920×1080'};
+        return {'engine': 'skia', 'display': '', 'size': '1920×1080'};
       }
       return null;
     });
     TvGfx.enabled = true;
-    TvGfx.engine = 'impeller';
+    TvGfx.engine = 'skia';
     TvGfx.video = 'auto';
     TvGfx.hwFailed = false;
   });
@@ -35,20 +35,23 @@ void main() {
     expect(calls.last.arguments, true);
     expect((await SharedPreferences.getInstance()).getBool(TvGfx.kHwFail), true);
     // Le téléphone passe en logiciel puis revient en auto : on réessaie
-    await TvGfx.apply({'engine': 'impeller', 'video': 'sw'});
-    await TvGfx.apply({'engine': 'impeller', 'video': 'auto'});
+    await TvGfx.apply({'render': 'skia', 'video': 'sw'});
+    await TvGfx.apply({'render': 'skia', 'video': 'auto'});
     expect(TvGfx.softwareVideo, false);
     expect(calls.last.arguments, false);
   });
 
-  test('Moteur changé : gardé puis redémarrage', () async {
+  test('Skia par défaut ; Impeller demandé : gardé puis redémarrage', () async {
     await TvGfx.load();
+    expect(TvGfx.engine, 'skia');
+    // téléphone en 0.6.22-0.6.23 : « engine » impeller ignoré
     await TvGfx.apply({'engine': 'impeller', 'video': 'auto'});
+    await TvGfx.apply({'render': 'skia', 'video': 'auto'});
     expect(calls.where((c) => c.method == 'restart'), isEmpty);
-    await TvGfx.apply({'engine': 'skia', 'video': 'auto'});
+    await TvGfx.apply({'render': 'impeller', 'video': 'auto'});
     expect(calls.last.method, 'restart');
     expect((await SharedPreferences.getInstance()).getString(TvGfx.kEngine),
-        'skia');
-    expect(TvGfx.label, contains('IMPELLER'));
+        'impeller');
+    expect(TvGfx.label, contains('SKIA'));
   });
 }
