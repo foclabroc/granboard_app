@@ -9,10 +9,6 @@ import '../media.dart';
 import '../players.dart';
 import 'theme.dart';
 
-/// Couleur des cases à viser (chemin de finish, Cricket) : cyan vif, qui
-/// tranche sur le rouge, le vert, le crème et le noir de la cible.
-const kAimColor = Color(0xFF00E5FF);
-
 /// Style de la cible dessinée (choisi dans l'accueil, envoyé à la TV).
 class BoardSkin {
   final String id;
@@ -909,17 +905,26 @@ class _HitsPainter extends CustomPainter {
       _numberLights(canvas, c, outer, r);
     }
 
-    // Zone à viser pour finir : la case entière s'allume en cyan vif qui
-    // pulse (tranche sur le rouge, le vert et le crème)
+    // Zone à viser (finish, entraînement) : voile à la couleur du joueur
+    // en cours, qui pulse, avec un bord lumineux
     for (final h in targets) {
       final path = _zonePath(c, r, h);
+      // voile léger (on voit encore la cible dessous) + bord lumineux
+      canvas.drawPath(path,
+          Paint()..color = dartColor.withValues(alpha: 0.22 + 0.18 * pulse));
       canvas.drawPath(
           path,
           Paint()
-            ..color = kAimColor.withValues(alpha: 0.45 + 0.35 * pulse)
-            ..maskFilter = MaskFilter.blur(BlurStyle.outer, r * 0.04));
-      canvas.drawPath(path,
-          Paint()..color = kAimColor.withValues(alpha: 0.7 + 0.3 * pulse));
+            ..color = dartColor.withValues(alpha: 0.55 + 0.35 * pulse)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = r * 0.03
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.02));
+      canvas.drawPath(
+          path,
+          Paint()
+            ..color = dartColor
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = r * 0.012);
     }
 
     // Zones touchées : halo qui pulse
@@ -1070,8 +1075,9 @@ class _HitsPainter extends CustomPainter {
         col = Tv.red;
         on = 0.25 + 0.55 * pulse;
       } else if (aim.contains(n)) {
-        // à viser : la case du numéro s'allume en entier, bien vive
-        col = kAimColor;
+        // à viser : la case du numéro s'allume en entier, à la couleur du
+        // joueur en cours
+        col = dartColor;
         on = 0.8 + 0.2 * pulse;
       } else if (lit.containsKey(n)) {
         col = dartColor;
@@ -1098,9 +1104,9 @@ class _HitsPainter extends CustomPainter {
         canvas.drawPath(
             path,
             Paint()
-              ..color = kAimColor.withValues(alpha: 0.6 * on)
+              ..color = dartColor.withValues(alpha: 0.6 * on)
               ..maskFilter = MaskFilter.blur(BlurStyle.outer, band * 0.25));
-        canvas.drawPath(path, Paint()..color = kAimColor.withValues(alpha: on));
+        canvas.drawPath(path, Paint()..color = dartColor.withValues(alpha: on));
       } else if (col != null && on > 0.01) {
         canvas.drawPath(
             path,

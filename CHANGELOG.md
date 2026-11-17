@@ -2,7 +2,7 @@
 
 ## v0.6.19
 
-- Cible : la case à viser (chemin de finish, numéros du Cricket) s'allume en entier en cyan vif qui pulse, avec le numéro en blanc bien lisible ; plus d'encadrement blanc.
+- Cible : la case à viser (chemin de finish, numéros du Cricket, zones des entraînements) s'allume à la couleur du joueur en cours : voile qui pulse et bord lumineux sur la zone, case du numéro pleine avec le numéro en blanc bien lisible ; plus d'encadrement blanc.
 - Écran TV : le chemin de finish du 01 (et des legs de 01 du Medley) est affiché 2 fois plus grand, cases plus marquées.
 - Fluidité sur la TV : la cible qui flotte sur l'écran d'attente, le bandeau « au tour de », le grand texte des coups et les grandes marques du Cricket ne redessinent plus tout l'écran à chaque image ; ombres floues retirées en mode allégé ; vidéos des coups réencodées en 960 × 540 (2 fois plus légères à décoder, 54 → 27 Mo).
 - En ligne : rubrique « SALONS OUVERTS (n) » toujours visible, avec un message quand aucun salon public n'est ouvert (les salons privés ne s'y affichent pas).
