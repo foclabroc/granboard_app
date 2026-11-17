@@ -79,6 +79,7 @@ Stats, rangs, classements, photos, sons, cibles des joueurs, écran TV, jeu en l
 12. `2026-11-15_reglages.sql`
 13. `2026-11-15_amis.sql`
 14. `2026-11-15_social.sql`
+15. `2026-11-17_historique.sql`
 
 `psql -U postgres -d postgres -f fichier.sql`
 

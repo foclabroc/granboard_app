@@ -90,6 +90,24 @@ void main() {
     expect(MediaStore.instance.imageOf(foc.key), isNull);
   });
 
+  test('Serveur remis à zéro : photo relue même si la version est la même',
+      () async {
+    final foc = await PlayerStore.instance.register('Foc', '1234');
+    final old = MediaStore.squareJpeg(
+        Uint8List.fromList(img.encodePng(img.Image(width: 300, height: 300))));
+    await MediaStore.instance.setPhoto(foc, old);
+    // Un autre compte avec le même id et la même version a mis sa photo
+    final other = Uint8List.fromList(old.reversed.toList());
+    server.media[foc.id]!['photo'] = base64Encode(other);
+    await MediaStore.instance.ensure([foc.key]);
+    expect(MediaStore.instance.of(foc.key)!.photo, old,
+        reason: 'version connue : rien de redemandé');
+    // Au lancement (sync) : tout est redemandé
+    await PlayerStore.instance.sync();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(MediaStore.instance.of(foc.key)!.photo, other);
+  });
+
   test('Hors ligne : le cache reste', () async {
     final foc = await PlayerStore.instance.register('Foc', '1234');
     await MediaStore.instance.setSound(foc, 'gong');

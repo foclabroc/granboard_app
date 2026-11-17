@@ -170,7 +170,8 @@ class MediaStore extends ChangeNotifier {
 
   /// Met à jour les médias de ces joueurs (invités ignorés). Silencieux
   /// hors ligne : on garde le cache.
-  Future<void> ensure(Iterable<String> ids) async {
+  /// [fresh] : tout est redemandé, sans les versions connues.
+  Future<void> ensure(Iterable<String> ids, {bool fresh = false}) async {
     final nums = <int>{
       for (final id in ids)
         if (!isGuestId(id) && int.tryParse(id) != null) int.parse(id)
@@ -178,15 +179,16 @@ class MediaStore extends ChangeNotifier {
     if (nums.isEmpty) return;
     try {
       final r = await GbServer.media(nums, {
-        for (final n in nums)
-          if (_media['$n'] != null) '$n': _media['$n']!.v
+        if (!fresh)
+          for (final n in nums)
+            if (_media['$n'] != null) '$n': _media['$n']!.v
       });
       var changed = false;
       for (final e in r.entries) {
         final m = Map<String, dynamic>.from(e.value as Map);
         final v = (m['v'] as num?)?.toInt() ?? 0;
         if (!m.containsKey('sound')) continue; // version inchangée
-        if (_media[e.key]?.v == v && v != 0) continue;
+        if (!fresh && _media[e.key]?.v == v && v != 0) continue;
         _set(
             e.key,
             PlayerMedia(

@@ -173,6 +173,58 @@ class FakeServer {
         }
         games[g['cid'] as String] = g;
         return games.length;
+      case 'gb_on_link':
+        final me = _auth(b['p_token']);
+        final link = '${b['p_link']}';
+        final room = rooms[int.tryParse(link.split(':').first)];
+        if (room == null || (room['a'] != me && room['b'] != me)) return false;
+        final g = games[b['p_cid']];
+        if (g == null || g['link'] != null) return false;
+        g['link'] = link;
+        return true;
+      case 'gb_history':
+        final id = b['p_id'] as int;
+        final before = DateTime.tryParse('${b['p_before'] ?? ''}');
+        final limit = (b['p_limit'] as int?) ?? 30;
+        final all = games.values.toList();
+        final out = <Map<String, dynamic>>[];
+        for (var i = all.length - 1; i >= 0; i--) {
+          final g = all[i];
+          final ps = [for (final p in g['players'] as List) p as Map];
+          final me = ps.where((p) => sessions[p['token']] == id).firstOrNull;
+          if (me == null) continue;
+          final date = DateTime.utc(2026, 11, 14, 10).add(Duration(minutes: i));
+          if (before != null && !date.isBefore(before)) continue;
+          out.add({
+            'date': date.toIso8601String(),
+            'kind': g['kind'] ?? 'x01',
+            'mode': g['mode'] ?? '501',
+            'variant': g['variant'],
+            'won': me['won'] == true,
+            'avg': 0,
+            'mpr': 0,
+            'checkout': me['checkout'],
+            'darts': me['darts'],
+            'points': me['points'],
+            'n': g['n'] ?? ps.length,
+            'online': g['link'] != null,
+            'with': [
+              for (final og in all)
+                if (identical(og, g) ||
+                    (g['link'] != null && og['link'] == g['link']))
+                  for (final p in og['players'] as List)
+                    if (sessions[(p as Map)['token']] != id)
+                      {
+                        'id': sessions[p['token']],
+                        'pseudo': accounts[sessions[p['token']]]?['pseudo'],
+                        'color': 0,
+                        'won': p['won'] == true,
+                      }
+            ],
+          });
+          if (out.length >= limit) break;
+        }
+        return out;
       case 'gb_profile':
         final id = b['p_id'] as int;
         return {

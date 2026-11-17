@@ -355,8 +355,14 @@ class PlayerStore extends ChangeNotifier {
     } on ApiError {
       return; // hors ligne : on réessaiera
     }
-    await flush();
-    MediaStore.instance.ensure(players.map((p) => p.key));
+    // Une partie en attente qui pose problème ne doit pas empêcher la
+    // mise à jour des profils et des photos
+    try {
+      await flush();
+    } catch (_) {}
+    // Photos relues en entier : le cache du téléphone (rangé par id) peut
+    // dater d'un ancien compte qui avait le même id (serveur remis à zéro)
+    MediaStore.instance.ensure(players.map((p) => p.key), fresh: true);
     for (final p in players) {
       await refreshProfile(p);
     }
@@ -415,7 +421,22 @@ class PlayerStore extends ChangeNotifier {
           continue;
         }
         try {
-          await GbServer.submit({...g, 'players': send});
+          final link = g['link'];
+          await GbServer.submit({
+            for (final e in g.entries)
+              if (e.key != 'link') e.key: e.value,
+            'players': send
+          });
+          // Partie en ligne : reliée à celle de l'adversaire (historique)
+          if (link is String) {
+            try {
+              await GbServer.rpc('gb_on_link', {
+                'p_token': send.first['token'],
+                'p_cid': g['cid'],
+                'p_link': link
+              });
+            } catch (_) {}
+          }
           pending.removeAt(0);
           await _save();
         } on ApiError catch (e) {
@@ -438,7 +459,7 @@ class PlayerStore extends ChangeNotifier {
 
   /// Enregistre une partie X01 terminée (envoi immédiat ou plus tard).
   /// Renvoie true si elle est déjà sur le serveur.
-  Future<bool> recordX01(X01Game g) async {
+  Future<bool> recordX01(X01Game g, {String? link}) async {
     final ps = <Map<String, dynamic>>[];
     for (var i = 0; i < g.players.length; i++) {
       final p = g.players[i];
@@ -468,6 +489,7 @@ class PlayerStore extends ChangeNotifier {
       'out': g.settings.outRule.name,
       if (g.settings.roundLimit != null) 'rounds': g.settings.roundLimit,
       'n': g.players.length,
+      if (link != null) 'link': link,
       'players': ps,
     });
     await _save();
@@ -480,7 +502,7 @@ class PlayerStore extends ChangeNotifier {
   }
 
   /// Partie de Cricket terminée (invités exclus).
-  Future<bool> recordCricket(CricketGame g) async {
+  Future<bool> recordCricket(CricketGame g, {String? link}) async {
     final ps = <Map<String, dynamic>>[];
     for (var i = 0; i < g.players.length; i++) {
       final p = g.players[i];
@@ -507,6 +529,7 @@ class PlayerStore extends ChangeNotifier {
       'freeze': g.settings.teams,
       if (g.settings.roundLimit != null) 'rounds': g.settings.roundLimit,
       'n': g.players.length,
+      if (link != null) 'link': link,
       'players': ps,
     });
     await _save();
@@ -519,13 +542,15 @@ class PlayerStore extends ChangeNotifier {
   }
 
   /// Match terminé : chaque leg est enregistré comme une partie de son jeu.
-  Future<bool> recordMatch(MatchGame m) async {
+  Future<bool> recordMatch(MatchGame m, {int? room}) async {
     var ok = true;
-    for (final l in m.legs) {
+    for (var i = 0; i < m.legs.length; i++) {
+      final l = m.legs[i];
       if (!l.finished) continue;
+      final link = room == null ? null : '$room:$i';
       final r = switch (l) {
-        X01Game g => await recordX01(g),
-        CricketGame g => await recordCricket(g),
+        X01Game g => await recordX01(g, link: link),
+        CricketGame g => await recordCricket(g, link: link),
         _ => true,
       };
       ok = ok && r;
@@ -535,7 +560,7 @@ class PlayerStore extends ChangeNotifier {
 
   /// Partie d'entraînement terminée (invités exclus) : le score sert aux
   /// classements « meilleur score » de chaque jeu.
-  Future<bool> recordPractice(PracticeGame g) async {
+  Future<bool> recordPractice(PracticeGame g, {String? link}) async {
     final ps = <Map<String, dynamic>>[];
     for (var i = 0; i < g.players.length; i++) {
       final p = g.players[i];
@@ -560,6 +585,7 @@ class PlayerStore extends ChangeNotifier {
       'start': 0,
       'freeze': false,
       'n': g.players.length,
+      if (link != null) 'link': link,
       'players': ps,
     });
     await _save();

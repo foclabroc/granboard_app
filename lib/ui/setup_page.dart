@@ -400,8 +400,14 @@ class _SetupPageState extends State<SetupPage> {
     }
     final a = _selected.where((id) => _teamOf(id) == 0).toList();
     final b = _selected.where((id) => _teamOf(id) == 1).toList();
+    // Équipes en alternance ; si elles sont inégales (choix en cours),
+    // les joueurs en trop suivent (la partie ne se lance pas, voir _problem)
+    final n = a.length > b.length ? a.length : b.length;
     return [
-      for (var i = 0; i < a.length; i++) ...[mk(a[i], 0), mk(b[i], 1)]
+      for (var i = 0; i < n; i++) ...[
+        if (i < a.length) mk(a[i], 0),
+        if (i < b.length) mk(b[i], 1),
+      ]
     ];
   }
 
@@ -1830,10 +1836,23 @@ class _SetupPageState extends State<SetupPage> {
             child: Text(name,
                 overflow: TextOverflow.ellipsis, style: Tv.title(18)),
           ),
+          // Étiquettes : rognées quand la colonne est étroite (équipes)
           if (guest)
-            Text(isBotId(id) ? '  VIRTUEL' : '  INVITÉ', style: Tv.label(10)),
+            Flexible(
+              child: Text(isBotId(id) ? '  VIRTUEL' : '  INVITÉ',
+                  maxLines: 1,
+                  overflow: TextOverflow.clip,
+                  softWrap: false,
+                  style: Tv.label(10)),
+            ),
           if (p?.expired == true)
-            Text('  À RECONNECTER', style: Tv.label(10, color: Tv.red)),
+            Flexible(
+              child: Text('  À RECONNECTER',
+                  maxLines: 1,
+                  overflow: TextOverflow.clip,
+                  softWrap: false,
+                  style: Tv.label(10, color: Tv.red)),
+            ),
         ],
       ),
       trailing: Row(

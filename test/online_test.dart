@@ -336,6 +336,33 @@ void main() {
     expect(a.people.single.friend, 'sent');
   });
 
+  test('Historique : la partie en ligne de chacun est reliée à l\'autre',
+      () async {
+    final (ra, rb) = await rooms();
+    // Chaque téléphone n'envoie que son joueur (l'autre n'est pas sur ce
+    // téléphone) : on retire Sophie du téléphone de Foc et inversement
+    final x = X01Game(const X01Settings(startScore: 301), [
+      X01Player(id: foc.key, name: 'Foc'),
+      X01Player(id: sophie.key, name: 'Sophie'),
+    ]);
+    final store = PlayerStore.instance;
+    final sophieAcc = store.byId(sophie.key)!;
+    sophieAcc.expired = true; // pas sur « ce » téléphone
+    await store.recordX01(x, link: '${ra.id}:0');
+    sophieAcc.expired = false;
+    final focAcc = store.byId(foc.key)!;
+    focAcc.expired = true;
+    await store.recordX01(x, link: '${rb.id}:0');
+    focAcc.expired = false;
+    expect(server.games.values.where((g) => g['link'] == '${ra.id}:0'),
+        hasLength(2));
+    final h = await GbServer.history(foc.id);
+    expect(h.first['online'], isTrue);
+    expect([for (final o in h.first['with'] as List) o['pseudo']], ['Sophie']);
+    await ra.leave();
+    await rb.leave();
+  });
+
   test('Bilan entre amis, partie regardée, revanche', () async {
     final (ra, rb) = await rooms();
     await a.loadPeople();

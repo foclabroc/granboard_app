@@ -202,6 +202,16 @@ class GbServer {
   static Future<Map<String, dynamic>> profile(int id) async =>
       _map(await rpc('gb_profile', {'p_id': id}));
 
+  /// Historique des parties d'un joueur, les plus récentes d'abord ;
+  /// [before] = date de la dernière déjà reçue (page suivante).
+  static Future<List<Map<String, dynamic>>> history(int id,
+          {DateTime? before, int limit = 30}) async =>
+      _list(await rpc('gb_history', {
+        'p_id': id,
+        'p_before': before?.toUtc().toIso8601String(),
+        'p_limit': limit,
+      }));
+
   /// Page de stats : {g80, g100 (rangs), s01, scr (30 dernières parties),
   /// practice}. N'importe quel joueur.
   static Future<Map<String, dynamic>> stats(int id) async =>

@@ -486,6 +486,53 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Stats : historique des parties, avec les autres joueurs',
+      (tester) async {
+    await phone(tester);
+    FakeServer().install();
+    final p = await PlayerStore.instance.register('Foc', '1234');
+    final kyky = await GbServer.register('Kyky', '1234', 2);
+    for (var i = 0; i < 35; i++) {
+      await GbServer.submit({
+        'cid': 'h$i',
+        'kind': i.isEven ? 'cricket' : 'x01',
+        'mode': i.isEven ? 'Cricket' : '501',
+        'n': 3,
+        'players': [
+          {'token': p.token, 'won': i % 3 == 0, 'darts': 30, 'points': 100},
+          {'token': kyky['token'], 'won': i % 3 != 0, 'darts': 30, 'points': 90},
+        ],
+      });
+    }
+    await tester.pumpWidget(
+        app(PlayerStatsPage(id: p.key, name: p.name, color: kPlayerColors[1])));
+    await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.scrollUntilVisible(
+        find.text('HISTORIQUE DES PARTIES'), 300,
+        scrollable: find.byType(Scrollable).first);
+    expect(find.textContaining('avec Kyky, 1 invité · gagnée par Kyky'),
+        findsWidgets);
+    expect(find.text('CRICKET'), findsWidgets);
+    // 30 d'abord, puis « voir plus »
+    await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('history-more')), 600,
+        scrollable: find.byType(Scrollable).first);
+    expect(find.textContaining('avec Kyky').evaluate().length, 30);
+    await tester.ensureVisible(find.byKey(const ValueKey('history-more')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('history-more')));
+    for (var i = 0; i < 3; i++) {
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.textContaining('avec Kyky').evaluate().length, 35);
+    expect(find.byKey(const ValueKey('history-more')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Classements s\'affichent', (tester) async {
     await phone(tester);
     // Un joueur du serveur qui n'est pas sur ce téléphone

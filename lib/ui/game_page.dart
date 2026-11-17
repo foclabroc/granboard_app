@@ -518,11 +518,14 @@ class _GamePageState extends State<GamePage> {
   /// Envoi des stats au serveur (une seule fois), en arrière-plan.
   Future<bool> _saveStats() {
     final g = game;
+    // En ligne : « <salle>:<leg> » relie notre partie à celle de l'adversaire
+    final room = _room?.id;
+    final link = room == null ? null : '$room:0';
     return _saving ??= switch (g) {
-      X01Game g => PlayerStore.instance.recordX01(g),
-      CricketGame g => PlayerStore.instance.recordCricket(g),
-      MatchGame m => PlayerStore.instance.recordMatch(m),
-      PracticeGame p => PlayerStore.instance.recordPractice(p),
+      X01Game g => PlayerStore.instance.recordX01(g, link: link),
+      CricketGame g => PlayerStore.instance.recordCricket(g, link: link),
+      MatchGame m => PlayerStore.instance.recordMatch(m, room: room),
+      PracticeGame p => PlayerStore.instance.recordPractice(p, link: link),
       _ => Future.value(true),
     };
   }

@@ -64,6 +64,30 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Freeze avec un nombre impair de joueurs : message, pas d\'écran blanc',
+      (tester) async {
+    await open(tester, 'x01');
+    for (final n in [1, 2, 3, 4]) {
+      if (n > 1) {
+        await tester.ensureVisible(find.byKey(const ValueKey('add-bot')));
+        await tester.tap(find.byKey(const ValueKey('add-bot')));
+        await tester.pump();
+      }
+      if (n == 1) {
+        await tester.ensureVisible(find.text('Freeze (équipes)'));
+        await tester.tap(find.text('Freeze (équipes)'));
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+      expect(tester.takeException(), isNull, reason: '$n joueur(s)');
+      expect(
+          find.textContaining(n == 1
+              ? 'Le Freeze se joue à 2 équipes'
+              : 'Les 2 équipes doivent avoir autant de joueurs'),
+          n.isOdd ? findsWidgets : findsNothing,
+          reason: '$n joueur(s)');
+    }
+  });
+
   testWidgets('Joueurs : « Tout vider » retire tous les joueurs choisis',
       (tester) async {
     await open(tester, 'x01');

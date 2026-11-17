@@ -47,8 +47,35 @@ class _PlayerStatsPageState extends State<PlayerStatsPage> {
     _load();
   }
 
+  // ─── Historique ───
+  List<Map<String, dynamic>> _games = const [];
+  bool _moreGames = false;
+  bool _loadingGames = false;
+  static const _page = 30;
+
+  Future<void> _loadGames({bool more = false}) async {
+    if (_loadingGames) return;
+    setState(() => _loadingGames = true);
+    try {
+      final before = more && _games.isNotEmpty
+          ? DateTime.tryParse('${_games.last['date']}')
+          : null;
+      final r = await GbServer.history(int.parse(widget.id),
+          before: before, limit: _page);
+      if (!mounted) return;
+      setState(() {
+        _games = more ? [..._games, ...r] : r;
+        _moreGames = r.length == _page;
+      });
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _loadingGames = false);
+    }
+  }
+
   Future<void> _load() async {
     setState(() => _error = null);
+    _loadGames();
     try {
       final d = await GbServer.stats(int.parse(widget.id));
       if (mounted) setState(() => _data = d);
@@ -118,6 +145,8 @@ class _PlayerStatsPageState extends State<PlayerStatsPage> {
                 _chart(),
                 const SizedBox(height: 10),
                 _practice(),
+                const SizedBox(height: 10),
+                _history(),
               ],
             ),
     );
@@ -338,9 +367,126 @@ class _PlayerStatsPageState extends State<PlayerStatsPage> {
   }
 }
 
+extension on _PlayerStatsPageState {
+  /// Toutes les parties enregistrées sur le serveur, les plus récentes
+  /// d'abord, avec les autres joueurs (comptes) de la partie.
+  Widget _history() {
+    return _Card(
+      key: const ValueKey('history'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('HISTORIQUE DES PARTIES', style: Tv.label(13, color: Tv.gold)),
+          const SizedBox(height: 4),
+          if (_games.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Text(
+                  _loadingGames ? 'Chargement…' : 'Aucune partie enregistrée',
+                  style: Tv.label(13, color: Tv.text)),
+            ),
+          for (final g in _games) _gameRow(g),
+          if (_moreGames)
+            Center(
+              child: TextButton(
+                key: const ValueKey('history-more'),
+                onPressed: _loadingGames ? null : () => _loadGames(more: true),
+                child: Text(_loadingGames ? 'CHARGEMENT…' : 'VOIR PLUS'),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+                'Les invités et les joueurs virtuels ne sont pas enregistrés.',
+                style: TextStyle(color: Tv.muted, fontSize: 11)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _gameRow(Map<String, dynamic> g) {
+    final won = g['won'] == true;
+    final kind = '${g['kind']}';
+    final others = [
+      for (final o in (g['with'] as List? ?? const [])) (o as Map)
+    ];
+    final n = (g['n'] as num?)?.toInt() ?? 1;
+    // En ligne : l'adversaire vient de la partie de l'autre téléphone
+    final guests = g['online'] == true ? 0 : n - 1 - others.length;
+    final vs = [
+      for (final o in others) '${o['pseudo']}',
+      if (guests > 0) '$guests invité${guests > 1 ? 's' : ''}',
+    ];
+    final winners = [
+      for (final o in others)
+        if (o['won'] == true) '${o['pseudo']}'
+    ];
+    final right = switch (kind) {
+      'practice' => 'SCORE ${practiceScoreText('${g['variant']}', (g['points'] as num?) ?? 0)}',
+      'cricket' => 'MPR ${(g['mpr'] as num?)?.fr(2) ?? '–'}',
+      _ => 'MOY ${(g['avg'] as num?)?.fr(1) ?? '–'}'
+          '${g['checkout'] == null ? '' : ' · FIN ${g['checkout']}'}',
+    };
+    final mode = kind == 'practice'
+        ? kPracticeInfo[PracticeKind.values
+                    .where((k) => k.name == g['variant'])
+                    .firstOrNull]
+                ?.name ??
+            '${g['mode']}'
+        : '${g['mode']}';
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: Tv.line, width: 0.5))),
+      child: Row(
+        children: [
+          Icon(won ? Icons.emoji_events : Icons.remove_circle_outline,
+              size: 20, color: won ? Tv.gold : Tv.muted),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                    '${mode.toUpperCase()}'
+                    '${g['online'] == true ? ' · EN LIGNE' : ''}'
+                    '${won ? ' · GAGNÉ' : ''}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Tv.title(16, color: won ? Tv.gold : Tv.text)),
+                Text(
+                    [
+                      _histDate('${g['date']}'),
+                      if (vs.isNotEmpty) 'avec ${vs.join(', ')}',
+                      if (vs.isEmpty && n <= 1) 'seul',
+                      if (!won && winners.isNotEmpty)
+                        'gagnée par ${winners.join(', ')}',
+                    ].join(' · '),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Tv.muted, fontSize: 12)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(right, style: Tv.label(13, color: Tv.text)),
+        ],
+      ),
+    );
+  }
+
+  static String _histDate(String iso) {
+    final d = DateTime.tryParse(iso)?.toLocal();
+    if (d == null) return '';
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(d.day)}/${two(d.month)}/${d.year} ${two(d.hour)}:${two(d.minute)}';
+  }
+}
+
 class _Card extends StatelessWidget {
   final Widget child;
-  const _Card({required this.child});
+  const _Card({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) => Container(
