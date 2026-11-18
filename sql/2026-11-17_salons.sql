@@ -709,7 +709,7 @@ end $$;
 -- Regarder la partie d'un ami (aussi dans un salon).
 create or replace function public.gb_on_watch(p_token text, p_player bigint)
  returns jsonb
- language plpgsql stable security definer
+ language plpgsql security definer
  set search_path to 'public'
 as $$
 declare v_pid bigint := gb__auth(p_token); r gb_on_rooms;

@@ -69,6 +69,9 @@ class FakeServer {
   final invites = <int, Map<String, dynamic>>{};
   final rooms = <int, Map<String, dynamic>>{};
 
+  /// Parties à la maison en direct (gb_live) par compte hôte.
+  final live = <int, Map<String, dynamic>>{};
+
   // Salons : id → {host, public, game, status, room, members: [{pid,
   // players, joined}], invites: {pid: {from, status}}}
   final lobbies = <int, Map<String, dynamic>>{};
@@ -508,9 +511,13 @@ class FakeServer {
                 if (_friend(me, id) == 'ok') ...{
                   'w': h2h[(me, id)] ?? 0,
                   'l': h2h[(id, me)] ?? 0,
-                  'room': rooms.values.any((r) =>
-                      (r['a'] == id || r['b'] == id) && r['left'] == null),
                 },
+                'room': !_blocked(me, id) &&
+                    (rooms.values.any((r) =>
+                            (r['a'] == id || r['b'] == id) &&
+                            r['left'] == null) ||
+                        live.values.any(
+                            (l) => (l['players'] as List).contains(id))),
               }
         ]..sort((x, y) {
             final c = ord(x).compareTo(ord(y));
@@ -606,10 +613,43 @@ class FakeServer {
         final key = b['p_won'] == true ? (me, other) : (other, me);
         h2h[key] = (h2h[key] ?? 0) + 1;
         return null;
+      case 'gb_live_push':
+        final me = _auth(b['p_token']);
+        final st = b['p_state'];
+        if (st == null) {
+          live.remove(me);
+          return 0;
+        }
+        final seq = ((live[me]?['seq'] as int?) ?? -1) + 1;
+        live[me] = {
+          'players': {
+            me,
+            ...[for (final x in (b['p_players'] as List? ?? const [])) x as int]
+          }.where(accounts.containsKey).toList(),
+          'state': _json(st),
+          'seq': seq,
+        };
+        return seq;
       case 'gb_on_watch':
         final me = _auth(b['p_token']);
         final p = b['p_player'] as int;
-        if (_friend(me, p) != 'ok') throw const ApiError('on_player');
+        if (!accounts.containsKey(p) || _blocked(me, p)) {
+          throw const ApiError('on_player');
+        }
+        final l = live.values
+            .where((l) => (l['players'] as List).contains(p))
+            .lastOrNull;
+        final inRoom = rooms.values.any((r) =>
+            (r['a'] == p || r['b'] == p) && r['left'] == null);
+        if (!inRoom && l != null) {
+          final st = l['state'] as Map;
+          return _json({
+            'live': true,
+            'seq': l['seq'],
+            'game': st['game'],
+            'state': st,
+          });
+        }
         final r = rooms.entries
             .where((r) =>
                 (r.value['a'] == p || r.value['b'] == p) &&

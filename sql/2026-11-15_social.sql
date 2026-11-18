@@ -124,7 +124,7 @@ create trigger gb_on_invite_check before insert on public.gb_on_invites
 --   demandé), et pour un ami : w, l (mon bilan), room (partie en ligne à regarder)}]
 create or replace function public.gb_on_people(p_token text)
  returns jsonb
- language plpgsql stable security definer
+ language plpgsql security definer
  set search_path to 'public'
 as $$
 declare v_pid bigint := gb__auth(p_token);
@@ -203,7 +203,7 @@ end $$;
 -- Mes amis (classements)
 create or replace function public.gb_friend_ids(p_token text)
  returns jsonb
- language plpgsql stable security definer
+ language plpgsql security definer
  set search_path to 'public'
 as $$
 declare v_pid bigint := gb__auth(p_token);
@@ -308,7 +308,7 @@ end $$;
 -- Partie en ligne d'un ami, à regarder : {room, seq, game} ou {error: on_gone}
 create or replace function public.gb_on_watch(p_token text, p_player bigint)
  returns jsonb
- language plpgsql stable security definer
+ language plpgsql security definer
  set search_path to 'public'
 as $$
 declare v_pid bigint := gb__auth(p_token); r gb_on_rooms;

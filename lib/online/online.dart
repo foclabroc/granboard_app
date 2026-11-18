@@ -482,12 +482,22 @@ class OnlineService extends ChangeNotifier with WidgetsBindingObserver {
     return {for (final x in r as List) (x as num).toInt()};
   }
 
-  /// Partie en ligne de l'ami [playerId] : son JSON, ou null si finie.
-  Future<Map<String, dynamic>?> watchGame(int playerId) async {
+  /// Partie du joueur [playerId] (en ligne, sinon à la maison) : son JSON,
+  /// ou null si finie.
+  Future<Map<String, dynamic>?> watchGame(int playerId) async =>
+      (await watch2(playerId))?['game'] as Map<String, dynamic>?;
+
+  /// Comme [watchGame], avec tout l'état : `game`, et pour une partie à la
+  /// maison `live` = true + `state` (couleurs, cibles, vue du Cricket).
+  Future<Map<String, dynamic>?> watch2(int playerId) async {
     try {
-      final r = await GbServer.rpc(
-          'gb_on_watch', {'p_token': me!.token, 'p_player': playerId});
-      return Map<String, dynamic>.from((r as Map)['game'] as Map);
+      final r = Map<String, dynamic>.from(await GbServer.rpc(
+          'gb_on_watch', {'p_token': me!.token, 'p_player': playerId}) as Map);
+      return {
+        ...r,
+        'game': Map<String, dynamic>.from(r['game'] as Map),
+        if (r['state'] is Map) 'state': Map<String, dynamic>.from(r['state'] as Map),
+      };
     } on ApiError catch (e) {
       if (e.code == 'on_gone') return null;
       rethrow;

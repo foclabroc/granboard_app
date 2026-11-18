@@ -16,6 +16,7 @@ import '../game/match.dart';
 import '../game/practice.dart';
 import '../game/x01.dart';
 import '../granboard.dart';
+import '../online/live.dart';
 import '../online/online.dart';
 import '../online/video.dart';
 import '../server.dart';
@@ -144,6 +145,8 @@ class _GamePageState extends State<GamePage> {
     // Partie abandonnée : la musique des menus revient (les résultats la
     // relancent aussi)
     audio.startMusic();
+    // Partie quittée avant la fin (tournoi, appli fermée…) : plus en direct
+    if (_room == null && !game.finished) LiveCast.instance.end();
     final online = OnlineService.instance;
     if (online.inGame > 0) online.inGame--;
     final room = _room;
@@ -511,6 +514,8 @@ class _GamePageState extends State<GamePage> {
     // Gardée après chaque action : reprise si l'appli est fermée
     if (_room == null && !_closed) {
       GameSave.save(game, tournament: widget.tournament);
+      // Regardée en direct par les autres joueurs du serveur
+      LiveCast.instance.push(game);
     }
   }
 
@@ -580,6 +585,7 @@ class _GamePageState extends State<GamePage> {
     // Tournoi à la maison : stats envoyées, retour au tableau
     _close();
     if (widget.onTournamentEnd != null) {
+      LiveCast.instance.end(after: const Duration(seconds: 20));
       _saveStats();
       _endLocalTournament();
       Navigator.pop(context);
@@ -589,6 +595,12 @@ class _GamePageState extends State<GamePage> {
     final g = game;
     _saveStats();
     TvLink.instance.pushGame(game, screen: 'results');
+    if (_room == null) {
+      // État final visible quelques secondes par ceux qui regardent
+      LiveCast.instance
+        ..push(game)
+        ..end(after: const Duration(seconds: 20));
+    }
     Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -636,6 +648,7 @@ class _GamePageState extends State<GamePage> {
       // L'écran TV quitte la partie tout de suite (la page d'en dessous,
       // tableau d'un tournoi par exemple, renvoie ensuite son état)
       TvLink.instance.pushLobby();
+      if (_room == null) LiveCast.instance.end();
     }
     return r ?? false;
   }

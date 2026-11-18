@@ -618,7 +618,7 @@ class _OnlinePageState extends State<OnlinePage> {
     );
   }
 
-  /// Regarde la partie en ligne d'un ami.
+  /// Regarde la partie d'un joueur (en ligne ou à la maison).
   Future<void> _watch(OnlinePlayer p) async {
     await Navigator.push(
         context, MaterialPageRoute(builder: (_) => WatchPage(player: p)));
@@ -1278,8 +1278,10 @@ class _WatchPageState extends State<WatchPage> {
     if (_busy || _over != null) return;
     _busy = true;
     try {
-      final g = await online.watchGame(widget.player.id);
+      final w = await online.watch2(widget.player.id);
       if (!mounted) return;
+      final g = w?['game'] as Map<String, dynamic>?;
+      final live = w?['state'] as Map<String, dynamic>?;
       if (g == null) {
         setState(() => _over = _state == null
             ? '${widget.player.name} n\'est plus en partie.'
@@ -1294,12 +1296,27 @@ class _WatchPageState extends State<WatchPage> {
       if (_state == null) {
         PlayerStore.instance.setGameColors(ids);
         MediaStore.instance.ensure(ids);
+        PlayerStore.instance.ensureRatings(ids);
+      }
+      // Partie à la maison : couleurs choisies par le téléphone qui joue
+      final colors = live?['colors'];
+      if (colors is Map) {
+        PlayerStore.instance.gameColors.addAll({
+          for (final e in colors.entries)
+            '${e.key}': Color((e.value as num).toInt())
+        });
       }
       final old = _state?['game'] as Map?;
       if (old == null ||
           '${old['actions']}' != '${g['actions']}' ||
           '${old['players']}' != '${g['players']}') {
-        setState(() => _state = {'game': g});
+        setState(() => _state = {
+              if (live != null) ...{
+                for (final k in const ['colors', 'boards', 'cricket'])
+                  if (live[k] != null) k: live[k],
+              },
+              'game': g,
+            });
       }
     } on ApiError catch (e) {
       if (mounted && _state == null) setState(() => _over = e.message);

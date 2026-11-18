@@ -54,7 +54,7 @@ end $$;
 -- sinon {v, at, data, walls}
 create or replace function public.gb_settings_get(p_token text, p_known int default -1)
  returns jsonb
- language plpgsql stable security definer
+ language plpgsql security definer
  set search_path to 'public'
 as $$
 declare v_pid bigint := gb__auth(p_token); s gb_settings;

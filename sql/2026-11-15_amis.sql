@@ -25,7 +25,7 @@ revoke all on public.gb_friends from anon, authenticated;
 -- triés : demandes reçues, en ligne libres, en partie, amis hors ligne, les autres
 create or replace function public.gb_on_people(p_token text)
  returns jsonb
- language plpgsql stable security definer
+ language plpgsql security definer
  set search_path to 'public'
 as $$
 declare v_pid bigint := gb__auth(p_token);

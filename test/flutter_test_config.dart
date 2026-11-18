@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:granboard_proto/lan.dart';
+import 'package:granboard_proto/online/live.dart';
 import 'package:granboard_proto/tv/screen_cam.dart';
 import 'package:granboard_proto/ui/award.dart';
 import 'package:granboard_proto/ui/boot_page.dart';
@@ -17,5 +18,6 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   Wallpaper.storage = false;
   Lan.enabled = false;
   ScreenCam.enabled = false;
+  LiveCast.enabled = false; // remis dans online_test
   await testMain();
 }

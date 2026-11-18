@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.25
+
+- **Regarder les parties à la maison en direct** : quand un joueur joue chez lui (seul ou avec d'autres, entraînement, Party, tournoi maison…), les autres joueurs le voient « EN PARTIE » dans l'onglet En ligne avec un bouton **REGARDER** : sa partie s'affiche comme sur l'écran TV (cible, scores, ses couleurs), mise à jour en direct. L'état final reste visible 20 s, puis la partie disparaît.
+  - Il suffit qu'un compte du téléphone joue (les invités et les joueurs virtuels sont montrés avec lui) ; une partie avec seulement des invités n'est pas diffusée.
+  - Tous les joueurs du serveur peuvent regarder (plus seulement les amis), aussi pour les parties en ligne ; un joueur bloqué (dans un sens ou l'autre) ne peut pas.
+- Serveur : l'onglet En ligne montre de nouveau tous les comptes (avant, seulement ceux connectés), la liste d'amis, les réglages du compte et « Regarder » une partie en ligne remarchent (fonctions du serveur en erreur).
+
 ## v0.6.24
 
 - Partager l'appli : bouton « Envoyer par SMS » sous le QR code (ouvre les SMS avec un message et le lien de téléchargement, il ne reste qu'à choisir le contact).

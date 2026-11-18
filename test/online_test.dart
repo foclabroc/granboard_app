@@ -5,6 +5,7 @@ import 'package:granboard_proto/game/cricket.dart';
 import 'package:granboard_proto/game/darts_game.dart';
 import 'package:granboard_proto/game/x01.dart';
 import 'package:granboard_proto/granboard.dart';
+import 'package:granboard_proto/online/live.dart';
 import 'package:granboard_proto/online/online.dart';
 import 'package:granboard_proto/online/relay.dart';
 import 'package:granboard_proto/players.dart';
@@ -380,6 +381,39 @@ void main() {
     expect([for (final o in h.first['with'] as List) o['pseudo']], ['Sophie']);
     await ra.leave();
     await rb.leave();
+  });
+
+  test('Partie à la maison regardée en direct par un non-ami', () async {
+    LiveCast.enabled = true;
+    LiveCast.every = Duration.zero;
+    addTearDown(() => LiveCast.enabled = false);
+    // Sophie joue seule sur ce téléphone, un invité avec elle
+    final g = X01Game(const X01Settings(), [
+      X01Player(id: sophie.key, name: 'Sophie'),
+      const X01Player(id: 'guest-1', name: 'Invité', team: 1),
+    ]);
+    g.throwDart(t20);
+    LiveCast.instance.push(g);
+    await settle();
+    await a.loadPeople();
+    final s = a.people.singleWhere((p) => p.id == sophie.id);
+    expect(s.isFriend, isFalse);
+    expect(s.watchable, isTrue);
+    final w = await a.watch2(sophie.id);
+    expect(w!['live'], isTrue);
+    expect((w['game'] as Map)['players'], hasLength(2));
+    expect((w['state'] as Map)['colors'], contains('guest-1'));
+    // bloqué : plus rien à regarder
+    await b.block(OnlinePlayer(id: foc.id, name: 'Foc'));
+    await a.loadPeople();
+    expect(a.people.singleWhere((p) => p.id == sophie.id).watchable, isFalse);
+    expect(() => a.watch2(sophie.id),
+        throwsA(isA<ApiError>().having((e) => e.code, 'code', 'on_player')));
+    await b.block(OnlinePlayer(id: foc.id, name: 'Foc'), false);
+    // partie finie : retirée
+    LiveCast.instance.end();
+    await settle();
+    expect(await a.watchGame(sophie.id), isNull);
   });
 
   test('Bilan entre amis, partie regardée, revanche', () async {
