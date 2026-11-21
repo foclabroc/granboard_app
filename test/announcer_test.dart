@@ -323,17 +323,16 @@ void main() {
     await tester.pumpWidget(
         MaterialApp(theme: Tv.theme(), home: PlayerDetailPage(player: p)));
     await tester.pump(const Duration(milliseconds: 500));
-    await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('pronunciation')), 100,
-        scrollable: find.byType(Scrollable).first);
-    expect(find.text('PRONONCIATION : CED'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tab-perso')));
+    await tester.pump();
+    expect(find.text('Ced'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('pronunciation')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const ValueKey('pron-field')), 'Sède');
     await tester.tap(find.byKey(const ValueKey('pron-ok')));
     await tester.pumpAndSettle();
     expect(audio.spokenName('ced'), 'Sède');
-    expect(find.text('PRONONCIATION : SÈDE'), findsOneWidget);
+    expect(find.text('Sède'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

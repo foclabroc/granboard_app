@@ -236,7 +236,7 @@ void main() {
     expect(find.text('SOPHIE'), findsOneWidget);
     await tester.tap(find.text('SOPHIE'));
     await tester.pumpAndSettle();
-    expect(find.text('DERNIÈRES PARTIES'), findsOneWidget);
+    expect(find.byKey(const ValueKey('tab-games')), findsOneWidget);
   });
 
   testWidgets('Calibration : avance, refuse un doublon, passe', (tester) async {
@@ -302,8 +302,16 @@ void main() {
     final p = PlayerStore.instance.players.first;
     await tester.pumpWidget(app(PlayerDetailPage(player: p)));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('CIBLE : PAR DÉFAUT'), findsOneWidget);
-    await tester.ensureVisible(find.byKey(const ValueKey('player-board')));
+    // colonne de gauche fixe : 3 onglets, stats d'abord
+    expect(find.byKey(const ValueKey('pane-stats')), findsOneWidget);
+    expect(find.byKey(const ValueKey('open-stats')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tab-games')));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('pane-games')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tab-perso')));
+    await tester.pump();
+    expect(find.text('Par défaut'), findsOneWidget);
+    expect(find.text('RETIRER'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('player-board')));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const ValueKey('pboard-neon')));
@@ -312,7 +320,7 @@ void main() {
     expect(PlayerBoards.instance.of(p.key), BoardSkin.neon);
     await tester.tap(find.byKey(const ValueKey('sheet-close')));
     await tester.pumpAndSettle();
-    expect(find.text('CIBLE : NÉON'), findsOneWidget);
+    expect(find.text('Néon'), findsOneWidget);
 
     await tester.pumpWidget(app(GamePage(
       settings: const X01Settings(startScore: 301),
@@ -333,6 +341,8 @@ void main() {
     final p = PlayerStore.instance.players.first;
     await tester.pumpWidget(app(PlayerDetailPage(player: p)));
     await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const ValueKey('tab-perso')));
+    await tester.pump();
 
     await tester.tap(find.text('COULEUR'));
     await tester.pump();

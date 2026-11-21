@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.26
+
+- Fiche d'un joueur réorganisée en onglets : à gauche, la photo, le rang et 3 onglets fixes (plus besoin de défiler sous la photo) :
+  - **STATS** : stats 01 et Cricket, meilleurs scores d'entraînement, bouton vers le rang détaillé ;
+  - **PERSONNALISER** : couleur, son, cible, prononciation, profil principal et retirer, en grille avec leur valeur actuelle ;
+  - **PARTIES** : dernières parties + bouton vers tout l'historique.
+
 ## v0.6.25
 
 - **Regarder les parties à la maison en direct** : quand un joueur joue chez lui (seul ou avec d'autres, entraînement, Party, tournoi maison…), les autres joueurs le voient « EN PARTIE » dans l'onglet En ligne avec un bouton **REGARDER** : sa partie s'affiche comme sur l'écran TV (cible, scores, ses couleurs), mise à jour en direct. L'état final reste visible 20 s, puis la partie disparaît.
