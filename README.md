@@ -6,6 +6,7 @@
 
 ## Sommaire
 
+- [Installation](#installation)
 - [Démarrer](#démarrer)
 - [Les jeux](#les-jeux)
 - [Préparer une partie](#préparer-une-partie)
@@ -20,6 +21,27 @@
 - [Serveur](#serveur)
 - [Build](#build)
 
+## Installation
+
+### Sur le téléphone ou la tablette
+
+1. Télécharge la dernière version : **[Foclaboard.apk](https://github.com/foclabroc/granboard_app/releases/latest/download/Foclaboard.apk)** (ou la page [Releases](https://github.com/foclabroc/granboard_app/releases/latest)). Un joueur qui a déjà l'appli peut aussi te montrer le **QR code** (Options › Partager l'appli) ou te l'envoyer par **SMS**.
+2. Ouvre le fichier téléchargé. La première fois, Android demande d'autoriser l'installation depuis le navigateur (ou le gestionnaire de fichiers) : accepte, puis **Installer**.
+3. Ensuite, les mises à jour se font depuis l'appli : elle prévient au lancement quand une nouvelle version est sortie.
+
+### Sur une Android TV / Google TV (avec LocalSend)
+
+La TV n'a pas de navigateur pratique : le plus simple est d'envoyer l'APK depuis le téléphone avec **LocalSend** (gratuit, sur le Play Store du téléphone **et** de la TV).
+
+1. **Sur la TV** : Play Store › cherche **LocalSend** › Installer, puis ouvre-le une fois (il affiche le nom de la TV).
+2. **Sur la TV, autorise LocalSend à installer des applis** : Paramètres › Applis (ou Système) › Sécurité et restrictions › **Sources inconnues** › active **LocalSend**. Sur certaines Google TV, ce menu n'apparaît qu'après avoir activé le mode développeur : Paramètres › Système › À propos › appuie 7 fois sur **Build de l'OS Android TV**. Le chemin exact change un peu selon la marque de la TV.
+3. **Sur le téléphone** : installe LocalSend aussi, et télécharge [Foclaboard.apk](https://github.com/foclabroc/granboard_app/releases/latest/download/Foclaboard.apk).
+4. Téléphone et TV sur le **même Wi-Fi**, LocalSend ouvert des deux côtés. Sur le téléphone : **Envoyer** › **Fichier** › choisis `Foclaboard.apk` › touche la TV dans la liste.
+5. **Sur la TV** : accepte la réception, puis ouvre le fichier reçu (dans LocalSend, l'historique ou le dossier Téléchargements) › **Installer**.
+6. Lance **Foclaboard** depuis l'écran d'accueil de la TV : il démarre directement en **mode écran** et affiche un code à 4 caractères. Voir [Écran TV](#écran-tv) pour le relier au téléphone.
+
+Pour une mise à jour de la TV, refais simplement les étapes 3 à 5 avec la nouvelle version : l'appli est remplacée, le code et les réglages sont gardés.
+
 ## Démarrer
 
 1. Ferme l'appli GranBoard officielle : la cible n'accepte qu'une connexion Bluetooth à la fois.
@@ -31,17 +53,106 @@ L'accueil, en 8 tuiles : **01**, **Cricket**, **Party**, **Tournois**, **Medley*
 
 ## Les jeux
 
-| | |
-|---|---|
-| **01** : 301, 501, 701, 901. Début et fin Open / Double / Master, bull 25/50 ou 50/50, limite de manches, **Freeze** en 2 équipes. Fins possibles affichées (combinaison conseillée + 2 autres). | ![01](docs/screenshots/x01.jpg) |
-| **Cricket** : Standard, Cut Throat, Caché, Cut Throat caché, Wildcard, No Score, Triple Only, Mickey Mouse, en individuel ou en **équipes**, jusqu'à 10 joueurs. Vue classique façon GranBoard ou vue en lignes (un joueur par ligne). | ![Cricket](docs/screenshots/cricket.jpg) |
-| **Medley** : 3 à 13 legs, le jeu de chaque leg au choix (301, 501, 701, 901 ou Cricket). Le premier à la majorité gagne. | ![Medley](docs/screenshots/medley.jpg) |
-| **Entraînement** (18 jeux) : Count Up, Target 20, Target Bull, Choix de cible, Target Hat, Target Horse, Half It, Delta Shoot, Rotation, Shoot Force, Oniren, CR Count Up, CR Multiple, Bob's 27, Finition 121, Spider, Pirates, Contre la montre (chronométré). | ![Entraînement](docs/screenshots/entrainement.jpg) |
-| **Party** (20 jeux) : Fun Mission, All Fives, Beyond Top, Kick Down, Two Line, Shanghai, Hyper Bull, Cache-cache, Killer, Treasure Hunt, Morpion, Baseball, Golf, Scram, Football, Patate chaude, Le Chat et la Souris, Paint, Bowling, Grand Prix. | ![Party](docs/screenshots/party.jpg) |
+Chaque jeu se règle dans son tableau de configuration (voir plus bas). Le bouton **RÈGLES** affiche les règles complètes selon les réglages choisis. Les règles relevées et les choix faits sont aussi dans `docs/regles_granboard.md`.
 
-- **Joueur virtuel** : un bot qui vise vraiment (fins conseillées, numéros du Cricket…) et se cale sur le niveau des joueurs humains de la partie.
-- **Invités** : jouent sans compte et sans stats.
-- **Règles détaillées** de chaque jeu, selon les réglages choisis : bouton **RÈGLES** de la configuration et icône **?** en partie. Les règles relevées et les choix faits sont aussi dans `docs/regles_granboard.md`.
+### 01 (X01)
+
+![01](docs/screenshots/x01.jpg)
+
+Partir de 301, 501, 701 ou 901 et descendre **exactement à 0**.
+
+- **Début** : Open (tout compte), Double (il faut un double pour commencer) ou Master (double, triple ou bull).
+- **Fin** : Open, Double ou Master. Dépasser, tomber à 1 en Double/Master ou finir sur une mauvaise fléchette = **bust** : retour au score du début de la manche.
+- **Bull** : 25/50 ou 50/50 (le 25 vaut alors 50 et compte comme un double).
+- **Manches** : sans limite ou limitées ; à la limite, le plus petit reste gagne.
+- **Freeze (équipes)** : 2 équipes de même taille qui jouent en alternance. Une équipe dont le total restant dépasse celui de l'adversaire est **gelée** : elle ne peut pas finir. Le joueur qui finit fait gagner son équipe.
+- **Fins conseillées** : la combinaison conseillée et 2 autres s'affichent dès qu'une fin est possible, avec la zone à viser sur la cible.
+
+### Cricket
+
+![Cricket](docs/screenshots/cricket.jpg)
+
+Fermer les numéros (3 marques : simple = 1, double = 2, triple = 3) puis marquer des points dessus. 2 à 10 joueurs, en individuel ou en **équipes**, avec une limite de manches (20 par défaut).
+
+| Variante | Règle |
+|---|---|
+| **Cricket** | 20 à 15 et bull. Un numéro fermé rapporte des points tant qu'un adversaire ne l'a pas fermé. Tout fermer avec le meilleur score pour gagner. |
+| **Cut Throat** | Les points vont aux adversaires qui n'ont pas fermé le numéro : le plus petit score gagne. |
+| **Cricket caché** | 7 cibles tirées au hasard (1 à 20 et bull), cachées : touche un numéro pour le découvrir. |
+| **Cut Throat caché** | Cibles cachées + points donnés aux adversaires. |
+| **Wildcard** | 6 numéros tirés entre 7 et 20 (+ bull) ; tant que personne ne les a marqués, ils changent à chaque manche. |
+| **No Score** | Pas de points : le premier qui ferme tout gagne. |
+| **Triple Only** | 20 à 15 sans bull, seuls les triples comptent (un triple ferme). |
+| **Mickey Mouse** | 20 à 12, puis Doubles, Triples et bull. Un double ou un triple inutile marque sur « D » ou « T ». |
+
+Deux vues au choix (bouton VUE) : **classique** façon GranBoard (numéros au centre, joueurs de chaque côté) ou **en lignes** (un joueur par ligne, idéale à beaucoup).
+
+### Medley
+
+![Medley](docs/screenshots/medley.jpg)
+
+Un match en plusieurs **legs** : 3, 5, 7, 9, 11 ou 13 legs, le premier à la majorité gagne. Le jeu de chaque leg se choisit : 301, 501, 701, 901 ou Cricket. Le joueur qui commence tourne à chaque leg. Les règles du 01 (début, fin, bull) valent pour tous les legs de 01.
+
+### Entraînement (18 jeux)
+
+![Entraînement](docs/screenshots/entrainement.jpg)
+
+À jouer seul ou à plusieurs. Le meilleur score de chaque jeu est gardé et classé.
+
+| Jeu | Règle |
+|---|---|
+| **Count Up** | Chaque fléchette rapporte sa valeur : le plus gros total gagne. 33 manches = défi des 99 fléchettes. |
+| **Target 20** | Vise le 20 : simple = 1 touche, double = 2, triple = 3. Le premier à l'objectif gagne. |
+| **Target Bull** | Vise le bull : 25 = 1 touche, 50 = 2. |
+| **Choix de cible** | Choisis ta cible (et changes-en avant ta 1re fléchette) ; simple = 1, double = 2, triple = 3. |
+| **Target Hat** | Hat trick : tes 3 fléchettes de la manche dans la cible choisie. |
+| **Target Horse** | White Horse : 3 triples sur 3 numéros différents du Cricket dans la même manche. |
+| **Half It** | Départ à 40. 9 manches (15, 16, doubles, 17, 18, triples, 19, 20, bull) ; aucune touche = score divisé par 2. |
+| **Delta Shoot** | Comme Half It sur 16 manches, jusqu'au double bull. |
+| **Rotation** | Le 1, puis le 2… jusqu'au 20, puis 3 bulls. Option doubles ou triples seulement. |
+| **Shoot Force** | 1 à 20 puis bull : chaque touche vaut sa valeur × ta série. 3 triples = +3 000, bull 10 000, double bull 100 000. |
+| **Oniren** | Une cible au hasard par manche : 2 simples + 1 double ou triple dessus. Manche ratée = une vie en moins (3 vies). |
+| **CR Count Up** | 20, 19… 15, bull, puis au choix : points = valeur × marques. |
+| **CR Multiple** | 20 à 15 puis bull, fléchettes ×1, ×2, ×3, manches bonus ; rien touché = pénalité. |
+| **Bob's 27** | Départ à 27, D1 à D20 puis double bull : + le double à chaque touche, - sa valeur si aucune. Options Hard et doubles pairs. |
+| **Finition 121** | Finis 121 en Double Out en 9 fléchettes : réussi = +1, raté = -1. Le premier à 125 gagne. |
+| **Spider** | Abats des araignées en ramenant leur nombre à 0 pile, avec bonus. 15 manches. |
+| **Pirates** | Bull seulement : un navire coule tous les 200 points, puis chance au trésor. 15 manches. |
+| **Contre la montre** | Finis ton 01 le plus vite possible : le chrono tourne pendant tes tours, le meilleur temps gagne. |
+
+### Party (20 jeux)
+
+![Party](docs/screenshots/party.jpg)
+
+Des jeux de soirée, la plupart à plusieurs.
+
+| Jeu | Règle |
+|---|---|
+| **Fun Mission** | Une mission par manche (un triple, 60 points, le bull…). À 2 : mission réussie = une vie prise à l'adversaire. Seul : atteins 8. |
+| **All Fives** | Si le total de tes 3 fléchettes est un multiple de 5, tu marques total ÷ 5. Atteins l'objectif pile. |
+| **Beyond Top** | Fais plus que le joueur d'avant, sinon une vie en moins (6 vies). |
+| **Kick Down** | Course de 0 à 301 (ou 501) pile. Tomber sur le score d'un adversaire le renvoie à 0 ! Dépasser fait perdre des points. |
+| **Two Line** | Bingo 5 × 5 : prends des numéros, reprends ceux des autres, fais 2 lignes. |
+| **Shanghai** | Manche 1 = le 1, manche 2 = le 2… Simple + double + triple dans la manche = SHANGHAI, victoire immédiate. |
+| **Hyper Bull** | Tout l'intérieur de l'anneau des triples vaut 50, le bull 75, le centre 100. 8 manches. |
+| **Cache-cache** | 12 fenêtres cachent 6 animaux gentils et 1 méchant : ouvre-les en touchant leur numéro. |
+| **Killer** | Chacun son numéro : deviens KILLER sur le tien, puis retire des vies aux autres. Le dernier en vie gagne. |
+| **Treasure Hunt** | Chaque numéro cache un trésor ou un piège (crânes, grenade, voleurs). Manches à trésors doublés ou inversés. |
+| **Morpion** | Grille de numéros : 4 marques pour prendre une case, aligne tes cases. |
+| **Baseball** | 9 manches : manche 1 = le 1… Simple = 1 point, double = 2, triple = 3. |
+| **Golf** | Trou 1 = le 1… Ta meilleure fléchette compte : triple = 1 coup, double = 2, simple = 3, rien = 5. Le plus petit total gagne. |
+| **Scram** | Une équipe ferme les numéros pendant que l'autre marque sur ceux encore ouverts, puis on échange. |
+| **Football** | Touche le bull pour avoir le ballon, puis chaque double = un but. Le premier à 5 buts gagne. |
+| **Patate chaude** | Une bombe sur un numéro, avec une mèche : touche son numéro pour la passer. Si elle explose chez toi, une vie en moins. |
+| **Le Chat et la Souris** | À 2 : la souris fait le tour de la cible avec quelques cases d'avance, le chat doit la rattraper. |
+| **Paint** | Chaque fléchette peint sa zone à ta couleur (et la vole aux autres) ; touche une zone à toi pour la protéger. |
+| **Bowling** | 10 frames, 2 fléchettes pour faire tomber 10 quilles (T20 = strike), strikes et spares comme au bowling. 300 au maximum. |
+| **Grand Prix** | Course de voitures : ton numéro fait avancer ta voiture, le bull donne un turbo, le numéro d'un adversaire lui fait faire un tête-à-queue. |
+
+### Joueurs virtuels et invités
+
+- **Joueur virtuel** : un bot qui vise vraiment (fins conseillées en 01, numéros à fermer au Cricket, cibles des entraînements) avec une précision calée sur le niveau des joueurs humains de la partie. Il joue tout seul quand c'est son tour.
+- **Invité** : joue sans compte et sans stats.
 
 ## Préparer une partie
 
