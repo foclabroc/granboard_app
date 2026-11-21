@@ -432,83 +432,92 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
     );
   }
 
-  /// Un réglage : icône, titre, valeur actuelle, ›.
+  /// Un réglage : icône, titre, valeur actuelle, › — en bande de couleur.
   Widget _setting({
     Key? key,
     required Widget icon,
     required String title,
+    required Color tint,
     Widget? value,
     VoidCallback? onTap,
-    bool danger = false,
-  }) {
-    final c = danger ? Tv.red : Tv.text;
-    return Material(
-      color: Tv.panel,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-            color: danger ? Tv.red.withValues(alpha: 0.45) : Tv.line,
-            width: 1.5),
-      ),
-      child: InkWell(
-        key: key,
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                flex: 3,
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  IconTheme(
-                      data: IconThemeData(color: c, size: 20), child: icon),
-                  const SizedBox(width: 10),
+  }) =>
+      Material(
+        color: Colors.transparent,
+        child: Ink(
+          decoration: Band.deco(tint, r: 12),
+          child: InkWell(
+            key: key,
+            borderRadius: BorderRadius.circular(12),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                   Flexible(
-                    child: Text(title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Tv.title(15, color: c)),
+                    flex: 3,
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      IconTheme(
+                          data: const IconThemeData(
+                              color: Colors.white, size: 20),
+                          child: icon),
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Band.text(Tv.title(15))),
+                      ),
+                    ]),
                   ),
-                ]),
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                flex: 2,
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const SizedBox(width: 8),
                   Flexible(
-                    child: DefaultTextStyle(
-                      style: Tv.label(14, color: Tv.muted),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      child: value ?? const SizedBox(),
-                    ),
+                    flex: 2,
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Flexible(
+                        child: DefaultTextStyle(
+                          style: Band.text(Tv.label(14))
+                              .copyWith(color: Colors.white),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          child: value ?? const SizedBox(),
+                        ),
+                      ),
+                      if (onTap != null)
+                        const Icon(Icons.chevron_right,
+                            color: Colors.white70, size: 20),
+                    ]),
                   ),
-                  if (onTap != null)
-                    Icon(Icons.chevron_right, color: Tv.muted, size: 20),
-                ]),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
-    );
-  }
+      );
 
   Widget _perso() {
     final owner = store.isOwner(p);
+    // dégradé de haut en bas (dans l'ordre de lecture), RETIRER en rouge
+    final n = 4 + (p.expired ? 1 : 0) + (p.expired ? 0 : 1);
+    var k = 0;
+    Color next() => Band.at(k++, n);
+    final tReco = p.expired ? next() : null;
+    final tColor = next();
+    final tSound = p.expired ? null : next();
+    final tBoard = next(), tPron = next(), tOwner = next();
     final items = <Widget>[
       if (p.expired)
         _setting(
           icon: const Icon(Icons.login),
           title: 'RECONNECTER',
+          tint: tReco!,
           value: const Text('session expirée'),
           onTap: () => showAccountPage(context, pseudo: p.name),
         ),
       _setting(
         icon: ColorDot(p.color),
         title: 'COULEUR',
+        tint: tColor,
         onTap: () => showColorSheet(context, p),
       ),
       if (!p.expired)
@@ -519,6 +528,7 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
             return _setting(
               icon: const Icon(Icons.music_note),
               title: 'SON',
+              tint: tSound!,
               value: Text(s.isEmpty
                   ? 'Aucun'
                   : s == kVoiceSound
@@ -534,6 +544,7 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
           key: const ValueKey('player-board'),
           icon: const Icon(Icons.adjust),
           title: 'CIBLE',
+          tint: tBoard,
           value: Text(PlayerBoards.instance.of(p.key)?.name ?? 'Par défaut'),
           onTap: () => showPlayerBoardSheet(context, p),
         ),
@@ -544,24 +555,23 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
           key: const ValueKey('pronunciation'),
           icon: const Icon(Icons.record_voice_over),
           title: 'PRONONCIATION',
+          tint: tPron,
           value: Text(AudioService.instance.spokenName(p.name)),
           onTap: _editPronunciation,
         ),
       ),
       _setting(
-        icon: Icon(owner ? Icons.star : Icons.star_outline,
-            color: owner ? Tv.gold : null),
+        icon: Icon(owner ? Icons.star : Icons.star_outline),
         title: 'PROFIL PRINCIPAL',
-        value: owner
-            ? Text('Oui', style: Tv.label(14, color: Tv.gold))
-            : const Text('Non'),
+        tint: tOwner,
+        value: Text(owner ? 'Oui' : 'Non'),
         onTap: owner ? null : () => store.setOwner(p),
       ),
       _setting(
         icon: const Icon(Icons.logout),
         title: 'RETIRER',
+        tint: Band.danger,
         value: const Text('du téléphone'),
-        danger: true,
         onTap: _forget,
       ),
     ];

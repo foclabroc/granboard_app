@@ -207,7 +207,7 @@ class _OptionsPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(children: [
+                child: Column(children: _ramp([
                   const _Group('AFFICHAGE'),
                   _Item(
                     id: 'theme',
@@ -241,11 +241,11 @@ class _OptionsPanel extends StatelessWidget {
                         : 'Pas relié',
                     onTap: () => showTvSheet(context),
                   ),
-                ]),
+                ])),
               ),
               const SizedBox(width: 4),
               Expanded(
-                child: Column(children: [
+                child: Column(children: _ramp([
                   const _Group('CIBLE'),
                   _Item(
                     id: 'board',
@@ -307,7 +307,7 @@ class _OptionsPanel extends StatelessWidget {
                     value: 'v$kAppVersion',
                     onTap: () => checkForUpdate(context),
                   ),
-                ]),
+                ])),
               ),
             ],
           ),
@@ -337,32 +337,72 @@ class _Item extends StatelessWidget {
   final String title;
   final String? value;
   final VoidCallback onTap;
+
+  /// Couleur de la bande (posée par `_ramp`).
+  final Color tint;
   const _Item(
       {required this.id,
       required this.icon,
       required this.title,
       required this.onTap,
-      this.value});
+      this.value,
+      this.tint = Band.ice});
+
+  _Item tinted(Color c) => _Item(
+      id: id, icon: icon, title: title, onTap: onTap, value: value, tint: c);
 
   @override
-  Widget build(BuildContext context) => ListTile(
-        key: ValueKey('opt-$id'),
-        dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 6),
-        horizontalTitleGap: 6,
-        minLeadingWidth: 20,
-        leading: Icon(icon, size: 20, color: Tv.goldLight),
-        title: Text(title,
-            maxLines: 2, overflow: TextOverflow.ellipsis, style: Tv.title(15)),
-        subtitle: value == null
-            ? null
-            : Text(value!.toUpperCase(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Tv.label(11)),
-        trailing: Icon(Icons.chevron_right, size: 18, color: Tv.muted),
-        onTap: onTap,
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: 5),
+        child: Material(
+          color: Colors.transparent,
+          child: Ink(
+            decoration: Band.deco(tint),
+            child: InkWell(
+              key: ValueKey('opt-$id'),
+              borderRadius: BorderRadius.circular(9),
+              onTap: onTap,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                child: Row(
+                  children: [
+                    Icon(icon, size: 20, color: Colors.white),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Band.text(Tv.title(15))),
+                          if (value != null)
+                            Text(value!.toUpperCase(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Band.text(Tv.label(11))
+                                    .copyWith(color: Colors.white70)),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right,
+                        size: 18, color: Colors.white70),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       );
+}
+
+/// Donne aux `_Item` d'une colonne les couleurs du dégradé, de haut en bas.
+List<Widget> _ramp(List<Widget> ws) {
+  final n = ws.whereType<_Item>().length;
+  var i = 0;
+  return [for (final w in ws) w is _Item ? w.tinted(Band.at(i++, n)) : w];
 }
 
 /// Vérifie s'il y a une nouvelle version (message si rien à faire).

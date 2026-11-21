@@ -147,6 +147,9 @@ class SetupItem extends StatelessWidget {
   final VoidCallback? onTap;
   final Widget? trailing;
   final bool simple;
+
+  /// Couleur de la bande (`Band`) ; null = ligne classique.
+  final Color? tint;
   const SetupItem(
       {super.key,
       required this.label,
@@ -155,10 +158,62 @@ class SetupItem extends StatelessWidget {
       this.selected = false,
       this.onTap,
       this.trailing,
-      this.simple = false});
+      this.simple = false,
+      this.tint});
+
+  Widget _band(Color t) => Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Material(
+          color: Colors.transparent,
+          child: Ink(
+            decoration: Band.deco(t, selected: selected, r: 8),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: onTap,
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 38),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                child: Row(
+                  children: [
+                    if (icon != null) ...[
+                      Icon(icon, size: 18, color: Colors.white),
+                      const SizedBox(width: 8),
+                    ],
+                    Expanded(
+                      child: Text(label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Band.text(Tv.title(16))),
+                    ),
+                    if (value != null)
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 120),
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Text(value!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.right,
+                              style: Band.text(Tv.title(15)).copyWith(
+                                  color: selected
+                                      ? Colors.white
+                                      : Colors.white70)),
+                        ),
+                      ),
+                    if (trailing != null) trailing!,
+                    if (selected && value == null && trailing == null)
+                      const Icon(Icons.check, size: 17, color: Colors.white),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
+    if (tint != null && !simple) return _band(tint!);
     final c = selected ? Tv.gold : Tv.text;
     return Padding(
       padding: const EdgeInsets.only(top: 4),
@@ -274,21 +329,29 @@ class SetupSwitch extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
   final IconData? icon;
+
+  /// Couleur de la bande (`Band`) ; null = ligne classique.
+  final Color? tint;
   const SetupSwitch(
       {super.key,
       required this.label,
       required this.value,
       required this.onChanged,
-      this.icon});
+      this.icon,
+      this.tint});
 
   @override
   Widget build(BuildContext context) => SetupItem(
         label: label,
         icon: icon,
         selected: value,
+        tint: tint,
         onTap: () => onChanged(!value),
         trailing: Text(value ? 'OUI' : 'NON',
-            style: Tv.title(15, color: value ? Tv.gold : Tv.muted)),
+            style: tint != null
+                ? Band.text(Tv.title(15))
+                    .copyWith(color: value ? Colors.white : Colors.white70)
+                : Tv.title(15, color: value ? Tv.gold : Tv.muted)),
       );
 }
 

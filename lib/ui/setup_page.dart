@@ -806,29 +806,35 @@ class _SetupPageState extends State<SetupPage> {
   /// Colonne 1 : le jeu (mode, variante, jeu d'entraînement, legs).
   List<Widget> _gameItems() {
     if (_practiceOn) {
-      return [
+      final ks = [
         for (final k in PracticeKind.values)
-          if (kPracticeInfo[k]!.party == _partyOn)
-            SetupItem(
-              key: ValueKey('game-${k.name}'),
-              label: kPracticeInfo[k]!.name,
-              icon: practiceIcon(k),
-              selected: _curKind == k,
-              onTap: () => setState(() {
-                _curKind = k;
-                _pRounds = null;
-                _pGoal = null;
-              }),
-            ),
+          if (kPracticeInfo[k]!.party == _partyOn) k
+      ];
+      return [
+        for (final (i, k) in ks.indexed)
+          SetupItem(
+            key: ValueKey('game-${k.name}'),
+            label: kPracticeInfo[k]!.name,
+            icon: practiceIcon(k),
+            tint: Band.at(i, ks.length),
+            selected: _curKind == k,
+            onTap: () => setState(() {
+              _curKind = k;
+              _pRounds = null;
+              _pGoal = null;
+            }),
+          ),
       ];
     }
     if (_cricketOn) {
+      const vs = CricketVariant.values;
       return [
-        for (final v in CricketVariant.values)
+        for (final (i, v) in vs.indexed)
           SetupItem(
             key: ValueKey('game-${v.name}'),
             label: v.label,
             icon: cricketIcon(v),
+            tint: Band.at(i, vs.length),
             selected: _variant == v,
             onTap: () => setState(() => _variant = v),
           ),
@@ -836,22 +842,24 @@ class _SetupPageState extends State<SetupPage> {
     }
     if (_matchOn) {
       return [
-        for (final n in kMatchLegs)
+        for (final (i, n) in kMatchLegs.indexed)
           SetupItem(
             label: '$n legs',
             icon: Icons.emoji_events_outlined,
             value: '${n ~/ 2 + 1} pour gagner',
+            tint: Band.at(i, kMatchLegs.length),
             selected: _mLegs == n,
             onTap: () => setState(() => _mLegs = n),
           ),
       ];
     }
     return [
-      for (final s in kStartScores)
+      for (final (i, s) in kStartScores.indexed)
         SetupItem(
           key: ValueKey('game-$s'),
           label: '$s',
           icon: x01Icon(s),
+          tint: Band.at(i, kStartScores.length),
           selected: _start == s,
           onTap: () => setState(() => _start = s),
         ),
@@ -859,6 +867,7 @@ class _SetupPageState extends State<SetupPage> {
         SetupSwitch(
           label: 'Freeze (équipes)',
           icon: Icons.ac_unit,
+          tint: Band.ice,
           value: _freeze,
           onChanged: (v) => setState(() => _freeze = v),
         ),

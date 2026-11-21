@@ -1683,3 +1683,63 @@ class _SkinPainter extends CustomPainter {
   @override
   bool shouldRepaint(_SkinPainter old) => old.skin != skin;
 }
+
+/// Tuiles « bande de couleur » (v0.6.26, choix B de foclabroc) : la couleur
+/// part de la gauche et se fond dans le panneau ; tuile choisie remplie.
+/// Les couleurs suivent un dégradé du haut vers le bas de la liste.
+class Band {
+  Band._();
+
+  /// Or → orange → rouge → cramoisi → violet → bleu.
+  static const ramp = [
+    Color(0xFFFFC533),
+    Color(0xFFFF8A1F),
+    Color(0xFFF0442D),
+    Color(0xFFB3123E),
+    Color(0xFF7B2CBF),
+    Color(0xFF3D6BE0),
+  ];
+
+  /// Bleu glace (Freeze, réglages « froids »).
+  static const ice = Color(0xFF47B6FF);
+
+  /// Rouge des actions qui retirent / effacent.
+  static const danger = Color(0xFFE53935);
+
+  /// Couleur de la tuile [i] sur [n] : une étape de la rampe par tuile pour
+  /// les listes courtes (01 : or, orange, rouge, cramoisi), toute la rampe
+  /// étalée pour les longues.
+  static Color at(int i, int n) {
+    final segs = ramp.length - 1;
+    final step = n <= 1 ? 0.0 : (segs / (n - 1)).clamp(0.0, 1.0);
+    final x = (i * step).clamp(0.0, segs.toDouble());
+    final k = x.floor().clamp(0, segs - 1);
+    return Color.lerp(ramp[k], ramp[k + 1], x - k)!;
+  }
+
+  static BoxDecoration deco(Color c, {bool selected = false, double r = 9}) =>
+      BoxDecoration(
+        borderRadius: BorderRadius.circular(r),
+        gradient: selected
+            ? LinearGradient(colors: [c, Color.lerp(c, Colors.black, 0.45)!])
+            : LinearGradient(
+                colors: [
+                  c.withValues(alpha: 0.85),
+                  c.withValues(alpha: 0.25),
+                  Colors.white.withValues(alpha: 0.03),
+                ],
+                stops: const [0, 0.45, 1],
+              ),
+        border: Border.all(
+            color: selected ? Colors.white : c.withValues(alpha: 0.4),
+            width: 1.5),
+        boxShadow: selected
+            ? [BoxShadow(color: c.withValues(alpha: 0.6), blurRadius: 14)]
+            : null,
+      );
+
+  /// Texte blanc lisible sur la couleur.
+  static TextStyle text(TextStyle s) => s.copyWith(
+      color: Colors.white,
+      shadows: const [Shadow(color: Color(0x99000000), blurRadius: 3)]);
+}
