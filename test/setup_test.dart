@@ -45,6 +45,44 @@ void main() {
     }
   }
 
+  testWidgets('Ajouter des joueurs : joueurs choisis en pastilles (10 sur 2 lignes)',
+      (tester) async {
+    await open(tester, 'cricket');
+    await tester.ensureVisible(find.byKey(const ValueKey('players-add')));
+    await tester.tap(find.byKey(const ValueKey('players-add')));
+    await tester.pumpAndSettle();
+    expect(find.text('DANS LA PARTIE · ORDRE DE JEU'), findsOneWidget);
+    // Foc (profil principal coché d'office) + 5 invités + 4 joueurs virtuels
+    for (var i = 0; i < 5; i++) {
+      await tester.tap(find.byKey(const ValueKey('add-guest')));
+      await tester.pump();
+    }
+    for (var i = 0; i < 4; i++) {
+      await tester.tap(find.byKey(const ValueKey('add-bot')));
+      await tester.pump();
+    }
+    expect(find.text('10/10'), findsOneWidget);
+    final pills = find.byWidgetPredicate((w) =>
+        w.key is ValueKey<String> &&
+        (w.key as ValueKey<String>).value.startsWith('in-') &&
+        !(w.key as ValueKey<String>).value.startsWith('in-rm-'));
+    expect(pills, findsNWidgets(10));
+    final rows = {
+      for (final e in pills.evaluate())
+        tester.getTopLeft(find.byWidget(e.widget)).dy.round()
+    };
+    expect(rows.length, lessThanOrEqualTo(2));
+    expect(find.text('Virtuel 1'), findsOneWidget);
+    // la croix retire le joueur
+    final first = (pills.evaluate().last.widget.key as ValueKey<String>)
+        .value
+        .substring(3);
+    await tester.tap(find.byKey(ValueKey('in-rm-$first')));
+    await tester.pump();
+    expect(find.text('9/10'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Favoris : ajout, application, à part pour chaque tuile',
       (tester) async {
     await open(tester, 'x01');

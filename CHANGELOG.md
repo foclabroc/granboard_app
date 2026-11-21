@@ -6,6 +6,7 @@
   - **STATS** : stats 01 et Cricket, meilleurs scores d'entraînement, bouton vers le rang détaillé ;
   - **PERSONNALISER** : couleur, son, cible, prononciation, profil principal et retirer, en grille avec leur valeur actuelle ;
   - **PARTIES** : dernières parties + bouton vers tout l'historique.
+- Fenêtre « Ajouter des joueurs » : les joueurs déjà dans la partie sont affichés en haut (« DANS LA PARTIE · ORDRE DE JEU »), en pastilles compactes à leur couleur : numéro d'ordre, photo (petit symbole pour un invité), nom, croix pour le retirer ; 10 joueurs tiennent sur 2 lignes. Le bouton TERMINÉ passe en haut à droite, toujours visible.
 - Tuiles en **bandes de couleur** : la couleur part de la gauche et se fond dans le panneau, la tuile choisie est remplie et entourée de blanc ; les couleurs suivent un dégradé du haut vers le bas de la liste (or → orange → rouge → cramoisi → violet → bleu). Partout où on choisit le jeu (01, Cricket, Medley, Entraînement, Party, tournois, défis en ligne ; Freeze en bleu glace), dans les Options et dans PERSONNALISER de la fiche joueur (RETIRER en rouge).
 
 ## v0.6.25

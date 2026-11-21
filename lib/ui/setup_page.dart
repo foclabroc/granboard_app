@@ -496,9 +496,40 @@ class _SetupPageState extends State<SetupPage> {
                   ),
                   Text('${_selected.length}/$_maxPlayers',
                       style: Tv.title(18, color: full ? Tv.red : Tv.text)),
+                  const SizedBox(width: 12),
+                  // en haut : toujours visible, même avec 10 joueurs
+                  SizedBox(
+                    height: 36,
+                    child: FilledButton(
+                      key: const ValueKey('add-done'),
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text('TERMINÉ',
+                          style: Tv.title(18, color: Colors.black)),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
+              Text('DANS LA PARTIE · ORDRE DE JEU',
+                  style: Tv.label(12, color: Tv.gold)),
+              const SizedBox(height: 6),
+              if (_selected.isEmpty)
+                Text('Personne pour l\'instant.', style: Tv.label(12))
+              else
+                Builder(builder: (_) {
+                  final cs = store.distinctColors(_selected);
+                  return Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final (i, id) in _selected.indexed)
+                        _inPill(i, id, cs[i],
+                            onRemove: () => act(
+                                () => setState(() => _selected.remove(id)))),
+                    ],
+                  );
+                }),
+              const SizedBox(height: 10),
               Text('MES JOUEURS', style: Tv.label(12, color: Tv.gold)),
               const SizedBox(height: 6),
               if (available.isEmpty)
@@ -520,7 +551,7 @@ class _SetupPageState extends State<SetupPage> {
                       ),
                   ],
                 ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               Text('AUTRES', style: Tv.label(12, color: Tv.gold)),
               const SizedBox(height: 6),
               Wrap(
@@ -552,20 +583,79 @@ class _SetupPageState extends State<SetupPage> {
               ),
               const SetupNote('Invités et joueurs virtuels jouent sans stats. '
                   'Le joueur virtuel prend le niveau de ses adversaires.'),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 46,
-                child: FilledButton(
-                  key: const ValueKey('add-done'),
-                  onPressed: () => Navigator.pop(ctx),
-                  child:
-                      Text('TERMINÉ', style: Tv.title(20, color: Colors.black)),
-                ),
-              ),
             ],
           ),
         );
       }),
+    );
+  }
+
+  /// Pastille compacte d'un joueur choisi (fenêtre « Ajouter des
+  /// joueurs ») : ordre, photo (+ petit symbole invité), nom court, croix.
+  /// ≤ 140 px : 10 joueurs tiennent sur 2 lignes (téléphone en paysage).
+  Widget _inPill(int i, String id, Color c, {required VoidCallback onRemove}) {
+    final p = store.byId(id);
+    final name = isBotId(id)
+        ? _nameOf(id).replaceFirst('Joueur virtuel', 'Virtuel')
+        : _nameOf(id);
+    return Container(
+      key: ValueKey('in-$id'),
+      height: 30,
+      padding: const EdgeInsets.only(left: 6, right: 2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        gradient: LinearGradient(
+            colors: [c, Color.lerp(c, Tv.panel2, 0.7)!]),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('${i + 1}',
+              style: Band.text(Tv.label(11))
+                  .copyWith(color: Colors.white70)),
+          const SizedBox(width: 3),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              PlayerAvatar(
+                  id: p?.key ?? id,
+                  name: name,
+                  color: p?.color ?? kGuestColor,
+                  size: 22),
+              if (isGuestId(id) && !isBotId(id))
+                Positioned(
+                  right: -3,
+                  bottom: -3,
+                  child: Container(
+                    padding: const EdgeInsets.all(1),
+                    decoration: const BoxDecoration(
+                        color: Colors.black, shape: BoxShape.circle),
+                    child: const Icon(Icons.person_outline,
+                        size: 9, color: Colors.white),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 5),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 60),
+            child: Text(name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Band.text(Tv.title(15))),
+          ),
+          InkWell(
+            key: ValueKey('in-rm-$id'),
+            customBorder: const CircleBorder(),
+            onTap: onRemove,
+            child: const Padding(
+              padding: EdgeInsets.all(3),
+              child: Icon(Icons.close, size: 15, color: Colors.white70),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
