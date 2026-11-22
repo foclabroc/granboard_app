@@ -482,6 +482,8 @@ class _LobbyPageState extends State<LobbyPage> {
       },
       child: Scaffold(
         body: SafeArea(
+          left: false,
+          right: false,
           child: Column(
             children: [
               SetupBand(
@@ -492,30 +494,33 @@ class _LobbyPageState extends State<LobbyPage> {
                 ].join(' · '),
               ),
               Expanded(
-                child: TvBackground(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: TableauPanel(
-                            title:
-                                'Maisons (${lobby.members.length}/$kLobbyHomes)',
-                            child: _homes(),
+                child: SidePad(
+                  child: TvBackground(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: TableauPanel(
+                              title:
+                                  'Maisons (${lobby.members.length}/$kLobbyHomes)',
+                              child: _homes(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          flex: 2,
-                          child: TableauPanel(title: 'Partie', child: _game()),
-                        ),
-                      ],
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 2,
+                            child:
+                                TableauPanel(title: 'Partie', child: _game()),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
+              )
             ],
           ),
         ),

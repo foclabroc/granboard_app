@@ -604,16 +604,14 @@ class _SetupPageState extends State<SetupPage> {
       padding: const EdgeInsets.only(left: 6, right: 2),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
-        gradient: LinearGradient(
-            colors: [c, Color.lerp(c, Tv.panel2, 0.7)!]),
+        gradient: LinearGradient(colors: [c, Color.lerp(c, Tv.panel2, 0.7)!]),
         border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('${i + 1}',
-              style: Band.text(Tv.label(11))
-                  .copyWith(color: Colors.white70)),
+              style: Band.text(Tv.label(11)).copyWith(color: Colors.white70)),
           const SizedBox(width: 3),
           Stack(
             clipBehavior: Clip.none,
@@ -732,8 +730,15 @@ class _SetupPageState extends State<SetupPage> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      GameThemeScope(skin: GameSkins.of(_kind, _kind == 'practice' ? _pKind : _kind == 'party' ? _fKind : null), child: _themedBuild(context));
+  Widget build(BuildContext context) => GameThemeScope(
+      skin: GameSkins.of(
+          _kind,
+          _kind == 'practice'
+              ? _pKind
+              : _kind == 'party'
+                  ? _fKind
+                  : null),
+      child: _themedBuild(context));
 
   Widget _themedBuild(BuildContext context) {
     final problem = _problem;
@@ -1082,8 +1087,12 @@ class _SetupPageState extends State<SetupPage> {
   Widget _broadcast(String? problem, List<PlayerProfile> available, bool full,
       VisualDensity? chipDensity) {
     final first = _order.isEmpty ? null : _order.first.name;
+    final side = Edge.side(context);
     return Scaffold(
+      // Bandeaux jusqu'aux bords, contenu dans la zone sûre (SidePad)
       body: SafeArea(
+        left: false,
+        right: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1108,7 +1117,8 @@ class _SetupPageState extends State<SetupPage> {
               actions: [RulesButton(title: _gameName, text: _rulesText)],
             ),
             if (_online)
-              SizedBox(
+              SidePad(
+                  child: SizedBox(
                 height: 36,
                 child: Row(
                   children: [
@@ -1133,9 +1143,10 @@ class _SetupPageState extends State<SetupPage> {
                     ),
                   ],
                 ),
-              )
+              ))
             else
-              Row(
+              SidePad(
+                  child: Row(
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(left: 14),
@@ -1147,8 +1158,9 @@ class _SetupPageState extends State<SetupPage> {
                   ),
                   Expanded(child: _favBar()),
                 ],
-              ),
+              )),
             Expanded(
+                child: SidePad(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 2, 10, 8),
                 child: Row(
@@ -1284,7 +1296,7 @@ class _SetupPageState extends State<SetupPage> {
                   ],
                 ),
               ),
-            ),
+            )),
             // ─── Bandeau du bas : résumé, favori, lancer ───
             Container(
               height: 56,
@@ -1292,7 +1304,7 @@ class _SetupPageState extends State<SetupPage> {
                 color: Colors.black.withValues(alpha: 0.85),
                 border: Border(top: BorderSide(color: Tv.gold, width: 2)),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: EdgeInsets.symmetric(horizontal: 12 + side),
               child: Row(
                 children: [
                   Expanded(

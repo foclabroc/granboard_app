@@ -1,7 +1,7 @@
 name: granboard_proto
 description: Appli de flechettes pour cible GranBoard
 publish_to: 'none'
-version: 0.6.26+36
+version: 0.6.27+37
 
 environment:
   sdk: '>=3.3.0 <4.0.0'

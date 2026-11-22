@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.27
+
+- Téléphones à encoche (caméra dans l'écran) : l'affichage est maintenant le même en paysage gauche et en paysage droite. Avant, tout l'écran était décalé du côté opposé à la caméra et changeait de côté quand on retournait le téléphone ; maintenant la même marge est laissée des deux côtés et chaque écran est centré.
+- Configuration d'une partie, Options, Tournois et Salon : le bandeau du haut et la barre du bas vont jusqu'aux bords de l'écran, derrière la caméra ; seuls les textes et boutons restent dans la zone sûre.
+
 ## v0.6.26
 
 - Fiche d'un joueur réorganisée en onglets : à gauche, la photo, le rang et 3 onglets fixes (plus besoin de défiler sous la photo) :

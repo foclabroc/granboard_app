@@ -129,6 +129,8 @@ class _TournamentsPageState extends State<TournamentsPage> {
     final me = _me;
     return Scaffold(
       body: SafeArea(
+        left: false,
+        right: false,
         child: Column(
           children: [
             SetupBand(
@@ -145,6 +147,7 @@ class _TournamentsPageState extends State<TournamentsPage> {
               ],
             ),
             Expanded(
+                child: SidePad(
               child: ListenableBuilder(
                 listenable: _local,
                 builder: (context, _) => Column(
@@ -177,7 +180,7 @@ class _TournamentsPageState extends State<TournamentsPage> {
                   ],
                 ),
               ),
-            ),
+            )),
           ],
         ),
       ),
@@ -245,30 +248,30 @@ class _TournamentsPageState extends State<TournamentsPage> {
   }
 
   Widget _empty(String message) => Padding(
-    padding: const EdgeInsets.all(28),
-    child: Center(
-      child: Text(
-        message,
-        textAlign: TextAlign.center,
-        style: Tv.title(18, color: Tv.text),
-      ),
-    ),
-  );
+        padding: const EdgeInsets.all(28),
+        child: Center(
+          child: Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Tv.title(18, color: Tv.text),
+          ),
+        ),
+      );
 
   Widget _cards(List<Widget> cards) => LayoutBuilder(
-    builder: (context, c) {
-      final cols = c.maxWidth > 700 ? 2 : 1;
-      const gap = 10.0;
-      final width = (c.maxWidth - gap * (cols - 1)) / cols;
-      return Wrap(
-        spacing: gap,
-        runSpacing: gap,
-        children: [
-          for (final card in cards) SizedBox(width: width, child: card),
-        ],
+        builder: (context, c) {
+          final cols = c.maxWidth > 700 ? 2 : 1;
+          const gap = 10.0;
+          final width = (c.maxWidth - gap * (cols - 1)) / cols;
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (final card in cards) SizedBox(width: width, child: card),
+            ],
+          );
+        },
       );
-    },
-  );
 
   Widget _onlineList(PlayerProfile? me) {
     return me == null
@@ -283,39 +286,40 @@ class _TournamentsPageState extends State<TournamentsPage> {
             ),
           )
         : _list == null
-        ? Center(
-            child: _error == null
-                ? const CircularProgressIndicator()
-                : Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_error!, style: Tv.title(16, color: Tv.red)),
-                      const SizedBox(height: 8),
-                      OutlinedButton(
-                        onPressed: _load,
-                        child: const Text('RÉESSAYER'),
+            ? Center(
+                child: _error == null
+                    ? const CircularProgressIndicator()
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_error!, style: Tv.title(16, color: Tv.red)),
+                          const SizedBox(height: 8),
+                          OutlinedButton(
+                            onPressed: _load,
+                            child: const Text('RÉESSAYER'),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-          )
-        : RefreshIndicator(
-            onRefresh: _load,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
-              children: [
-                if (_error != null)
-                  Text(_error!, style: Tv.title(16, color: Tv.red)),
-                if (_list!.isEmpty)
-                  _empty('Aucun tournoi pour l\'instant :\ncrée le premier !')
-                else
-                  _cards([
-                    for (final t in _list!)
-                      _TournamentCard.online(t, onTap: () => _open(t.id)),
-                  ]),
-              ],
-            ),
-          );
+              )
+            : RefreshIndicator(
+                onRefresh: _load,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+                  children: [
+                    if (_error != null)
+                      Text(_error!, style: Tv.title(16, color: Tv.red)),
+                    if (_list!.isEmpty)
+                      _empty(
+                          'Aucun tournoi pour l\'instant :\ncrée le premier !')
+                    else
+                      _cards([
+                        for (final t in _list!)
+                          _TournamentCard.online(t, onTap: () => _open(t.id)),
+                      ]),
+                  ],
+                ),
+              );
   }
 }
 
@@ -331,26 +335,27 @@ class _NextLocalMatch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Material(
-      color: Tv.panel2,
-      borderRadius: BorderRadius.circular(12),
-      child: ListTile(
-        key: const ValueKey('tn-next-match'),
-        onTap: onTap,
-        leading: Icon(Icons.sports_martial_arts, color: Tv.gold),
-        title: Text('TON PROCHAIN MATCH', style: Tv.title(15, color: Tv.gold)),
-        subtitle: Text(
-          '${tournament.name} · ${tournament.roundName(match.round)} · '
-          '${tournament.player(match.a)!.name} contre ${tournament.player(match.b)!.name}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Tv.title(16, color: Tv.text),
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Material(
+          color: Tv.panel2,
+          borderRadius: BorderRadius.circular(12),
+          child: ListTile(
+            key: const ValueKey('tn-next-match'),
+            onTap: onTap,
+            leading: Icon(Icons.sports_martial_arts, color: Tv.gold),
+            title:
+                Text('TON PROCHAIN MATCH', style: Tv.title(15, color: Tv.gold)),
+            subtitle: Text(
+              '${tournament.name} · ${tournament.roundName(match.round)} · '
+              '${tournament.player(match.a)!.name} contre ${tournament.player(match.b)!.name}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Tv.title(16, color: Tv.text),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+          ),
         ),
-        trailing: const Icon(Icons.chevron_right),
-      ),
-    ),
-  );
+      );
 }
 
 class _TournamentCard extends StatelessWidget {
@@ -358,18 +363,18 @@ class _TournamentCard extends StatelessWidget {
   final LocalTournament? local;
   final VoidCallback onTap;
   const _TournamentCard.online(TnSummary t, {required this.onTap})
-    : online = t,
-      local = null;
+      : online = t,
+        local = null;
   const _TournamentCard.local(LocalTournament t, {required this.onTap})
-    : local = t,
-      online = null;
+      : local = t,
+        online = null;
 
   @override
   Widget build(BuildContext context) {
     final t = online;
     final lt = local;
-    final (status, color) = switch (t?.status ??
-        (lt!.winner == null ? 'running' : 'done')) {
+    final (status, color) =
+        switch (t?.status ?? (lt!.winner == null ? 'running' : 'done')) {
       'open' => ('INSCRIPTIONS ${t!.count}/${t.size}', Tv.green),
       'running' => ('EN COURS', Tv.gold),
       _ => ('TERMINÉ', Tv.muted),

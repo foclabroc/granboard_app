@@ -20,6 +20,8 @@ class SetupBand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Le dégradé va jusqu'au bord gauche, derrière une éventuelle encoche
+    final side = Edge.side(context);
     return SizedBox(
       height: 42,
       child: Row(
@@ -31,7 +33,7 @@ class SetupBand extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(colors: [Tv.gold, Tv.goldDark]),
                 ),
-                padding: const EdgeInsets.only(right: 40),
+                padding: EdgeInsets.only(left: side, right: 40),
                 child: Row(
                   children: [
                     IconButton(
@@ -60,7 +62,7 @@ class SetupBand extends StatelessWidget {
             ),
           ),
           ...actions,
-          const SizedBox(width: 6),
+          SizedBox(width: 6 + side),
         ],
       ),
     );

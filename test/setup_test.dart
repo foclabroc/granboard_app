@@ -265,4 +265,37 @@ void main() {
     expect(find.textContaining(RegExp('301-701-CR', caseSensitive: false)), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('Encoche à gauche ou à droite : même écran, bandeaux jusqu\'aux bords',
+      (tester) async {
+    Future<(Rect, Rect)> place(FakeViewPadding pad) async {
+      tester.view.physicalSize = const Size(2340, 1080);
+      tester.view.devicePixelRatio = 2.75;
+      tester.view.padding = pad;
+      tester.view.viewPadding = pad;
+      await tester.pumpWidget(MaterialApp(
+          key: UniqueKey(),
+          theme: Tv.theme(),
+          builder: Tv.appBuilder,
+          home: const SetupPage(kind: 'x01')));
+      for (var i = 0; i < 4; i++) {
+        await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 50)));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      return (
+        tester.getRect(find.byKey(const ValueKey('players-add'))),
+        tester.getRect(find.byType(SetupBand)),
+      );
+    }
+
+    addTearDown(tester.view.reset);
+    final (addL, bandL) = await place(const FakeViewPadding(left: 110));
+    final (addR, bandR) = await place(const FakeViewPadding(right: 110));
+    expect(addL, addR);
+    expect(bandL.left, 0);
+    expect(bandL.width, 2340 / 2.75);
+    expect(bandR, bandL);
+    expect(tester.takeException(), isNull);
+  });
 }

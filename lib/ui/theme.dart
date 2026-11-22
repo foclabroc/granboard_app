@@ -312,8 +312,19 @@ class Tv {
   }
 
   /// À passer à `MaterialApp.builder` : fond animé derrière toutes les pages.
-  static Widget appBuilder(BuildContext context, Widget? child) =>
-      SkinBackground(child: child ?? const SizedBox.shrink());
+  /// Marges des côtés rendues égales : l'encoche (caméra) ne prend de la
+  /// place que d'un côté, qui change quand on retourne le téléphone ; avec
+  /// la même marge à gauche et à droite, chaque écran est centré et
+  /// identique dans les 2 sens.
+  static Widget appBuilder(BuildContext context, Widget? child) {
+    final mq = MediaQuery.of(context);
+    return MediaQuery(
+      data: mq.copyWith(
+          padding: Edge.symmetric(mq.padding),
+          viewPadding: Edge.symmetric(mq.viewPadding)),
+      child: SkinBackground(child: child ?? const SizedBox.shrink()),
+    );
+  }
 
   static Color get bg => _s.bg;
   static Color get panel => _s.panel;
@@ -1742,4 +1753,37 @@ class Band {
   static TextStyle text(TextStyle s) => s.copyWith(
       color: Colors.white,
       shadows: const [Shadow(color: Color(0x99000000), blurRadius: 3)]);
+}
+
+
+/// Encoche : les bandeaux colorés vont jusqu'aux bords de l'écran (derrière
+/// la caméra), seuls leurs textes et boutons restent dans la zone sûre.
+/// Écran type : `SafeArea(left: false, right: false)`, puis le bandeau (qui
+/// lit [Edge.side]) et le contenu dans [SidePad].
+class Edge {
+  /// Même marge des deux côtés (la plus grande).
+  static EdgeInsets symmetric(EdgeInsets e) {
+    final side = math.max(e.left, e.right);
+    return e.copyWith(left: side, right: side);
+  }
+
+  /// Marge d'un côté de l'écran (0 sans encoche).
+  static double side(BuildContext context) =>
+      MediaQuery.paddingOf(context).left;
+}
+
+/// Contenu décalé de la marge de l'encoche, des deux côtés.
+class SidePad extends StatelessWidget {
+  final Widget child;
+  const SidePad({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final side = Edge.side(context);
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: side),
+      child: MediaQuery.removePadding(
+          context: context, removeLeft: true, removeRight: true, child: child),
+    );
+  }
 }

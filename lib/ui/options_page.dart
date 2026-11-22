@@ -32,10 +32,13 @@ class OptionsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(
       body: SafeArea(
+        left: false,
+        right: false,
         child: Column(
           children: [
             SetupBand(title: 'Options', sub: 'Configuration'),
             Expanded(
+                child: SidePad(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(14, 10, 14, 12),
                 child: Row(
@@ -47,7 +50,7 @@ class OptionsPage extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
+            )),
           ],
         ),
       ),
@@ -59,10 +62,7 @@ class _Panel extends StatelessWidget {
   final String title;
   final Widget child;
   final Widget? action;
-  const _Panel(
-      {required this.title,
-      required this.child,
-      this.action});
+  const _Panel({required this.title, required this.child, this.action});
 
   @override
   Widget build(BuildContext context) => TableauPanel(
@@ -169,7 +169,9 @@ class _PlayerCard extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(horizontal: 8),
           leading: PlayerAvatar.of(p, size: 34),
           title: Text(p.name.toUpperCase(),
-              maxLines: 1, overflow: TextOverflow.ellipsis, style: Tv.title(16)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Tv.title(16)),
           subtitle: owner
               ? Text('PROFIL PRINCIPAL', style: Tv.label(10, color: Tv.gold))
               : null,
@@ -207,7 +209,8 @@ class _OptionsPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(children: _ramp([
+                child: Column(
+                    children: _ramp([
                   const _Group('AFFICHAGE'),
                   _Item(
                     id: 'theme',
@@ -234,7 +237,8 @@ class _OptionsPanel extends StatelessWidget {
                   const _Group('ÉCRANS'),
                   _Item(
                     id: 'tv',
-                    icon: TvLink.instance.linked ? Icons.connected_tv : Icons.tv,
+                    icon:
+                        TvLink.instance.linked ? Icons.connected_tv : Icons.tv,
                     title: 'Écran TV / tablette',
                     value: TvLink.instance.linked
                         ? TvLink.instance.screens.map((s) => s.label).join(', ')
@@ -245,7 +249,8 @@ class _OptionsPanel extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Expanded(
-                child: Column(children: _ramp([
+                child: Column(
+                    children: _ramp([
                   const _Group('CIBLE'),
                   _Item(
                     id: 'board',
@@ -254,10 +259,8 @@ class _OptionsPanel extends StatelessWidget {
                     value: board.isConnected
                         ? (board.deviceName ?? 'GranBoard')
                         : 'Pas de cible',
-                    onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const ConnectPage())),
+                    onTap: () => Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => const ConnectPage())),
                   ),
                   if (board.isConnected)
                     _Item(
@@ -363,8 +366,7 @@ class _Item extends StatelessWidget {
               borderRadius: BorderRadius.circular(9),
               onTap: onTap,
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                 child: Row(
                   children: [
                     Icon(icon, size: 20, color: Colors.white),
@@ -604,7 +606,9 @@ class _SettingsSyncSheetState extends State<_SettingsSyncSheet> {
     } on ApiError catch (e) {
       if (mounted) {
         setState(() {
-          _msg = e.offline ? 'Serveur injoignable : réessaie plus tard' : e.message;
+          _msg = e.offline
+              ? 'Serveur injoignable : réessaie plus tard'
+              : e.message;
           _error = true;
         });
       }
