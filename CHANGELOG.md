@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.6.28
+## v0.6.27
 
 - **11 nouveaux jeux Party**, chacun avec son écran animé à la place de la cible (la cible reste en petit à côté, avec le joueur en cours) :
   - **Tir à la corde** (2 joueurs ou 2 camps) : corde tressée qui vibre, nœud lumineux qui glisse vers le camp qui tire.
@@ -16,9 +16,6 @@
   - **Zombies** (coopératif) : cimetière la nuit, zombies qui titubent vers la base avec leur cible (T17, D8…), giclées et morsures.
 - Règles détaillées de chaque jeu (bouton ?), joueur virtuel, TV et écran allégé pris en charge.
 - **Cibles VDarts** (H2, H2L, H3, H3L, H4, H4L, MINI) reconnues et décodées, avec leur ouverture propre à chaque modèle (protocole relevé dans l'appli DartMate) ; jamais essayé sur une vraie VDarts. Page Diagnostic : étapes de l'ouverture et octets reçus.
-
-## v0.6.27
-
 - Téléphones à encoche (caméra dans l'écran) : l'affichage est maintenant le même en paysage gauche et en paysage droite. Avant, tout l'écran était décalé du côté opposé à la caméra et changeait de côté quand on retournait le téléphone ; maintenant la même marge est laissée des deux côtés et chaque écran est centré.
 - Configuration d'une partie, Options, Tournois et Salon : le bandeau du haut et la barre du bas vont jusqu'aux bords de l'écran, derrière la caméra ; seuls les textes et boutons restent dans la zone sûre.
 

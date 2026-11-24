@@ -57,7 +57,7 @@ enum PracticeKind {
   paint,
   bowling,
   grandPrix,
-  // Arcade (v0.6.28)
+  // Arcade (v0.6.27)
   tugOfWar,
   vault,
   fightClub,

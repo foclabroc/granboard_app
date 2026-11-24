@@ -1,4 +1,4 @@
-// Jeux Party « arcade » (v0.6.28, d'après Arcade Darts) : Tir à la corde,
+// Jeux Party « arcade » (v0.6.27, d'après Arcade Darts) : Tir à la corde,
 // Coffre-fort, Fight Club, Puissance 4, Serpents et échelles, Boules,
 // Conquérant, Test Match, Snooker, 8 Ball Pool, Zombies.
 //

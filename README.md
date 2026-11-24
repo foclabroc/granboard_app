@@ -149,7 +149,7 @@ Des jeux de soirée, la plupart à plusieurs.
 | **Bowling** | 10 frames, 2 fléchettes pour faire tomber 10 quilles (T20 = strike), strikes et spares comme au bowling. 300 au maximum. |
 | **Grand Prix** | Course de voitures : ton numéro fait avancer ta voiture, le bull donne un turbo, le numéro d'un adversaire lui fait faire un tête-à-queue. |
 
-Les 11 jeux « arcade » (v0.6.28) ont chacun leur propre écran animé à la place de la cible (la cible reste en petit à côté) :
+Les 11 jeux « arcade » (v0.6.27) ont chacun leur propre écran animé à la place de la cible (la cible reste en petit à côté) :
 
 | Jeu | Règle |
 |---|---|

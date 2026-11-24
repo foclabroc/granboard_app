@@ -1,4 +1,4 @@
-// Outils communs aux écrans des jeux « arcade » (Party v0.6.28) : lecture
+// Outils communs aux écrans des jeux « arcade » (Party v0.6.27) : lecture
 // du dernier évènement de la partie, textes qui s'envolent, billes
 // brillantes, bandeau des scores.
 
