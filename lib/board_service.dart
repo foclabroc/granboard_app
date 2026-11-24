@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'board_lights.dart';
 import 'granboard.dart';
+import 'vdarts.dart';
 
 enum BoardStatus { disconnected, connecting, connected }
 
@@ -55,6 +56,14 @@ class BoardService extends ChangeNotifier {
   String? lastName;
 
   bool get isConnected => status == BoardStatus.connected;
+
+  /// Cible VDarts connectée (décodage et ouverture à part, pas de lumières).
+  bool get isVdarts => _vd != null;
+  VdartsDecoder? _vd;
+  VdartsLink? _link;
+
+  /// Étapes de l'ouverture d'une VDarts (diagnostic).
+  final vdartsLog = <String>[];
 
   /// Table calibrée de la cible connectée (null = table standard Dash).
   Map<String, DartHit?>? customTable;
@@ -133,8 +142,11 @@ class BoardService extends ChangeNotifier {
       }));
 
       final services = await d.discoverServices();
+      if (Vdarts.isVdarts(deviceName)) {
+        await _connectVdarts(services);
+      }
       BluetoothCharacteristic? writer;
-      for (final s in services) {
+      for (final s in _vd != null ? const <BluetoothService>[] : services) {
         for (final c in s.characteristics) {
           // Écriture des lumières : celle du service GranBoard, sinon la
           // première d'un service non standard
@@ -156,7 +168,7 @@ class BoardService extends ChangeNotifier {
 
       await _loadTable(d.remoteId.str);
       final w = writer;
-      if (w != null) {
+      if (w != null && _vd == null) {
         BoardLights.instance.writer = (bytes) => w.write(bytes,
             withoutResponse:
                 w.properties.writeWithoutResponse && !w.properties.write);
@@ -195,7 +207,104 @@ class BoardService extends ChangeNotifier {
     return 'Connexion à la cible impossible';
   }
 
+  /// VDarts : abonnement aux notifications du profil reconnu (sinon à
+  /// toutes), puis ouverture propre au modèle, sans l'attendre.
+  Future<void> _connectVdarts(List<BluetoothService> services) async {
+    BluetoothCharacteristic? notify;
+    BluetoothCharacteristic? write;
+    for (final p in Vdarts.profiles) {
+      for (final s in services) {
+        if (s.uuid.str128.toLowerCase() != p.service) continue;
+        for (final c in s.characteristics) {
+          final id = c.uuid.str128.toLowerCase();
+          if (id == p.notify &&
+              (c.properties.notify || c.properties.indicate)) {
+            notify = c;
+          }
+          if (id == p.write &&
+              (c.properties.write || c.properties.writeWithoutResponse)) {
+            write = c;
+          }
+        }
+        if (notify != null && write != null) break;
+        notify = null;
+        write = null;
+      }
+      if (notify != null) break;
+    }
+    _useVdarts(deviceName, write: write == null ? null : _vdartsWriter(write));
+    final listen = notify == null
+        ? [
+            for (final s in services)
+              for (final c in s.characteristics)
+                if (c.properties.notify || c.properties.indicate) c
+          ]
+        : [notify];
+    for (final c in listen) {
+      _subs.add(c.onValueReceived.listen(_onData));
+      await c.setNotifyValue(true);
+    }
+    _vdLog(notify == null
+        ? 'profil VDarts inconnu : écoute de toutes les notifications'
+        : 'profil ${notify.uuid.str128}');
+    unawaited(_link?.start());
+  }
+
+  /// Écriture d'une commande VDarts : sans réponse si la cible le permet,
+  /// sauf pendant la négociation H2 (avec réponse si possible).
+  Future<void> Function(List<int>, {bool h2}) _vdartsWriter(
+          BluetoothCharacteristic c) =>
+      (bytes, {bool h2 = false}) {
+        final noResp =
+            c.properties.writeWithoutResponse && !(h2 && c.properties.write);
+        return c.write(bytes, withoutResponse: noResp);
+      };
+
+  void _useVdarts(String? name,
+      {Future<void> Function(List<int>, {bool h2})? write}) {
+    vdartsLog.clear();
+    final vd = _vd = VdartsDecoder();
+    _link = VdartsLink(
+      family: Vdarts.family(name),
+      h3l: Vdarts.isH3l(name),
+      write: write ?? (_, {bool h2 = false}) async {},
+      gameplay: (bytes) {
+        final events = vd.accept(bytes);
+        if (events.isEmpty) {
+          _frames.add(RawFrame(
+              DateTime.now(), bytes, const UnknownEvent('(trame de service)')));
+        }
+        for (final e in events) {
+          _frames.add(RawFrame(DateTime.now(), bytes, e));
+          _events.add(e);
+          if (e is HitEvent || e is ButtonEvent) _link?.onGameFrame();
+        }
+      },
+      log: _vdLog,
+    );
+    _vdLog('${Vdarts.model(name)} (famille ${Vdarts.family(name).name})');
+  }
+
+  void _vdLog(String m) {
+    vdartsLog.add(m);
+    if (vdartsLog.length > 40) vdartsLog.removeAt(0);
+    debugPrint('[VDarts] $m');
+  }
+
+  /// Tests : décodage VDarts sans Bluetooth ([write] = paquets envoyés).
+  @visibleForTesting
+  void debugUseVdarts(String? name,
+          {Future<void> Function(List<int>, {bool h2})? write}) =>
+      _useVdarts(name, write: write);
+
+  /// Tests : la cible a été « abonnée » (lance l'ouverture).
+  @visibleForTesting
+  Future<void>? debugStartVdarts() => _link?.start();
+
   Future<void> disconnect() async {
+    _link?.close();
+    _link = null;
+    _vd = null;
     BoardLights.instance.writer = null;
     for (final s in _subs) {
       await s.cancel();
@@ -217,6 +326,11 @@ class BoardService extends ChangeNotifier {
 
   void _onData(List<int> bytes) {
     if (bytes.isEmpty) return;
+    final link = _link;
+    if (link != null) {
+      link.onNotification(bytes);
+      return;
+    }
     final e = GranBoardDecoder.decode(bytes, custom: customTable);
     _frames.add(RawFrame(DateTime.now(), bytes, e));
     _events.add(e);

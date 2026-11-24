@@ -57,9 +57,12 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
               child: Column(
                 children: [
                   Text(
-                      BoardService.instance.hasCustomTable
-                          ? 'Table : calibrée pour cette cible'
-                          : 'Table : standard (GranBoard Dash)',
+                      BoardService.instance.isVdarts
+                          ? 'VDarts : ${BoardService.instance.vdartsLog.join(' › ')}'
+                          : BoardService.instance.hasCustomTable
+                              ? 'Table : calibrée pour cette cible'
+                              : 'Table : standard (GranBoard Dash)',
+                      textAlign: TextAlign.center,
                       style: const TextStyle(fontSize: 12)),
                   Text(last?.event.label ?? '—',
                       style: const TextStyle(
@@ -83,7 +86,10 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
                 return Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                  child: Text('$t  "${f.ascii}"  →  ${f.event.label}',
+                  child: Text(
+                      BoardService.instance.isVdarts
+                          ? '$t  ${f.hex}  →  ${f.event.label}'
+                          : '$t  "${f.ascii}"  →  ${f.event.label}',
                       style: const TextStyle(
                           fontFamily: 'monospace', fontSize: 12)),
                 );

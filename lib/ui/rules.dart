@@ -235,10 +235,8 @@ String matchRules(MatchSettings s) => [
 String _matchFull(MatchSettings s) => [
       matchRules(s),
       '# LEGS DE 01',
-      x01Rules(s.x01For(
-              [for (var i = 0; i < s.legs; i++) i].firstWhere(
-                  (i) => s.kindOf(i) == LegKind.x01,
-                  orElse: () => 0)))
+      x01Rules(s.x01For([for (var i = 0; i < s.legs; i++) i]
+              .firstWhere((i) => s.kindOf(i) == LegKind.x01, orElse: () => 0)))
           .replaceAll('# ', '## '),
       '# LEGS DE CRICKET',
       cricketRules(s.cricket).replaceAll('# ', '## '),
@@ -786,6 +784,193 @@ String practiceRules(PracticeSettings s) {
         '- Spare : 10 + les quilles de la boule suivante.',
         '- Strike : 10 + les quilles des 2 boules suivantes.',
         '- 12 strikes de suite = 300.',
+      ],
+    PracticeKind.tugOfWar => [
+        '# BUT',
+        'Amener la corde jusqu\'à ton but, ${s.goalOrDefault} points au-delà '
+            'du milieu.',
+        '# LES CAMPS',
+        '- Joueur 1 tire à gauche, joueur 2 à droite. À plus de 2 : les '
+            'joueurs 1, 3, 5… forment l\'équipe de gauche, 2, 4, 6… celle de '
+            'droite.',
+        '# TIRER',
+        '- Chaque fléchette tire la corde vers ton camp de sa valeur '
+            '(T20 = 60). $bull',
+        '# FIN',
+        '- Le premier camp qui amène la corde à son but gagne tout de suite.',
+        '- Après 30 manches, le camp qui a la corde de son côté gagne.',
+      ],
+    PracticeKind.vault => [
+        '# BUT',
+        'Piller le plus d\'argent en ${plural(s.roundsOrDefault, 'coffre')}.',
+        '# LE CODE',
+        '- Chaque manche, un nouveau code de 10 à 50, le même pour tous.',
+        '- Tes fléchettes le font descendre de leur valeur (simple, double '
+            '× 2, triple × 3). $bull',
+        '# OUVRIR',
+        '- Arrive à 0 PILE en 3 fléchettes : COFFRE PILLÉ, tu gagnes le '
+            'code en dollars.',
+        '- En dessous de 0, ou pas à 0 après 3 fléchettes : ALARME, rien '
+            'pour ce coffre.',
+        '- La cible montre les fins possibles en une fléchette.',
+      ],
+    PracticeKind.fightClub => [
+        '# BUT',
+        'Être le dernier combattant debout.',
+        '# TES NUMÉROS',
+        '- Chaque combattant reçoit 3 numéros tirés au sort, tous différents.',
+        '- Chacun commence avec ${s.goalOrDefault} points de vie (PV).',
+        '# FRAPPER',
+        '- Numéro d\'un adversaire : il perd 10 PV × le multiplicateur '
+            '(triple = UPPERCUT, -30).',
+        '- Bull : onde de choc, -5 (25) ou -10 (bull) pour tous les '
+            'adversaires.',
+        '# SE SOIGNER',
+        '- Un de tes numéros : +5 PV × le multiplicateur, sans dépasser le '
+            'départ.',
+        '# FIN',
+        '- À 0 PV : K.O., éliminé. Le dernier debout gagne.',
+        '- Après 30 manches, le plus de PV gagne.',
+      ],
+    PracticeKind.connect4 => [
+        '# BUT',
+        'Aligner 4 pions : en ligne, en colonne ou en diagonale.',
+        '# CHOISIR LA COLONNE',
+        '- Le numéro touché choisit la colonne (le multiplicateur ne compte '
+            'pas) :',
+        '- Colonne 1 : 1, 8, 15 · Colonne 2 : 2, 9, 16 · Colonne 3 : 3, 10, 17',
+        '- Colonne 4 : 4, 11, 18 · Colonne 5 : 5, 12, 19 · Colonne 6 : 6, 13, 20',
+        '- Colonne 7 : 7, 14 et le bull.',
+        '# POSER',
+        '- Chaque fléchette fait tomber un pion tout en bas de sa colonne '
+            '(3 pions par tour).',
+        '- Colonne pleine : la fléchette est perdue.',
+        '# FIN',
+        '- 4 pions alignés : victoire immédiate. Grille pleine : égalité.',
+      ],
+    PracticeKind.snakesLadders => [
+        '# BUT',
+        'Arriver le premier sur la case 100, pile.',
+        '# AVANCER',
+        '- C\'est l\'anneau touché qui compte, pas le numéro :',
+        '- Bull 50 = 6 cases · 25 = 5 · simple extérieur = 4',
+        '- Triple = 3 · simple intérieur = 2 · double = 1.',
+        '# LE PLATEAU',
+        '- Au pied d\'une échelle : tu montes en haut.',
+        '- Sur une tête de serpent : tu glisses jusqu\'à sa queue.',
+        '# FIN',
+        '- Il faut tomber pile sur 100 : trop loin, tu rebondis en arrière '
+            'du surplus.',
+        '- Après 60 manches, le plus avancé gagne.',
+      ],
+    PracticeKind.bowls => [
+        '# BUT',
+        'Marquer le plus de points en ${plural(s.goalOrDefault, 'mène')}.',
+        '# JOUER',
+        '- Le cochonnet est au centre de la cible.',
+        '- Chacun son tour, 1 fléchette (une boule), 3 boules par joueur et '
+            'par mène.',
+        '# QUI EST LE PLUS PRÈS',
+        '- Du plus près au plus loin : bull 50, 25, simple intérieur, '
+            'triple, simple extérieur, double, puis raté.',
+        '- Deux boules dans le même anneau sont à égalité.',
+        '# POINTS',
+        '- La meilleure boule gagne la mène : 1 point pour chacune de ses '
+            'boules plus près que la meilleure boule adverse.',
+        '- Égalité sur la meilleure boule : mène nulle.',
+      ],
+    PracticeKind.conqueror => [
+        '# BUT',
+        'Tenir le plus de régions (et de boucliers) après '
+            '${plural(s.roundsOrDefault, 'manche')}.',
+        '# LA CARTE',
+        '- Chaque numéro est une région ; le bull est le HUB. Chacun part '
+            'd\'une base (1 bouclier).',
+        '# PORTÉE',
+        '- Tu ne peux toucher que tes régions et leurs voisines sur la cible '
+            '(le 20 touche le 5 et le 1). Le hub est toujours à portée.',
+        '- Tant que tu tiens le hub : toute la cible est à portée.',
+        '# CHAQUE COUP',
+        '- Le multiplicateur donne le nombre de coups (triple = 3, bull = 2).',
+        '- Région grise : tu la prends.',
+        '- Région adverse : un bouclier cassé ; sans bouclier, tu la voles.',
+        '- Ta région : +1 bouclier (3 au plus).',
+        '# SCORE',
+        '- 10 points par région + 1 par bouclier.',
+      ],
+    PracticeKind.testMatch => [
+        '# BUT',
+        'Faire plus de courses que l\'adversaire, comme au cricket (le sport).',
+        '# LES MANCHES',
+        '- 1re manche : le joueur 1 est au bâton, le joueur 2 lance. 2e '
+            'manche : on échange.',
+        '- Une manche s\'arrête à ${s.goalOrDefault} guichets, ou après 8 '
+            'visites du batteur.',
+        '# AU BÂTON',
+        '- Toutes tes fléchettes comptent ; seuls les points AU-DESSUS DE 40 '
+            'deviennent des courses (57 en 3 fléchettes = 17 courses).',
+        '# AU LANCER',
+        '- 25 = 1 guichet, bull 50 = 2 guichets.',
+        '# FIN',
+        '- 2e manche : le batteur gagne dès qu\'il dépasse l\'adversaire.',
+        '- Sinon, le plus de courses gagne.',
+      ],
+    PracticeKind.snooker => [
+        '# BUT',
+        'Marquer plus de points que l\'adversaire en vidant la table.',
+        '# LES BILLES',
+        '- Rouges : 1 à 15 (1 point chacune).',
+        '- Couleurs : 16 jaune (2), 17 verte (3), 18 marron (4), 19 bleue (5), '
+            '20 rose (6), bull noire (7).',
+        '# PHASE 1',
+        '- Empoche une rouge (touche un de ses numéros), puis une couleur ; '
+            'la couleur revient sur la table. Rouge, couleur, rouge…',
+        '# PHASE 2',
+        '- Les 15 rouges empochées : les couleurs dans l\'ordre, jaune → '
+            'noire, définitivement.',
+        '# FAUTES',
+        '- Raté ou mauvaise bille : FAUTE, au moins 4 points pour '
+            'l\'adversaire (la valeur de la bille visée si elle est plus '
+            'forte), et ton tour s\'arrête.',
+        '- Le multiplicateur ne compte pas. Tour fini aussi après 3 '
+            'fléchettes.',
+      ],
+    PracticeKind.pool => [
+        '# BUT',
+        'Empocher tes 7 billes puis la 8 avant l\'adversaire.',
+        '# TES BILLES',
+        '- Chaque joueur reçoit 7 numéros tirés au sort.',
+        if (s.has('hard'))
+          '- Difficile : 4 de tes billes demandent un double ou un triple '
+              '(marquées sur la table).',
+        '# LA SÉRIE',
+        '- Tant que tu empoches une de tes billes, tu gardes la main : 3 '
+            'fléchettes de plus.',
+        '- Une fléchette ratée (ou une bille qui n\'est pas à toi) : ton '
+            'tour s\'arrête.',
+        '# LA 8',
+        '- Tes 7 billes empochées, touche le bull : victoire.',
+        '- Après 30 manches : le plus de billes empochées, puis le moins de '
+            'fléchettes.',
+      ],
+    PracticeKind.zombies => [
+        '# BUT',
+        'Ensemble, tenir ${plural(s.goalOrDefault, 'vague')} sans que la '
+            'base tombe.',
+        '# LES ZOMBIES',
+        '- Chaque zombie porte une cible exacte : un numéro (simple), D… '
+            '(double), T… (triple), 25 ou BULL.',
+        '- À chaque fin de manche, ils avancent d\'un cran ; de nouveaux '
+            'arrivent, de plus en plus coriaces.',
+        '# TIRER',
+        '- Touche la cible exacte d\'un zombie pour l\'abattre : 10 points × '
+            'le multiplicateur, + 5 par cran avancé.',
+        '# LA BASE',
+        '- Un zombie qui atteint la base la mord : 5 morsures et la partie '
+            'est perdue pour tous.',
+        '# FIN',
+        '- Toutes les vagues tenues : la base est sauvée. Le plus de points '
+            'est le héros du jour.',
       ],
     PracticeKind.timeAttack => [
         '# BUT',

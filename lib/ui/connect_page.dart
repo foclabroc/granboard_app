@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import '../board_service.dart';
+import '../vdarts.dart';
 
 /// Recherche des cibles Bluetooth à proximité.
 class ConnectPage extends StatefulWidget {
@@ -46,7 +47,9 @@ class _ConnectPageState extends State<ConnectPage> {
     return n.isEmpty ? '(sans nom)' : n;
   }
 
-  bool _isGran(ScanResult r) => _name(r).toUpperCase().contains('GRAN');
+  /// Cible reconnue : GranBoard ou VDarts.
+  bool _isGran(ScanResult r) =>
+      _name(r).toUpperCase().contains('GRAN') || Vdarts.isVdarts(_name(r));
 
   Future<void> _scan() async {
     await BoardService.ensureBluetooth();
@@ -94,8 +97,8 @@ class _ConnectPageState extends State<ConnectPage> {
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: Text(
-                  'Allume la cible et ferme l\'appli GranBoard officielle '
-                  '(la cible n\'accepte qu\'une connexion).',
+                  'Allume la cible (GranBoard ou VDarts) et ferme son '
+                  'appli officielle (la cible n\'accepte qu\'une connexion).',
                   textAlign: TextAlign.center,
                 ),
               ),

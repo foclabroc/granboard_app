@@ -420,6 +420,17 @@ IconData practiceIcon(PracticeKind k) => switch (k) {
       PracticeKind.bowling => Icons.sports_baseball,
       PracticeKind.grandPrix => Icons.sports_motorsports,
       PracticeKind.timeAttack => Icons.timer,
+      PracticeKind.tugOfWar => Icons.compare_arrows,
+      PracticeKind.vault => Icons.lock_open,
+      PracticeKind.fightClub => Icons.sports_mma,
+      PracticeKind.connect4 => Icons.view_column,
+      PracticeKind.snakesLadders => Icons.stairs,
+      PracticeKind.bowls => Icons.circle_outlined,
+      PracticeKind.conqueror => Icons.flag_circle,
+      PracticeKind.testMatch => Icons.sports_cricket,
+      PracticeKind.snooker => Icons.workspaces,
+      PracticeKind.pool => Icons.sports_baseball_outlined,
+      PracticeKind.zombies => Icons.coronavirus,
     };
 
 IconData x01Icon(int start) => switch (start) {

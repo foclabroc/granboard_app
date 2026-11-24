@@ -17,13 +17,17 @@ class GrandPrixLayout extends StatelessWidget {
   final Widget? actionBar;
   final Widget panel;
   final Color Function(int player) colorOf;
+
+  /// Scène à la place du circuit (jeux arcade).
+  final Widget? scene;
   const GrandPrixLayout(
       {super.key,
       required this.game,
       required this.splashKey,
       required this.panel,
       required this.colorOf,
-      this.actionBar});
+      this.actionBar,
+      this.scene});
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +41,7 @@ class GrandPrixLayout extends StatelessWidget {
               flex: 13,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(6, 6, 2, 6),
-                child: RaceTrack(game: game, colorOf: colorOf),
+                child: scene ?? RaceTrack(game: game, colorOf: colorOf),
               ),
             ),
             Expanded(
@@ -50,6 +54,8 @@ class GrandPrixLayout extends StatelessWidget {
                       builder: (context, c) => Center(
                         child: AnimatedDartboard(
                           key: const ValueKey('gp-board'),
+                          skin: PlayerBoards.instance
+                              .of(game.players[game.current].id),
                           size: min(c.maxWidth, c.maxHeight) - 8,
                           hits: [
                             for (final d in t.darts)

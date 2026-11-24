@@ -1,6 +1,6 @@
 # Foclaboard
 
-**Foclaboard** est une appli Android (Flutter) de fléchettes pour les cibles électroniques **GranBoard** (Dash et 3s), connectées en Bluetooth. Elle se joue en paysage, téléphone ou tablette posé à côté de la cible. Les comptes, stats, rangs et classements sont sur le serveur maison. Le même APK sert aussi d'écran sur une Android TV ou une tablette, et permet de jouer en ligne, chacun chez soi.
+**Foclaboard** est une appli Android (Flutter) de fléchettes pour les cibles électroniques **GranBoard** (Dash et 3s), connectées en Bluetooth, et aussi les **VDarts** (H2, H3, H4, MINI ; pas encore essayé sur une vraie VDarts). Elle se joue en paysage, téléphone ou tablette posé à côté de la cible. Les comptes, stats, rangs et classements sont sur le serveur maison. Le même APK sert aussi d'écran sur une Android TV ou une tablette, et permet de jouer en ligne, chacun chez soi.
 
 ![Accueil](docs/screenshots/accueil.jpg)
 
@@ -120,7 +120,7 @@ Un match en plusieurs **legs** : 3, 5, 7, 9, 11 ou 13 legs, le premier à la maj
 | **Pirates** | Bull seulement : un navire coule tous les 200 points, puis chance au trésor. 15 manches. |
 | **Contre la montre** | Finis ton 01 le plus vite possible : le chrono tourne pendant tes tours, le meilleur temps gagne. |
 
-### Party (20 jeux)
+### Party (31 jeux)
 
 ![Party](docs/screenshots/party.jpg)
 
@@ -148,6 +148,22 @@ Des jeux de soirée, la plupart à plusieurs.
 | **Paint** | Chaque fléchette peint sa zone à ta couleur (et la vole aux autres) ; touche une zone à toi pour la protéger. |
 | **Bowling** | 10 frames, 2 fléchettes pour faire tomber 10 quilles (T20 = strike), strikes et spares comme au bowling. 300 au maximum. |
 | **Grand Prix** | Course de voitures : ton numéro fait avancer ta voiture, le bull donne un turbo, le numéro d'un adversaire lui fait faire un tête-à-queue. |
+
+Les 11 jeux « arcade » (v0.6.28) ont chacun leur propre écran animé à la place de la cible (la cible reste en petit à côté) :
+
+| Jeu | Règle |
+|---|---|
+| **Tir à la corde** | Chaque point tire la corde vers ton camp (gauche ou droite, en équipes à plus de 2). Le premier camp à son but gagne. |
+| **Coffre-fort** | Un code de 10 à 50 par manche : descends-le à 0 pile en 3 fléchettes pour piller le coffre. En dessous : alarme. |
+| **Fight Club** | 3 numéros chacun : frappe ceux des adversaires, soigne-toi sur les tiens, le bull touche tout le monde. Dernier debout gagne. |
+| **Puissance 4** | Le numéro touché choisit la colonne (7-14-bull = 7e colonne) ; aligne 4 pions. |
+| **Serpents et échelles** | L'anneau fait avancer (bull 6 … double 1) ; échelles, serpents, case 100 pile. |
+| **Boules** | Le cochonnet au centre, 1 fléchette chacun son tour : la boule la plus près gagne la mène. |
+| **Conquérant** | Prends les numéros voisins de tes régions, casse les boucliers adverses, tiens le hub (bull) pour attaquer partout. |
+| **Test Match** | Le cricket (le sport) : au bâton, les points au-dessus de 40 sont des courses ; au lancer, le bull fait tomber les guichets. |
+| **Snooker** | Une rouge (1-15) puis une couleur (16 à bull), puis les couleurs dans l'ordre ; une faute donne des points à l'adversaire. |
+| **8 Ball Pool** | 7 billes (numéros) chacun : tu gardes la main tant que tu en empoches, puis la 8 au bull. |
+| **Zombies** | Coopératif : abats chaque zombie en touchant sa cible exacte (T17, D8…) avant qu'il morde la base. |
 
 ### Joueurs virtuels et invités
 
@@ -254,7 +270,7 @@ Installe le même APK sur l'Android TV, ou passe une tablette en « mode écran 
 La tuile **OPTIONS** regroupe les joueurs du téléphone et tous les réglages :
 
 - **Thème**, **style de cible**, **son**, **écran TV**.
-- **Cible** : choix de la GranBoard, **calibration** (pour une cible qui ne donne pas les bons numéros), **diagnostic** des trames Bluetooth.
+- **Cible** : choix de la GranBoard ou de la VDarts, **calibration** (pour une cible qui ne donne pas les bons numéros), **diagnostic** des trames Bluetooth.
 - **Lumières de la 3s** : la cible s'allume selon le jeu (numéros à viser, bust, 180, victoire).
 - **Partager l'appli** : QR code ou SMS avec le lien de la dernière version.
 - **Mise à jour** : la dernière version GitHub est vérifiée au lancement et s'installe depuis l'appli.

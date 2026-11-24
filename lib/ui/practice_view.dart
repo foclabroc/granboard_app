@@ -8,6 +8,7 @@ import '../players.dart';
 import 'dartboard.dart';
 import 'game_fx.dart';
 import 'game_page.dart' show GamePage;
+import 'arcade/arcade_view.dart';
 import 'grand_prix_view.dart';
 import 'theme.dart';
 import 'widgets.dart';
@@ -35,8 +36,10 @@ class PracticeLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = game.currentTurn;
     // Grand Prix : le circuit à la place de la cible et des scores
-    if (game.settings.kind == PracticeKind.grandPrix) {
+    final scene = arcadeScene(game, (i) => _colorOf(game, i));
+    if (game.settings.kind == PracticeKind.grandPrix || scene != null) {
       return GrandPrixLayout(
+        scene: scene,
         game: game,
         splashKey: splashKey,
         actionBar: actionBar,
