@@ -15,6 +15,7 @@ import 'ui/theme.dart';
 import 'ui/wallpaper.dart';
 import 'ui/cricket_view.dart' show CricketStyle;
 import 'ui/dartboard.dart' show BoardSkin, PlayerBoards;
+import 'ui/ring_anim.dart';
 
 /// Un écran relié (TV, tablette…), un salon par écran sur le serveur.
 class TvScreen {
@@ -411,6 +412,7 @@ class TvLink extends ChangeNotifier {
         'src': _src,
         'sound': soundOn.contains(s.code),
         'skin': BoardSkin.current.value.id,
+        'ring': RingAnim.current.value.id,
         'boards': PlayerBoards.instance.all,
         if (PlayerBoards.instance.of(PlayerStore.instance.owner?.key)
             case final b?)

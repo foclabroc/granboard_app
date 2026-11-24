@@ -7,6 +7,7 @@ import 'package:granboard_proto/game/x01.dart';
 import 'package:granboard_proto/granboard.dart';
 import 'package:granboard_proto/players.dart';
 import 'package:granboard_proto/ui/game_page.dart';
+import 'package:granboard_proto/ui/ring_anim.dart';
 import 'package:granboard_proto/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,6 +30,77 @@ void main() {
     await BoardService.instance.init();
     BoardLights.instance.debugReset();
     await BoardLights.instance.load();
+    // animation d'attente testée à part
+    BoardLights.instance.idleAnim = false;
+  });
+
+  test('Attente : les numéros suivent l\'animation du contour', () {
+    // Rapide : une comète, un tour en 1,2 s
+    final f0 = BoardLights.idleFrame(RingAnim.fast, 0);
+    expect(f0, containsAll([20, 5, 12])); // tête + queue
+    final f = BoardLights.idleFrame(RingAnim.fast, 0.3); // 5 cases plus loin
+    expect(f, containsAll([6, 13, 4]));
+    expect(f, isNot(contains(20)));
+    expect(BoardLights.idleFrame(RingAnim.chaser, 0).length, 7);
+  });
+
+  testWidgets('Couleur des numéros réglable (essai 2 s, puis gardée)',
+      (tester) async {
+    final lights = BoardLights.instance;
+    lights.writer = (b) async {};
+    await lights.setNumberColor(7);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(lights.sent.last, List.filled(20, 7));
+    await tester.pump(const Duration(seconds: 2));
+    expect(lights.sent.last, List.filled(20, 0));
+    final p = await SharedPreferences.getInstance();
+    expect(p.getInt('board_numcolor_v1'), 7);
+    lights.idleAnim = true;
+    lights.connected();
+    await tester.pump(const Duration(milliseconds: 300));
+    final f = lights.sent.where((b) => b.length == 20 && b.any((x) => x > 0));
+    expect(f.last.where((x) => x > 0).toSet(), {7});
+    await lights.setIdleAnim(false);
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('Attente hors partie, coupée pendant la partie', (tester) async {
+    tester.view.physicalSize = const Size(2160, 1080);
+    tester.view.devicePixelRatio = 2.75;
+    addTearDown(tester.view.reset);
+    final lights = BoardLights.instance..idleAnim = true;
+    lights.writer = (b) async {};
+    lights.connected();
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(lights.idleRunning, isTrue);
+    final frames = lights.sent.where((b) => b.length == 20 && b.contains(5));
+    expect(frames.length, greaterThan(1), reason: 'la comète avance');
+
+    await tester.pumpWidget(MaterialApp(
+        theme: Tv.theme(),
+        home: GamePage(game: CricketGame(const CricketSettings(), two))));
+    await tester.pump(const Duration(seconds: 1));
+    expect(lights.idleRunning, isFalse);
+    final last = lights.sent.where((b) => b.length == 20).last;
+    expect([
+      for (var n = 1; n <= 20; n++)
+        if (last[n - 1] == 5) n
+    ], [
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ], reason: 'les numéros du Cricket, plus l\'animation');
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(lights.idleRunning, isTrue, reason: 'partie quittée : reprend');
+    await lights.setIdleAnim(false);
+    expect(lights.idleRunning, isFalse);
+    await tester.pump(const Duration(seconds: 1));
+    expect(lights.sent.last, List.filled(20, 0));
   });
 
   test('Commandes identiques aux exemples du protocole', () {

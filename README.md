@@ -271,7 +271,8 @@ La tuile **OPTIONS** regroupe les joueurs du téléphone et tous les réglages :
 
 - **Thème**, **style de cible**, **son**, **écran TV**.
 - **Cible** : choix de la GranBoard ou de la VDarts, **calibration** (pour une cible qui ne donne pas les bons numéros), **diagnostic** des trames Bluetooth.
-- **Lumières de la 3s** : la cible s'allume selon le jeu (numéros à viser, bust, 180, victoire).
+- **Lumières de la 3s** : la cible s'allume selon le jeu (numéros à viser, bust, 180, victoire), animation d'attente sur les numéros hors partie, couleur des numéros réglable).
+- **Animation du contour de la cible** : 12 styles au choix dans les options (comète rapide, double comète, chenillard, arc-en-ciel…), aussi sur l'écran TV.
 - **Partager l'appli** : QR code ou SMS avec le lien de la dernière version.
 - **Mise à jour** : la dernière version GitHub est vérifiée au lancement et s'installe depuis l'appli.
 

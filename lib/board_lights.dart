@@ -8,14 +8,18 @@ import 'game/cricket.dart';
 import 'game/darts_game.dart';
 import 'game/match.dart';
 import 'game/practice.dart';
+import 'game/bot.dart' show kBoardOrder;
 import 'game/x01.dart';
 import 'granboard.dart';
+import 'ui/ring_anim.dart';
 
 /// Lumières de la GranBoard 3s : contour (60 LED) et numéros.
 ///
 /// Protocole relevé par keenanlk/granboard-ble-codes (non officiel, testé sur
 /// une 3s) : commandes de 16 octets (type, couleur 1, couleur 2, position,
-/// durée, persistant) et de 20 octets (un octet par numéro, 0x05 = orange).
+/// durée, persistant) et de 20 octets (un octet par numéro : sa couleur ;
+/// 0x05 = bleu / blanc sur la 3s de foclabroc, pas orange comme annoncé).
+/// La valeur est réglable ([numberColor]) pour trouver les autres couleurs.
 /// La cible perd les commandes trop rapprochées : file d'attente, ~70 ms
 /// entre deux envois, l'état (contour, numéros) remplace l'ancien en attente.
 class BoardLights {
@@ -24,6 +28,8 @@ class BoardLights {
 
   static const _prefOn = 'board_lights_v1';
   static const _prefNumbers = 'board_numbers_v1';
+  static const _prefIdle = 'board_idle_v1';
+  static const _prefColor = 'board_numcolor_v1';
   static const gap = Duration(milliseconds: 70);
 
   /// Position de la LED du contour en face de chaque numéro (25 = bull).
@@ -38,6 +44,24 @@ class BoardLights {
 
   /// Numéros à viser allumés (cibles du Cricket, prochaine fléchette en 01…).
   bool numbers = true;
+
+  /// Hors partie : les numéros de la cible jouent l'animation du contour
+  /// choisie ([RingAnim]), dans la couleur des numéros ([numberColor]).
+  bool idleAnim = true;
+
+  /// Octet envoyé pour un numéro allumé (1-255) : sa couleur sur la cible.
+  int numberColor = 0x05;
+
+  /// Une partie pilote les lumières (posé par [state] / [dart], retiré
+  /// par [clear]) : pas d'animation d'attente.
+  bool _inGame = false;
+  Timer? _idle;
+  int _idleTicks = 0;
+  List<int>? _idleSent;
+
+  /// Une image toutes les 140 ms : la cible perd les commandes plus
+  /// rapprochées (et il faut laisser de la place aux autres).
+  static const idleStep = Duration(milliseconds: 140);
 
   /// Envoi vers la cible (posé par [BoardService] quand une cible qui a une
   /// caractéristique d'écriture est connectée) ; null = rien à piloter.
@@ -62,6 +86,36 @@ class BoardLights {
     final p = await SharedPreferences.getInstance();
     enabled = p.getBool(_prefOn) ?? true;
     numbers = p.getBool(_prefNumbers) ?? true;
+    idleAnim = p.getBool(_prefIdle) ?? true;
+    numberColor = (p.getInt(_prefColor) ?? 0x05).clamp(1, 255);
+  }
+
+  /// Nouvelle couleur des numéros : les 20 numéros s'allument 2 s avec
+  /// (pour voir ce que donne la valeur), puis l'état d'avant revient.
+  Future<void> setNumberColor(int v) async {
+    numberColor = v.clamp(1, 255);
+    (await SharedPreferences.getInstance()).setInt(_prefColor, numberColor);
+    if (!_active) return;
+    final wasGame = _inGame;
+    _inGame = true;
+    _stopIdle();
+    _numbers = const [];
+    _send('numbers', List.filled(20, numberColor));
+    _colorTest?.cancel();
+    _colorTest = Timer(const Duration(seconds: 2), () {
+      _inGame = wasGame;
+      _numbers = const [];
+      _send('numbers', List.filled(20, 0));
+      _syncIdle();
+    });
+  }
+
+  Timer? _colorTest;
+
+  Future<void> setIdleAnim(bool on) async {
+    idleAnim = on;
+    (await SharedPreferences.getInstance()).setBool(_prefIdle, on);
+    _syncIdle();
   }
 
   Future<void> setEnabled(bool on) async {
@@ -74,6 +128,7 @@ class BoardLights {
     numbers = on;
     (await SharedPreferences.getInstance()).setBool(_prefNumbers, on);
     if (!on && _active) _setNumbers(const []);
+    _syncIdle();
   }
 
   /// Cible connectée : on repart de zéro (son état est inconnu).
@@ -81,6 +136,55 @@ class BoardLights {
     _ring = null;
     _numbers = const [];
     _send('numbers', List.filled(20, 0));
+    _syncIdle();
+  }
+
+  // ─── Attente (hors partie) ───
+
+  bool get idleRunning => _idle != null;
+
+  void _syncIdle() {
+    final want = _active && idleAnim && numbers && !_inGame;
+    if (want && _idle == null) {
+      _idleSent = null;
+      _idleTicks = 0;
+      _idle = Timer.periodic(idleStep, (_) => _idleTick());
+      _idleTick();
+    } else if (!want && _idle != null) {
+      _stopIdle();
+    }
+  }
+
+  void _stopIdle() {
+    _idle?.cancel();
+    _idle = null;
+    if (_idleSent != null && _active) {
+      // repart d'une cible éteinte : la partie renverra ses numéros
+      _numbers = const [];
+      _send('numbers', List.filled(20, 0));
+    }
+    _idleSent = null;
+  }
+
+  /// Numéros allumés par l'animation au temps [t] (secondes).
+  static List<int> idleFrame(RingAnim anim, double t) => [
+        for (var i = 0; i < 20; i++)
+          if (anim.at(i, t % 6).$1 >= 0.4) kBoardOrder[i]
+      ];
+
+  void _idleTick() {
+    if (!_active || _inGame) {
+      _syncIdle();
+      return;
+    }
+    final t = _idleTicks++ * idleStep.inMilliseconds / 1000;
+    final lit = idleFrame(RingAnim.current.value, t);
+    final bytes = [
+      for (var n = 1; n <= 20; n++) lit.contains(n) ? numberColor : 0
+    ];
+    if (listEquals(bytes, _idleSent)) return;
+    _idleSent = bytes;
+    _send('numbers', bytes);
   }
 
   @visibleForTesting
@@ -92,6 +196,12 @@ class BoardLights {
     _ring = null;
     _numbers = const [];
     writer = null;
+    _idle?.cancel();
+    _idle = null;
+    _idleSent = null;
+    _inGame = false;
+    _colorTest?.cancel();
+    _colorTest = null;
   }
 
   // ─── Commandes ───
@@ -149,7 +259,7 @@ class BoardLights {
     if (listEquals(l, _numbers)) return;
     _numbers = l;
     _send('numbers', [
-      for (var n = 1; n <= 20; n++) l.contains(n) ? 0x05 : 0,
+      for (var n = 1; n <= 20; n++) l.contains(n) ? numberColor : 0,
     ]);
   }
 
@@ -160,6 +270,7 @@ class BoardLights {
   /// 180, victoire.
   void dart(DartsGame game, DartHit? hit, Color color) {
     if (!_active) return;
+    _enterGame();
     if (enabled && hit != null) {
       final pos = kLedPos[hit.number];
       if (pos != null) {
@@ -208,6 +319,7 @@ class BoardLights {
   /// (gardés allumés après les 3 fléchettes, jusqu'au joueur suivant).
   void state(DartsGame game, Color color) {
     if (!_active) return;
+    _enterGame();
     if (enabled) {
       _setRing(color);
     }
@@ -220,6 +332,12 @@ class BoardLights {
     }
   }
 
+  void _enterGame() {
+    if (_inGame) return;
+    _inGame = true;
+    _stopIdle();
+  }
+
   /// Essai depuis les réglages : vague, 20-19-18 allumés, puis tout s'éteint.
   void test() {
     _send(
@@ -229,18 +347,26 @@ class BoardLights {
             b: const Color(0xFF00B0FF),
             pos: 0x10,
             dur: 0x05));
+    final wasIdle = !_inGame;
+    _inGame = true;
+    _stopIdle();
     _numbers = const [];
     _setNumbers(const [18, 19, 20]);
     _setRing(const Color(0xFF00E676));
-    Timer(const Duration(seconds: 3), clear);
+    Timer(const Duration(seconds: 3), () {
+      clear();
+      if (!wasIdle) _inGame = true;
+    });
   }
 
   /// Fin de partie (page quittée) : tout s'éteint.
   void clear() {
     _reassert?.cancel();
+    _inGame = false;
     if (!_active) return;
     if (_ring != null) _ringOff();
     _setNumbers(const []);
+    _syncIdle();
   }
 
   /// Numéros à viser pour le joueur en cours (bull non adressable).

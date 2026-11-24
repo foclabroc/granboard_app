@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../granboard.dart';
 import '../media.dart';
 import '../players.dart';
+import 'ring_anim.dart';
 import 'theme.dart';
 
 /// Style de la cible dessinée (choisi dans l'accueil, envoyé à la TV).
@@ -734,6 +735,9 @@ class AnimatedDartboard extends StatefulWidget {
 
   /// Zones peintes (Paint) : (zone, couleur, protégée).
   final List<(DartHit, Color, bool)> painted;
+
+  /// Animation du contour imposée (aperçus des options), sinon le réglage.
+  final RingAnim? ring;
   const AnimatedDartboard({
     super.key,
     required this.size,
@@ -746,6 +750,7 @@ class AnimatedDartboard extends StatefulWidget {
     this.win = false,
     this.dartColor,
     this.skin,
+    this.ring,
   });
 
   @override
@@ -891,6 +896,7 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
                       _pulse,
                       _flash,
                       _fxc,
+                      RingAnim.current,
                       if (skin.realistic) _spin
                     ]),
                     builder: (context, _) => CustomPaint(
@@ -907,6 +913,7 @@ class _AnimatedDartboardState extends State<AnimatedDartboard>
                         dartColor: widget.dartColor ?? Tv.gold,
                         realistic: skin.realistic,
                         spin: _spin.value,
+                        ring: widget.ring ?? RingAnim.current.value,
                         bust: widget.bust,
                         win: widget.win,
                         fx: _fx,
@@ -936,6 +943,7 @@ class _HitsPainter extends CustomPainter {
   final Color dartColor;
   final bool realistic;
   final double spin; // 0 → 1 en boucle
+  final RingAnim? ring;
   final bool bust;
   final bool win;
   final Set<int> litNumbers;
@@ -962,6 +970,7 @@ class _HitsPainter extends CustomPainter {
     required this.dartColor,
     this.realistic = false,
     this.spin = 0,
+    this.ring,
     this.bust = false,
     this.win = false,
   });
@@ -1197,7 +1206,6 @@ class _HitsPainter extends CustomPainter {
       ...aimNumbers,
     }..removeAll(lit.keys);
     final anyBull = hits.any((h) => h.isBull);
-    final phase = spin * 40; // position de la lumière qui tourne (2 tours)
     for (var i = 0; i < 20; i++) {
       final n = kBoardOrder[i];
       final a0 = -math.pi / 2 - seg / 2 + i * seg;
@@ -1223,10 +1231,10 @@ class _HitsPainter extends CustomPainter {
         col = dartColor;
         on = impact < 1 ? 0.45 * (1 - impact) : 0;
       } else if (hits.isEmpty && litNumbers.isEmpty && aimNumbers.isEmpty) {
-        // attente : une petite comète fait le tour
-        final back = ((phase - i) % 20 + 20) % 20;
-        on = back < 3 ? 0.5 * (1 - back / 3) : 0;
-        col = dartColor;
+        // attente : animation du contour choisie (boucle de 6 s = _spin)
+        final (e, rc) = (ring ?? RingAnim.fast).at(i, spin * 6);
+        on = e;
+        col = rc ?? dartColor;
       }
       final path = Path()
         ..arcTo(Rect.fromCircle(center: c, radius: ro), a0, seg, true)

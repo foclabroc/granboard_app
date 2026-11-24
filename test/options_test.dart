@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:granboard_proto/board_service.dart';
 import 'package:granboard_proto/players.dart';
+import 'package:granboard_proto/ui/dartboard.dart';
 import 'package:granboard_proto/ui/home_page.dart';
 import 'package:granboard_proto/ui/options_page.dart';
 import 'package:granboard_proto/ui/players_page.dart';
+import 'package:granboard_proto/ui/ring_anim.dart';
 import 'package:granboard_proto/ui/setup_widgets.dart';
 import 'package:granboard_proto/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -63,6 +65,28 @@ void main() {
     await frames(tester);
     expect(find.text('THÈME DE L\'APPLI'), findsWidgets);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Animation du contour : 12 aperçus, choix gardé', (tester) async {
+    await phone(tester);
+    await tester
+        .pumpWidget(MaterialApp(theme: Tv.theme(), home: const HomePage()));
+    await frames(tester);
+    await tester.tap(find.byKey(const ValueKey('tile-options')));
+    await frames(tester);
+    expect(RingAnim.current.value, RingAnim.fast);
+    await tester.tap(find.byKey(const ValueKey('opt-ring')));
+    await frames(tester, 10);
+    expect(find.text('ANIMATION DU CONTOUR'), findsWidgets);
+    expect(find.byType(AnimatedDartboard), findsNWidgets(12));
+    expect(tester.takeException(), isNull);
+    await tester.ensureVisible(find.byKey(const ValueKey('ring-rainbow')));
+    await tester.tap(find.byKey(const ValueKey('ring-rainbow')));
+    await frames(tester);
+    expect(RingAnim.current.value, RingAnim.rainbow);
+    final p = await SharedPreferences.getInstance();
+    expect(p.getString('ring_anim_v1'), 'rainbow');
+    RingAnim.current.value = RingAnim.fast;
   });
 
   testWidgets('Options : tableau sur petit écran et actions conservées',

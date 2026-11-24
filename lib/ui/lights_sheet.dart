@@ -20,6 +20,11 @@ class _LightsSheet extends StatefulWidget {
 class _LightsSheetState extends State<_LightsSheet> {
   final lights = BoardLights.instance;
 
+  Future<void> _color(int v) async {
+    await lights.setNumberColor(v);
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final board = BoardService.instance;
@@ -52,7 +57,7 @@ class _LightsSheetState extends State<_LightsSheet> {
           key: const ValueKey('lights-numbers'),
           contentPadding: EdgeInsets.zero,
           title: Text('Numéros à viser', style: Tv.title(18)),
-          subtitle: const Text('Allumés en orange : numéros encore ouverts '
+          subtitle: const Text('Allumés : numéros encore ouverts '
               'en Cricket, prochaine fléchette de la fin en 01, cible de '
               'l\'entraînement (le bull ne s\'allume pas)'),
           value: lights.numbers,
@@ -61,6 +66,46 @@ class _LightsSheetState extends State<_LightsSheet> {
             if (mounted) setState(() {});
           },
         ),
+        SwitchListTile(
+          key: const ValueKey('lights-idle'),
+          contentPadding: EdgeInsets.zero,
+          title: Text('Animation d\'attente', style: Tv.title(18)),
+          subtitle: const Text('Hors partie, les numéros jouent l\'animation '
+              'du contour choisie dans les options'),
+          value: lights.idleAnim,
+          onChanged: lights.numbers
+              ? (v) async {
+                  await lights.setIdleAnim(v);
+                  if (mounted) setState(() {});
+                }
+              : null,
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: Text('Couleur des numéros : ${lights.numberColor}',
+                  style: Tv.title(18)),
+            ),
+            IconButton(
+              key: const ValueKey('numcolor-minus'),
+              onPressed: lights.numberColor <= 1
+                  ? null
+                  : () => _color(lights.numberColor - 1),
+              icon: const Icon(Icons.remove_circle_outline),
+            ),
+            IconButton(
+              key: const ValueKey('numcolor-plus'),
+              onPressed: lights.numberColor >= 30
+                  ? null
+                  : () => _color(lights.numberColor + 1),
+              icon: const Icon(Icons.add_circle_outline),
+            ),
+          ],
+        ),
+        Text(
+            'Chaque valeur allume les 20 numéros 2 s : note la couleur '
+            'qu\'elle donne (5 = bleu / blanc sur ta 3s).',
+            style: Tv.label(11)),
         const SizedBox(height: 8),
         OutlinedButton.icon(
           key: const ValueKey('lights-test'),

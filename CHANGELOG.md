@@ -18,6 +18,8 @@
 - **Cibles VDarts** (H2, H2L, H3, H3L, H4, H4L, MINI) reconnues et décodées, avec leur ouverture propre à chaque modèle (protocole relevé dans l'appli DartMate) ; jamais essayé sur une vraie VDarts. Page Diagnostic : étapes de l'ouverture et octets reçus.
 - Téléphones à encoche (caméra dans l'écran) : l'affichage est maintenant le même en paysage gauche et en paysage droite. Avant, tout l'écran était décalé du côté opposé à la caméra et changeait de côté quand on retournait le téléphone ; maintenant la même marge est laissée des deux côtés et chaque écran est centré.
 - Configuration d'une partie, Options, Tournois et Salon : le bandeau du haut et la barre du bas vont jusqu'aux bords de l'écran, derrière la caméra ; seuls les textes et boutons restent dans la zone sûre.
+- **Animation du contour de la cible** au choix (Options › Animation du contour) : 12 styles avec aperçu animé (Tranquille = l'ancienne, Rapide (par défaut), Turbo, Double comète, Chenillard, Accélération, Ping-pong, Respiration + éclair, Arc-en-ciel, Remplissage, Triple comète, Étincelles) ; s'applique sur le téléphone et l'écran TV, gardé sur le compte.
+- **GranBoard 3s** : hors partie, les numéros de la cible jouent l'animation choisie (interrupteur « Animation d'attente » dans Lumières de la cible) ; nouveau réglage « Couleur des numéros » (valeur 1-30, chaque essai allume les 20 numéros 2 s) pour trouver les couleurs : la valeur 5 utilisée jusqu'ici donne du bleu / blanc, pas de l'orange.
 
 ## v0.6.26
 

@@ -11,6 +11,7 @@ import 'account_page.dart';
 import 'calibration_page.dart';
 import 'connect_page.dart';
 import 'dartboard.dart';
+import 'ring_anim.dart';
 import 'diagnostic_page.dart';
 import 'lights_sheet.dart';
 import 'players_page.dart';
@@ -201,6 +202,7 @@ class _OptionsPanel extends StatelessWidget {
           TvLink.instance,
           Tv.skin,
           BoardSkin.current,
+          RingAnim.current,
           SettingsSync.instance
         ]),
         builder: (context, _) => SingleChildScrollView(
@@ -225,6 +227,13 @@ class _OptionsPanel extends StatelessWidget {
                     title: 'Style de la cible',
                     value: BoardSkin.current.value.name,
                     onTap: () => showBoardSkinSheet(context),
+                  ),
+                  _Item(
+                    id: 'ring',
+                    icon: Icons.motion_photos_on,
+                    title: 'Animation du contour',
+                    value: RingAnim.current.value.name,
+                    onTap: () => showRingAnimSheet(context),
                   ),
                   const _Group('SON'),
                   _Item(
@@ -562,6 +571,80 @@ Future<void> showBoardSkinSheet(BuildContext context) => showAppSheet(
             ],
           ),
         ),
+      ),
+    );
+
+/// Choix de l'animation du contour de la cible (fenêtre du bas) : un
+/// aperçu animé par style, à la couleur du profil principal.
+Future<void> showRingAnimSheet(BuildContext context) => showAppSheet(
+      context,
+      builder: (ctx) => ValueListenableBuilder<RingAnim>(
+        valueListenable: RingAnim.current,
+        builder: (ctx, cur, _) {
+          final color = PlayerStore.instance.owner?.color ?? Tv.gold;
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const TvSection('Animation du contour',
+                    padding: EdgeInsets.only(bottom: 10)),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final a in RingAnim.all)
+                      InkWell(
+                        key: ValueKey('ring-${a.id}'),
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          RingAnim.choose(a);
+                          TvLink.instance.refresh();
+                        },
+                        child: Container(
+                          width: 150,
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                                color: cur == a ? Tv.gold : Tv.line,
+                                width: cur == a ? 2.5 : 1),
+                          ),
+                          child: Column(
+                            children: [
+                              AnimatedDartboard(
+                                  size: 104,
+                                  hits: const [],
+                                  dartColor: color,
+                                  ring: a),
+                              const SizedBox(height: 6),
+                              Text(a.name.toUpperCase(),
+                                  textAlign: TextAlign.center,
+                                  style: Tv.title(16,
+                                      color:
+                                          cur == a ? Tv.goldLight : Tv.text)),
+                              Text(a.help,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Tv.label(11)),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                    'Quand aucune fléchette n\'est plantée. S\'applique '
+                    'partout, écran TV compris (sur la TV allégée, '
+                    'l\'animation est figée).',
+                    style: Tv.label(12)),
+              ],
+            ),
+          );
+        },
       ),
     );
 

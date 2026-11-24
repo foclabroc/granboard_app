@@ -12,6 +12,7 @@ import 'server.dart';
 import 'tv_link.dart';
 import 'ui/cricket_view.dart' show CricketStyle;
 import 'ui/dartboard.dart' show BoardSkin;
+import 'ui/ring_anim.dart';
 import 'ui/game_page.dart' show AutoNext;
 import 'ui/theme.dart';
 import 'ui/wallpaper.dart';
@@ -35,6 +36,7 @@ class SettingsSync extends ChangeNotifier {
   static const keys = [
     'app_skin',
     'board_skin',
+    'ring_anim_v1',
     'cricket_layout',
     'audio_v1',
     'pron_v1',
@@ -44,6 +46,8 @@ class SettingsSync extends ChangeNotifier {
     'auto_next_v1',
     'board_lights_v1',
     'board_numbers_v1',
+    'board_idle_v1',
+    'board_numcolor_v1',
     'wallpaper_v1',
     'wallpaper_v1_files',
   ];
@@ -263,6 +267,7 @@ class SettingsSync extends ChangeNotifier {
       await Wallpaper.instance.load();
       await Tv.load();
       await BoardSkin.load();
+      await RingAnim.load();
       await CricketStyle.load();
       await AudioService.instance.reloadSettings();
       await BoardLights.instance.load();

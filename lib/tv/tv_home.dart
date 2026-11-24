@@ -10,6 +10,7 @@ import '../game/darts_game.dart';
 import '../players.dart';
 import '../ui/cricket_view.dart' show CricketStyle;
 import '../ui/dartboard.dart';
+import '../ui/ring_anim.dart';
 import '../ui/award.dart';
 import '../ui/game_fx.dart';
 import '../ui/game_page.dart' show NextMatchChip, gameView, resultsPageFor;
@@ -109,6 +110,10 @@ class _TvHomeState extends State<TvHome> {
     // … et le style de la cible
     if (s?['skin'] is String) {
       BoardSkin.current.value = BoardSkin.byId(s!['skin']);
+    }
+    // … l'animation du contour de la cible
+    if (s?['ring'] is String) {
+      RingAnim.current.value = RingAnim.byId(s!['ring']);
     }
     // … la cible de chaque joueur (et celle de l'écran en attente)
     if (s?['boards'] is Map) {
