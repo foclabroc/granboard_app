@@ -1214,7 +1214,8 @@ class _Zombies extends PracticeRules {
       final used = {for (final x in z) x.n};
       final free = [
         for (var i = 0; i < lanes; i++)
-          if (!z.any((x) => x.lane == i && x.y == 0)) i
+          // pas collé à un zombie du même couloir (2 crans d'écart)
+          if (!z.any((x) => x.lane == i && x.y <= 1)) i
       ];
       if (free.isEmpty) break;
       final lane = free[r.nextInt(free.length)];

@@ -98,83 +98,88 @@ class _SnakesSceneState extends State<SnakesScene>
         Positioned.fill(
           child: Container(color: const Color(0xFF0B1A10)),
         ),
-        Row(children: [
-          AspectRatio(
-            aspectRatio: 1,
-            child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: AnimatedBuilder(
-                animation: Listenable.merge([_move, ambient]),
-                builder: (context, _) => CustomPaint(
-                  painter: _BoardPainter(
-                    pawns: [
-                      for (var i = 0; i < g.players.length; i++)
-                        (
-                          _shown(i).$1,
-                          _shown(i).$2,
-                          widget.colorOf(i),
-                          i == g.current && !g.finished
-                        )
-                    ],
-                    t: ambient.value,
-                    hop: _move.isAnimating ? _move.value : 0,
+        LayoutBuilder(builder: (context, box) {
+          final side = min(150.0, box.maxWidth * 0.26);
+          return Row(children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: AnimatedBuilder(
+                  animation: Listenable.merge([_move, ambient]),
+                  builder: (context, _) => CustomPaint(
+                    size: Size.infinite,
+                    painter: _BoardPainter(
+                      pawns: [
+                        for (var i = 0; i < g.players.length; i++)
+                          (
+                            _shown(i).$1,
+                            _shown(i).$2,
+                            widget.colorOf(i),
+                            i == g.current && !g.finished
+                          )
+                      ],
+                      t: ambient.value,
+                      hop: _move.isAnimating ? _move.value : 0,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(2, 8, 8, 8),
-              child: Column(
-                children: [
-                  for (var i = 0; i < g.players.length; i++)
-                    Expanded(
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 2),
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [
-                            widget
-                                .colorOf(i)
-                                .withValues(alpha: i == g.current ? 0.6 : 0.25),
-                            Colors.black45
-                          ]),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                              color: i == g.current && !g.finished
-                                  ? Colors.white
-                                  : Colors.transparent),
-                        ),
-                        child: Row(children: [
-                          PlayerAvatar(
-                              id: g.players[i].id,
-                              name: g.players[i].name,
-                              color: widget.colorOf(i),
-                              size: 24),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Text(g.players[i].name.toUpperCase(),
-                                  style: Tv.title(16, color: Colors.white)),
-                            ),
+            SizedBox(
+              width: side,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(0, 6, 6, 6),
+                child: Column(
+                  children: [
+                    for (var i = 0; i < g.players.length; i++)
+                      Flexible(
+                        child: Container(
+                          constraints: const BoxConstraints(maxHeight: 40),
+                          margin: const EdgeInsets.symmetric(vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(colors: [
+                              widget.colorOf(i).withValues(
+                                  alpha: i == g.current ? 0.6 : 0.25),
+                              Colors.black45
+                            ]),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                                color: i == g.current && !g.finished
+                                    ? Colors.white
+                                    : Colors.transparent),
                           ),
-                          Text('${g.stateOf(i).score}',
-                              style: Tv.title(24, color: Colors.white)),
-                        ]),
+                          child: Row(children: [
+                            PlayerAvatar(
+                                id: g.players[i].id,
+                                name: g.players[i].name,
+                                color: widget.colorOf(i),
+                                size: 20),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(g.players[i].name.toUpperCase(),
+                                    style: Tv.title(13, color: Colors.white)),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text('${g.stateOf(i).score}',
+                                style: Tv.title(19, color: Colors.white)),
+                          ]),
+                        ),
                       ),
-                    ),
-                  const SizedBox(height: 4),
-                  Text('BULL 6 · 25 5 · S.EXT 4 · T 3 · S.INT 2 · D 1',
-                      textAlign: TextAlign.center,
-                      style: Tv.label(10, color: Colors.white60)),
-                ],
+                    const Spacer(),
+                    Text('BULL 6 · 25 5\nS.EXT 4 · T 3\nS.INT 2 · D 1',
+                        textAlign: TextAlign.center,
+                        style: Tv.label(10, color: Colors.white60)),
+                  ],
+                ),
               ),
             ),
-          ),
-        ]),
+          ]);
+        }),
         Positioned.fill(child: PopLayer(key: _pops)),
       ]),
     );
@@ -186,52 +191,65 @@ class _BoardPainter extends CustomPainter {
   final double t, hop;
   _BoardPainter({required this.pawns, required this.t, required this.hop});
 
-  static Offset cellCenter(double sq, double n) {
+  static Offset cellCenter(Size cell, double n) {
     // case 1 en bas à gauche, en serpentin
     final i = (n.clamp(1, 100) - 1);
     final row = (i ~/ 10);
     final inRow = i - row * 10;
     final col = row.isEven ? inRow : 9 - inRow;
-    return Offset((col + 0.5) * sq, (9 - row + 0.5) * sq);
+    return Offset((col + 0.5) * cell.width, (9 - row + 0.5) * cell.height);
   }
 
-  Offset _pos(double sq, double n) {
-    if (n <= 0) return Offset(-sq * 0.3, 9.5 * sq);
+  Offset _pos(Size cell, double n) {
+    if (n <= 0) return Offset(-cell.width * 0.3, 9.5 * cell.height);
     final lo = n.floor().clamp(1, 100), hi = n.ceil().clamp(1, 100);
     final f = n - n.floor();
     return Offset.lerp(
-        cellCenter(sq, lo.toDouble()), cellCenter(sq, hi.toDouble()), f)!;
+        cellCenter(cell, lo.toDouble()), cellCenter(cell, hi.toDouble()), f)!;
   }
 
   @override
   void paint(Canvas c, Size s) {
-    final sq = s.width / 10;
-    // cases
+    final cell = Size(s.width / 10, s.height / 10);
+    final sq = min(cell.width, cell.height);
+    // cases : damier bien contrasté (clair / foncé), numéro dans un coin
     for (var n = 1; n <= 100; n++) {
-      final o = cellCenter(sq, n.toDouble());
-      final r = Rect.fromCenter(center: o, width: sq, height: sq);
+      final o = cellCenter(cell, n.toDouble());
+      final r =
+          Rect.fromCenter(center: o, width: cell.width, height: cell.height);
       final row = (n - 1) ~/ 10, col = (n - 1) % 10;
       final even = (row + col).isEven;
       c.drawRect(
           r,
           Paint()
-            ..color = even ? const Color(0xFF2E7D4A) : const Color(0xFF256A3E));
+            ..color = even ? const Color(0xFF3E9A5E) : const Color(0xFF1E5733));
       if (n == 100) {
         c.drawRect(
-            r, Paint()..color = const Color(0xFFFFD34F).withValues(alpha: 0.6));
+            r, Paint()..color = const Color(0xFFFFD34F).withValues(alpha: 0.7));
       }
-      paintText(c, '$n', r.topLeft + Offset(sq * 0.2, sq * 0.18), sq * 0.2,
-          Colors.white.withValues(alpha: 0.6));
+      paintText(c, '$n', r.topLeft + Offset(sq * 0.22, sq * 0.2), sq * 0.24,
+          Colors.white.withValues(alpha: 0.85));
+    }
+    // quadrillage
+    final grid = Paint()
+      ..color = const Color(0xFF0A2414)
+      ..strokeWidth = max(1.0, sq * 0.035);
+    for (var i = 1; i < 10; i++) {
+      c.drawLine(
+          Offset(i * cell.width, 0), Offset(i * cell.width, s.height), grid);
+      c.drawLine(
+          Offset(0, i * cell.height), Offset(s.width, i * cell.height), grid);
     }
     c.drawRect(
         Offset.zero & s,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3
-          ..color = const Color(0xFF0E2A18));
+          ..color = const Color(0xFF0A2414));
     // échelles
     kSnakesLadders.forEach((a, b) {
-      final p = cellCenter(sq, a.toDouble()), q = cellCenter(sq, b.toDouble());
+      final p = cellCenter(cell, a.toDouble()),
+          q = cellCenter(cell, b.toDouble());
       final d = q - p;
       final nrm = Offset(-d.dy, d.dx) / d.distance * sq * 0.16;
       final rail = Paint()
@@ -263,8 +281,8 @@ class _BoardPainter extends CustomPainter {
     // serpents
     var k = 0;
     kSnakesSnakes.forEach((head, tail) {
-      final p = cellCenter(sq, head.toDouble()),
-          q = cellCenter(sq, tail.toDouble());
+      final p = cellCenter(cell, head.toDouble()),
+          q = cellCenter(cell, tail.toDouble());
       final d = q - p;
       final nrm = Offset(-d.dy, d.dx) / d.distance;
       final wig = sq * 0.9 * (k.isEven ? 1 : -1);
@@ -331,7 +349,7 @@ class _BoardPainter extends CustomPainter {
     final placed = <String, int>{};
     for (var i = 0; i < pawns.length; i++) {
       final (n, hopping, color, current) = pawns[i];
-      var o = _pos(sq, n);
+      var o = _pos(cell, n);
       final key = '${n.round()}';
       final dup = placed[key] ?? 0;
       placed[key] = dup + 1;

@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.28
+
+- **Serpents et échelles** : plateau quadrillé (traits entre les cases, damier plus contrasté, numéros plus lisibles) qui prend toute la largeur ; scores réduits en une colonne étroite à côté.
+- **Zombies** : 5 formes mélangées (clochard, squelette, momie, toxique, chibi), chacune animée, bras qui pendent et se balancent en marchant ; plus petits au loin, plus grands près de la base ; ils ne se chevauchent plus (2 crans d'écart minimum dans un couloir, décalés à gauche / à droite quand ils partagent un couloir).
+
 ## v0.6.27
 
 - **11 nouveaux jeux Party**, chacun avec son écran animé à la place de la cible (la cible reste en petit à côté, avec le joueur en cours) :
