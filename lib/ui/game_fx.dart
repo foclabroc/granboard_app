@@ -409,8 +409,11 @@ class GameFx {
             note != null && key != _lastNote ? '${_speakable(note)}. ' : '';
         if (note != null) _lastNote = key;
         final cible = g.settings.info.party ? '' : 'cible ';
-        _turn(g,
-            '$before${g.currentPlayer.name}, à toi. $cible${_speakable(g.targetLabel)}');
+        // Zombies : « 6 zombies · base 5/5 » reste affiché mais n'est pas dit
+        final said = g.settings.kind == PracticeKind.zombies
+            ? ''
+            : '$cible${_speakable(g.targetLabel)}';
+        _turn(g, '$before${g.currentPlayer.name}, à toi. $said');
       case MatchGame m:
         if (m.finished) {
           win(m);

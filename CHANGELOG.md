@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.31
+
+- **Accueil plus vivant** : chaque tuile zoome et glisse lentement (décalées d'une tuile à l'autre) et un reflet la balaie toutes les 7 s ; figé sur l'écran TV allégé.
+- Petits textes des tuiles (31 JEUX, X01 · FREEZE…) dans une étiquette sombre, en blanc et plus gros : lisibles sur les images.
+- **Zombies** : l'annonceur ne dit plus « 6 zombies, base 5/5 » à chaque tour (toujours affiché).
+
 ## v0.6.30
 
 - **Adversaires virtuels** repérables : petit robot devant leur rang à côté du nom (tableau des scores, bandeau du tour, intro…) et étiquette VIRTUEL dans la liste des joueurs.

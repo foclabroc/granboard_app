@@ -507,6 +507,9 @@ class _Tile extends StatelessWidget {
   final bool gold;
   final Animation<double>? spin;
   final VoidCallback onTap;
+
+  /// Décalage de l'animation propre à chaque tuile (secondes).
+  double get _phase => (title.hashCode % 1000) / 1000 * 40;
   const _Tile(
       {super.key,
       required this.tint,
@@ -552,19 +555,55 @@ class _Tile extends StatelessWidget {
                     Positioned.fill(
                       child: AnimatedBuilder(
                         animation: anim,
-                        // zoom lent qui respire (figé en affichage allégé)
-                        builder: (context, child) => Transform.scale(
-                          scale: Perf.lite
-                              ? 1.04
-                              : 1.04 + 0.04 * sin(anim.value * 6 * pi),
-                          child: child,
-                        ),
+                        // zoom + panoramique lents, décalés d'une tuile à
+                        // l'autre (figés en affichage allégé)
+                        builder: (context, child) {
+                          if (Perf.lite) {
+                            return Transform.scale(scale: 1.06, child: child);
+                          }
+                          final t = anim.value * 90 + _phase;
+                          return Transform.translate(
+                            offset: Offset(sin(t * .35) * c.maxWidth * .035,
+                                cos(t * .27) * c.maxHeight * .03),
+                            child: Transform.scale(
+                                scale: 1.12 + 0.06 * sin(t * .22),
+                                child: child),
+                          );
+                        },
                         child: Image.asset('assets/tiles/$image.jpg',
                             fit: BoxFit.cover,
                             filterQuality: FilterQuality.medium,
                             errorBuilder: (context, e, s) => const SizedBox()),
                       ),
                     ),
+                    // reflet qui balaie la tuile toutes les 7 s
+                    if (!Perf.lite)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: AnimatedBuilder(
+                            animation: anim,
+                            builder: (context, _) {
+                              final k = ((anim.value * 90 + _phase) % 7) / 1.4;
+                              if (k > 1) return const SizedBox();
+                              final x = -1.6 + k * 3.2;
+                              return DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment(x - .5, -1),
+                                    end: Alignment(x + .5, 1),
+                                    colors: [
+                                      Colors.white.withValues(alpha: 0),
+                                      Colors.white.withValues(alpha: .22),
+                                      Colors.white.withValues(alpha: 0),
+                                    ],
+                                    stops: const [.3, .5, .7],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
                     // dégradé sombre en bas pour lire le titre
                     Positioned.fill(
                       child: IgnorePointer(
@@ -632,8 +671,23 @@ class _Tile extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(kicker,
-                            style: Tv.label(12, color: Colors.white70)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.62),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                                color: tint.withValues(alpha: 0.7), width: 1),
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(kicker,
+                                maxLines: 1,
+                                style: Tv.title(13, color: Colors.white)),
+                          ),
+                        ),
                         const Spacer(),
                         FittedBox(
                           fit: BoxFit.scaleDown,
