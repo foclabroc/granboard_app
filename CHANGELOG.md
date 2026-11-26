@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.32
+
+- **Icônes illustrées des jeux** : les 62 jeux (01, Freeze, Cricket, Entraînement, Party) ont une vraie icône dans la liste CHOISIR LE JEU, et chaque case prend la couleur de son icône.
+
 ## v0.6.31
 
 - **Fonds illustrés des jeux** : 12 vraies images (01, Cricket, Medley, Entraînement, Party, Bowling, Golf, Football, Chat et Souris, Paint, Contre la montre, Grand Prix) derrière les réglages et les parties, qui glissent et zooment lentement (figées sur l'écran TV allégé).

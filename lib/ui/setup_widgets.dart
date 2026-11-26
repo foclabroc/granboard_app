@@ -145,6 +145,9 @@ class SetupItem extends StatelessWidget {
   final String label;
   final String? value;
   final IconData? icon;
+
+  /// Icône illustrée (`assets/icons/<x>.jpg`), prioritaire sur [icon].
+  final String? image;
   final bool selected;
   final VoidCallback? onTap;
   final Widget? trailing;
@@ -157,6 +160,7 @@ class SetupItem extends StatelessWidget {
       required this.label,
       this.value,
       this.icon,
+      this.image,
       this.selected = false,
       this.onTap,
       this.trailing,
@@ -177,7 +181,10 @@ class SetupItem extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 child: Row(
                   children: [
-                    if (icon != null) ...[
+                    if (image != null) ...[
+                      gameArt(image!, 30),
+                      const SizedBox(width: 8),
+                    ] else if (icon != null) ...[
                       Icon(icon, size: 18, color: Colors.white),
                       const SizedBox(width: 8),
                     ],
@@ -331,6 +338,7 @@ class SetupSwitch extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
   final IconData? icon;
+  final String? image;
 
   /// Couleur de la bande (`Band`) ; null = ligne classique.
   final Color? tint;
@@ -340,12 +348,14 @@ class SetupSwitch extends StatelessWidget {
       required this.value,
       required this.onChanged,
       this.icon,
+      this.image,
       this.tint});
 
   @override
   Widget build(BuildContext context) => SetupItem(
         label: label,
         icon: icon,
+        image: image,
         selected: value,
         tint: tint,
         onTap: () => onChanged(!value),
@@ -369,6 +379,92 @@ class SetupNote extends StatelessWidget {
 }
 
 // ─── Icônes des variantes ───
+
+/// Icône illustrée d'un jeu (images Gemini de foclabroc, 128 px).
+Widget gameArt(String asset, double size) => ClipRRect(
+      borderRadius: BorderRadius.circular(size * 0.22),
+      child: Image.asset(asset,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.medium,
+          errorBuilder: (_, __, ___) => SizedBox(width: size, height: size)),
+    );
+
+String x01Art(int start) => 'assets/icons/x01_$start.jpg';
+const kFreezeArt = 'assets/icons/x01_freeze.jpg';
+String cricketArt(CricketVariant v) => 'assets/icons/cr_${v.name}.jpg';
+String practiceArt(PracticeKind k) => 'assets/icons/pr_${k.name}.jpg';
+
+/// Couleur de la bande d'un jeu, choisie d'après son icône.
+const kGameTints = <String, Color>{
+  'x01_301': Color(0xFF2A93CC),
+  'x01_501': Color(0xFFC79A1A),
+  'x01_701': Color(0xFF5A6880),
+  'x01_901': Color(0xFF94602F),
+  'x01_freeze': Color(0xFF4A9CD6),
+  'cr_standard': Color(0xFF5A6880),
+  'cr_cutThroat': Color(0xFF8048C0),
+  'cr_hidden': Color(0xFF3A5CC4),
+  'cr_hiddenCutThroat': Color(0xFFB83C92),
+  'cr_wildcard': Color(0xFF8048C0),
+  'cr_noScore': Color(0xFFC0393B),
+  'cr_tripleOnly': Color(0xFF1F9D96),
+  'cr_mickeyMouse': Color(0xFFB83C92),
+  'pr_countUp': Color(0xFFC79A1A),
+  'pr_target20': Color(0xFF3F9E44),
+  'pr_targetBull': Color(0xFFC0393B),
+  'pr_targetChoice': Color(0xFF1F9D96),
+  'pr_targetHat': Color(0xFF5A6880),
+  'pr_targetHorse': Color(0xFF94602F),
+  'pr_halfIt': Color(0xFF3F9E44),
+  'pr_deltaShoot': Color(0xFFD2691E),
+  'pr_rotation': Color(0xFF1F9D96),
+  'pr_shootForce': Color(0xFFC79A1A),
+  'pr_oniren': Color(0xFF5A6880),
+  'pr_crCountUp': Color(0xFF3A5CC4),
+  'pr_crMultiple': Color(0xFFC79A1A),
+  'pr_bobs27': Color(0xFFC0393B),
+  'pr_checkout121': Color(0xFF5A6880),
+  'pr_spider': Color(0xFF8048C0),
+  'pr_pirates': Color(0xFF94602F),
+  'pr_funMission': Color(0xFF3F9E44),
+  'pr_allFives': Color(0xFF94602F),
+  'pr_beyondTop': Color(0xFFD2691E),
+  'pr_kickDown': Color(0xFF3A5CC4),
+  'pr_twoLine': Color(0xFF3A5CC4),
+  'pr_shanghai': Color(0xFFC0393B),
+  'pr_hyperBull': Color(0xFFB83C92),
+  'pr_hideAndSeek': Color(0xFF1F9D96),
+  'pr_killer': Color(0xFF8048C0),
+  'pr_treasureHunt': Color(0xFF3F9E44),
+  'pr_ticTacToe': Color(0xFF3A5CC4),
+  'pr_baseball': Color(0xFF94602F),
+  'pr_golf': Color(0xFF3F9E44),
+  'pr_scram': Color(0xFFD2691E),
+  'pr_football': Color(0xFF3F9E44),
+  'pr_hotPotato': Color(0xFFD2691E),
+  'pr_catMouse': Color(0xFFC79A1A),
+  'pr_paint': Color(0xFFB83C92),
+  'pr_bowling': Color(0xFF8048C0),
+  'pr_grandPrix': Color(0xFFC0393B),
+  'pr_timeAttack': Color(0xFF94602F),
+  'pr_tugOfWar': Color(0xFFD2691E),
+  'pr_vault': Color(0xFF5A6880),
+  'pr_fightClub': Color(0xFFC0393B),
+  'pr_connect4': Color(0xFF3A5CC4),
+  'pr_snakesLadders': Color(0xFF3F9E44),
+  'pr_bowls': Color(0xFF5A6880),
+  'pr_conqueror': Color(0xFFD2691E),
+  'pr_testMatch': Color(0xFF94602F),
+  'pr_snooker': Color(0xFFC0393B),
+  'pr_pool': Color(0xFF8048C0),
+  'pr_zombies': Color(0xFF3F9E44),
+};
+
+/// Couleur de la bande pour l'icône [asset] (null = rampe par défaut).
+Color? artTint(String asset) =>
+    kGameTints[asset.split('/').last.split('.').first];
 
 IconData cricketIcon(CricketVariant v) => switch (v) {
       CricketVariant.standard => Icons.close,

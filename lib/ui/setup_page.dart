@@ -362,12 +362,13 @@ class _SetupPageState extends State<SetupPage> {
 
   int _teamOf(String id) => _team[id] ?? 0;
 
-  String _nameOf(String id) => personaOf(id)?.name ??
+  String _nameOf(String id) =>
+      personaOf(id)?.name ??
       (isBotId(id)
-      ? 'Joueur virtuel ${id.substring(9)}'
-      : isGuestId(id)
-          ? 'Invité ${id.substring(6)}'
-          : store.byId(id)?.name ?? '?');
+          ? 'Joueur virtuel ${id.substring(9)}'
+          : isGuestId(id)
+              ? 'Invité ${id.substring(6)}'
+              : store.byId(id)?.name ?? '?');
 
   void _addGuest() {
     var n = 1;
@@ -567,7 +568,9 @@ class _SetupPageState extends State<SetupPage> {
                         : () async {
                             final p = await showPersonaSheet(ctx,
                                 taken: _selected.toSet());
-                            if (p != null && mounted) act(() => _select(p.playerId));
+                            if (p != null && mounted) {
+                              act(() => _select(p.playerId));
+                            }
                           },
                   ),
                   ActionChip(
@@ -911,7 +914,8 @@ class _SetupPageState extends State<SetupPage> {
             key: ValueKey('game-${k.name}'),
             label: kPracticeInfo[k]!.name,
             icon: practiceIcon(k),
-            tint: Band.at(i, ks.length),
+            image: practiceArt(k),
+            tint: artTint(practiceArt(k)) ?? Band.at(i, ks.length),
             selected: _curKind == k,
             onTap: () => setState(() {
               _curKind = k;
@@ -929,7 +933,8 @@ class _SetupPageState extends State<SetupPage> {
             key: ValueKey('game-${v.name}'),
             label: v.label,
             icon: cricketIcon(v),
-            tint: Band.at(i, vs.length),
+            image: cricketArt(v),
+            tint: artTint(cricketArt(v)) ?? Band.at(i, vs.length),
             selected: _variant == v,
             onTap: () => setState(() => _variant = v),
           ),
@@ -954,7 +959,8 @@ class _SetupPageState extends State<SetupPage> {
           key: ValueKey('game-$s'),
           label: '$s',
           icon: x01Icon(s),
-          tint: Band.at(i, kStartScores.length),
+          image: x01Art(s),
+          tint: artTint(x01Art(s)) ?? Band.at(i, kStartScores.length),
           selected: _start == s,
           onTap: () => setState(() => _start = s),
         ),
@@ -962,6 +968,7 @@ class _SetupPageState extends State<SetupPage> {
         SetupSwitch(
           label: 'Freeze (équipes)',
           icon: Icons.ac_unit,
+          image: kFreezeArt,
           tint: Band.ice,
           value: _freeze,
           onChanged: (v) => setState(() => _freeze = v),
