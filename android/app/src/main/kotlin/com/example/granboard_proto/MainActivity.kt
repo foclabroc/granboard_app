@@ -99,6 +99,9 @@ class MainActivity : FlutterActivity() {
                         FocVideoMode.softwareFirst = call.arguments == true
                         result.success(null)
                     }
+                    // Bouton CAST : menu « Diffuser l'écran » du téléphone
+                    // (recopie vers Chromecast / Android TV / Miracast)
+                    "openCast" -> result.success(openCast())
                     "restart" -> {
                         result.success(null)
                         window.decorView.postDelayed({ restart() }, 300)
@@ -106,5 +109,31 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    /** Ouvre la diffusion d'écran : réglage Android standard, puis les
+     *  variantes des constructeurs, puis les réglages d'affichage. */
+    private fun openCast(): Boolean {
+        val tries = listOf(
+            Intent("android.settings.CAST_SETTINGS"),
+            Intent("android.settings.WIFI_DISPLAY_SETTINGS"),
+            // Samsung Smart View
+            Intent().setClassName(
+                "com.samsung.android.smartmirroring",
+                "com.samsung.android.smartmirroring.CastingDialog"
+            ),
+            // Xiaomi / Redmi (MIUI, HyperOS)
+            Intent("com.milink.service.ui.MiPlayActivity"),
+            Intent("android.settings.DISPLAY_SETTINGS"),
+        )
+        for (i in tries) {
+            try {
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(i)
+                return true
+            } catch (e: Exception) {
+            }
+        }
+        return false
     }
 }

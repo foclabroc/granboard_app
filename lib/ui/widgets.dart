@@ -132,6 +132,12 @@ class RankChip extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // adversaire virtuel : petit robot devant son rang
+                if (isBotId(id)) ...[
+                  Icon(Icons.smart_toy,
+                      size: size * 1.1, color: rank.color),
+                  SizedBox(width: size * 0.25),
+                ],
                 Text(rank.label, style: Tv.title(size, color: rank.color)),
                 SizedBox(width: size * 0.3),
                 Text(r.fr(2), style: Tv.title(size * 0.85, color: Tv.text)),

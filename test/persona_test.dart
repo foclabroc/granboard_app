@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:granboard_proto/board_service.dart';
@@ -5,6 +7,7 @@ import 'package:granboard_proto/game/bot.dart';
 import 'package:granboard_proto/game/personas.dart';
 import 'package:granboard_proto/game/x01.dart';
 import 'package:granboard_proto/granboard.dart';
+import 'package:granboard_proto/media.dart';
 import 'package:granboard_proto/players.dart';
 import 'package:granboard_proto/rank.dart';
 import 'package:granboard_proto/ui/setup_page.dart';
@@ -33,6 +36,11 @@ void main() {
     expect(personaOf('guest-bot1'), isNull);
     expect(isBotId('guest-bot-sarah'), isTrue);
     expect(PlayerStore.instance.ratingOf('guest-bot-boss'), 20);
+    for (final p in kPersonas) {
+      expect(MediaStore.instance.soundOf(p.playerId), 'bot_${p.id}');
+      expect(File('assets/sounds/turn/bot_${p.id}.ogg').existsSync(), isTrue,
+          reason: p.id);
+    }
   });
 
   test(

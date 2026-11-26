@@ -9,7 +9,6 @@ import '../media.dart';
 import '../game/cricket.dart';
 import '../game/darts_game.dart';
 import '../game/match.dart';
-import '../game/personas.dart';
 import '../game/practice.dart';
 import '../game/x01.dart';
 import '../granboard.dart';
@@ -226,17 +225,9 @@ class GameFx {
   void start(DartsGame game, {Duration delay = Duration.zero}) {
     _names(game);
     _leader = null;
-    var title = game is MatchGame
+    final title = game is MatchGame
         ? 'Medley en ${game.settings.legs} legs. Leg 1, ${game.leg.title}'
         : game.title;
-    // 1er adversaire virtuel de la partie : sa réplique d'entrée
-    final rival = [
-      for (final p in game.players)
-        if (personaOf(p.id) case final x?) x
-    ];
-    if (rival.isNotEmpty) {
-      title = '$title. ${rival.first.name} : ${rival.first.quotes[0]}';
-    }
     if (delay > Duration.zero) {
       Timer(delay, () {
         // page fermée (splash démonté) ou fléchette déjà lancée : rien
@@ -765,13 +756,7 @@ class GameFx {
   }
 
   void win(DartsGame game) {
-    // un adversaire virtuel qui gagne a sa réplique
-    final brag = [
-      for (final i in game.winners)
-        if (personaOf(game.players[i].id) case final p?) '${p.name} : ${p.quotes[1]}'
-    ].take(1).join();
-    void say(String s, int ms) =>
-        audio.sayLater(brag.isEmpty ? s : '$s $brag', ms);
+    void say(String s, int ms) => audio.sayLater(s, ms);
     _haptic(true);
     audio.play(Sfx.win);
     Timer(const Duration(milliseconds: 600), () => audio.play(Sfx.crowd));

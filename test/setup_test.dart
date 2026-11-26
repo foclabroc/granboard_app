@@ -13,12 +13,28 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'fake_server.dart';
 
 /// Ajoute un joueur virtuel par la fenêtre « Ajouter ».
+Future<void> addGuest(WidgetTester tester) async {
+  await tester.ensureVisible(find.byKey(const ValueKey('players-add')));
+  await tester.tap(find.byKey(const ValueKey('players-add')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const ValueKey('add-guest')));
+  await tester.pump();
+  await tester.tap(find.byKey(const ValueKey('add-done')));
+  await tester.pumpAndSettle();
+}
+
 Future<void> addBot(WidgetTester tester) async {
   await tester.ensureVisible(find.byKey(const ValueKey('players-add')));
   await tester.tap(find.byKey(const ValueKey('players-add')));
   await tester.pumpAndSettle();
-  await tester.tap(find.byKey(const ValueKey('add-bot')));
+  // adversaire virtuel : Enzo (le 1er, toujours débloqué)
+  await tester.tap(find.byKey(const ValueKey('add-persona')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const ValueKey('persona-enzo')));
   await tester.pump();
+  await tester.ensureVisible(find.byKey(const ValueKey('persona-add')));
+  await tester.tap(find.byKey(const ValueKey('persona-add')));
+  await tester.pumpAndSettle();
   await tester.tap(find.byKey(const ValueKey('add-done')));
   await tester.pumpAndSettle();
 }
@@ -52,13 +68,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('players-add')));
     await tester.pumpAndSettle();
     expect(find.text('DANS LA PARTIE · ORDRE DE JEU'), findsOneWidget);
-    // Foc (profil principal coché d'office) + 5 invités + 4 joueurs virtuels
-    for (var i = 0; i < 5; i++) {
+    // Foc (profil principal coché d'office) + 9 invités
+    for (var i = 0; i < 9; i++) {
       await tester.tap(find.byKey(const ValueKey('add-guest')));
-      await tester.pump();
-    }
-    for (var i = 0; i < 4; i++) {
-      await tester.tap(find.byKey(const ValueKey('add-bot')));
       await tester.pump();
     }
     expect(find.text('10/10'), findsOneWidget);
@@ -72,7 +84,7 @@ void main() {
         tester.getTopLeft(find.byWidget(e.widget)).dy.round()
     };
     expect(rows.length, lessThanOrEqualTo(2));
-    expect(find.text('Virtuel 1'), findsOneWidget);
+    expect(find.text('Invité 9'), findsWidgets);
     // la croix retire le joueur
     final first = (pills.evaluate().last.widget.key as ValueKey<String>)
         .value
@@ -119,7 +131,7 @@ void main() {
     await open(tester, 'x01');
     for (final n in [1, 2, 3, 4]) {
       if (n > 1) {
-        await addBot(tester);
+        await addGuest(tester);
       }
       if (n == 1) {
         await tester.ensureVisible(find.text('Freeze (équipes)'));

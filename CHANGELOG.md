@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.6.30
+
+- **Adversaires virtuels** repérables : petit robot devant leur rang à côté du nom (tableau des scores, bandeau du tour, intro…) et étiquette VIRTUEL dans la liste des joueurs.
+- Plus de répliques dites par l'annonceur pour les adversaires virtuels : chacun a son petit son du tour à la place (bouchon de Nico, cloche de Gégé, bips de Sarah, coup sourd du Boss…).
+- **Fenêtre TV** remise en ordre : à gauche les appareils (ce téléphone + écrans reliés, haut-parleur à toucher pour choisir où sort le son, déconnexion) et l'ajout d'un écran ; à droite les onglets AFFICHAGE (3 réglages) et CAMÉRA, ou la marche à suivre si rien n'est relié.
+- **Bouton CAST** (barre de l'accueil et fenêtre TV) : ouvre le menu « Diffuser l'écran » du téléphone pour le recopier sur un Chromecast, une Android TV ou un écran Miracast, sans installer Foclaboard sur la TV (Samsung Smart View et Xiaomi essayés aussi ; sinon réglages d'affichage).
+- Bouton « Joueur virtuel » (niveau qui s'adapte) retiré : on joue contre les adversaires virtuels.
+- **Accueil illustré** : les 8 tuiles ont chacune une vraie illustration (01, Cricket, Party, Tournois, Medley, Entraînement, En ligne, Options), avec un zoom lent et un dégradé sous le titre.
+- **Zombies illustré** : vrai décor de cimetière et 5 zombies dessinés (clochard, squelette, momie, toxique, chibi) qui sortent de la brume au fond et avancent en perspective jusqu'à la barricade ; pancartes qui ne se recouvrent plus ; abattu = flash blanc, recul et giclée ; morsure = la barricade encaisse. **Bande son** : ambiance horreur en boucle (suit le réglage et le volume de la musique), grognements quand ils avancent, cris, os, coups sur le bois, gong de nouvelle vague.
+
 ## v0.6.29
 
 - **Nouvelles vidéos en motion design, avec bruitages**, ajoutées au tirage au hasard : 3 styles (Impact, Synth, Or) pour les coups (Triple 20, Bull, Double Bull, 1,5 s) et pour les 7 récompenses (Low Ton, High Ton, Ton 80, Hat Trick, 3 in the Black, 3 in a Bed, White Horse, 4 s : compteur ou 3 pastilles, sous-titre, foule). Générées par `tools/motion_hits/make.py`.

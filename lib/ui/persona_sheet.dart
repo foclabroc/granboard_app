@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../audio.dart';
 import '../format.dart';
 import '../game/bot.dart';
 import '../game/personas.dart';
@@ -29,7 +28,6 @@ class _PersonaGallery extends StatefulWidget {
 class _PersonaGalleryState extends State<_PersonaGallery> {
   final rec = PersonaRecords.instance;
   late Persona _sel = kPersonas.lastWhere(rec.unlocked);
-  int _quote = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -84,10 +82,7 @@ class _PersonaGalleryState extends State<_PersonaGallery> {
     final rank = rankOf(p.note);
     return GestureDetector(
       key: ValueKey('persona-${p.id}'),
-      onTap: () => setState(() {
-        _sel = p;
-        _quote = 0;
-      }),
+      onTap: () => setState(() => _sel = p),
       child: Container(
         width: w,
         decoration: BoxDecoration(
@@ -223,14 +218,6 @@ class _PersonaGalleryState extends State<_PersonaGallery> {
             _stat(mpr.fr(2), 'MPR CRICKET'),
           ]),
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.only(left: 8),
-            decoration: BoxDecoration(
-                border: Border(left: BorderSide(color: p.color, width: 3))),
-            child: Text('« ${p.quotes[_quote]} »',
-                style: Tv.label(15)
-                    .copyWith(fontStyle: FontStyle.italic, color: Tv.cream)),
-          ),
           const SizedBox(height: 6),
           Text(
             !open
@@ -243,18 +230,6 @@ class _PersonaGalleryState extends State<_PersonaGallery> {
           const SizedBox(height: 8),
           Row(children: [
             Expanded(
-              child: OutlinedButton(
-                key: const ValueKey('persona-listen'),
-                onPressed: () {
-                  AudioService.instance.say(p.quotes[_quote]);
-                  setState(() => _quote = (_quote + 1) % p.quotes.length);
-                },
-                child: Text('ÉCOUTER', style: Tv.title(15)),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              flex: 2,
               child: FilledButton(
                 key: const ValueKey('persona-add'),
                 style: FilledButton.styleFrom(

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -317,6 +318,12 @@ class _HomePageState extends State<HomePage>
                         ),
                       ),
                       _BarButton(
+                        key: const ValueKey('bar-cast'),
+                        icon: const Icon(Icons.cast, size: 24),
+                        label: 'CAST',
+                        onTap: () => castScreen(context),
+                      ),
+                      _BarButton(
                         key: const ValueKey('bar-sound'),
                         icon: const Icon(Icons.volume_up, size: 24),
                         label: 'SON',
@@ -351,6 +358,7 @@ class _HomePageState extends State<HomePage>
                             anim: _spin,
                             kicker: 'X01 · FREEZE',
                             title: '$_start',
+                            image: 'x01',
                             gold: true,
                             spin: _spin,
                             onTap: () => _open(const SetupPage(kind: 'x01')),
@@ -361,6 +369,7 @@ class _HomePageState extends State<HomePage>
                             art: TileArt.cricket,
                             kicker: '8 VARIANTES',
                             title: 'CRICKET',
+                            image: 'cricket',
                             icon: Icons.grid_view_rounded,
                             onTap: () =>
                                 _open(const SetupPage(kind: 'cricket')),
@@ -371,6 +380,7 @@ class _HomePageState extends State<HomePage>
                             art: TileArt.party,
                             kicker: '$_partyCount JEUX',
                             title: 'PARTY',
+                            image: 'party',
                             icon: Icons.celebration,
                             onTap: () => _open(const SetupPage(kind: 'party')),
                           ),
@@ -380,6 +390,7 @@ class _HomePageState extends State<HomePage>
                             art: TileArt.tournament,
                             kicker: 'ÉLIMINATION · EN LIGNE',
                             title: 'TOURNOIS',
+                            image: 'tournament',
                             icon: Icons.account_tree,
                             onTap: () => _open(const TournamentsPage()),
                           ),
@@ -394,6 +405,7 @@ class _HomePageState extends State<HomePage>
                             art: TileArt.match,
                             kicker: '01 + CRICKET',
                             title: 'MEDLEY',
+                            image: 'match',
                             icon: Icons.emoji_events,
                             onTap: () => _open(const SetupPage(kind: 'match')),
                           ),
@@ -403,6 +415,7 @@ class _HomePageState extends State<HomePage>
                             art: TileArt.practice,
                             kicker: '$_practiceCount JEUX',
                             title: 'ENTRAÎNEMENT',
+                            image: 'practice',
                             icon: Icons.fitness_center,
                             onTap: () =>
                                 _open(const SetupPage(kind: 'practice')),
@@ -432,6 +445,7 @@ class _HomePageState extends State<HomePage>
                                                         ? '1 CONTRE 1 · SALONS · VIDÉO'
                                                         : '$n JOUEUR${n > 1 ? 'S' : ''} EN LIGNE',
                                 title: 'EN LIGNE',
+                                image: 'online',
                                 icon: Icons.public,
                                 onTap: () => _open(const OnlinePage()),
                               );
@@ -447,6 +461,7 @@ class _HomePageState extends State<HomePage>
                               kicker:
                                   '${PlayerStore.instance.players.length} JOUEUR${PlayerStore.instance.players.length > 1 ? 'S' : ''} · RÉGLAGES',
                               title: 'OPTIONS',
+                              image: 'options',
                               icon: Icons.tune,
                               onTap: () => _open(const OptionsPage()),
                             ),
@@ -482,6 +497,10 @@ class _Tile extends StatelessWidget {
   final Color tint;
   final Animation<double> anim;
   final TileArt? art;
+
+  /// Illustration de la tuile (`assets/tiles/<image>.jpg`, fournie par
+  /// foclabroc) : remplace le dessin [art] / la cible [spin].
+  final String? image;
   final String kicker;
   final String title;
   final IconData? icon;
@@ -493,6 +512,7 @@ class _Tile extends StatelessWidget {
       required this.tint,
       required this.anim,
       this.art,
+      this.image,
       required this.kicker,
       required this.title,
       required this.onTap,
@@ -528,7 +548,45 @@ class _Tile extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
               child: Stack(
                 children: [
-                  if (spin != null)
+                  if (image != null) ...[
+                    Positioned.fill(
+                      child: AnimatedBuilder(
+                        animation: anim,
+                        // zoom lent qui respire (figé en affichage allégé)
+                        builder: (context, child) => Transform.scale(
+                          scale: Perf.lite
+                              ? 1.04
+                              : 1.04 + 0.04 * sin(anim.value * 6 * pi),
+                          child: child,
+                        ),
+                        child: Image.asset('assets/tiles/$image.jpg',
+                            fit: BoxFit.cover,
+                            filterQuality: FilterQuality.medium,
+                            errorBuilder: (context, e, s) => const SizedBox()),
+                      ),
+                    ),
+                    // dégradé sombre en bas pour lire le titre
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              stops: const [0, 0.25, 0.55, 1],
+                              colors: [
+                                Colors.black.withValues(alpha: 0.55),
+                                Colors.black.withValues(alpha: 0),
+                                Colors.black.withValues(alpha: 0.05),
+                                Color.lerp(tint, Colors.black, 0.75)!
+                                    .withValues(alpha: 0.92),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ] else if (spin != null)
                     Positioned(
                       right: -boardSize * 0.22,
                       bottom: -boardSize * 0.22,

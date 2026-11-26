@@ -19,53 +19,26 @@ class Persona {
   /// Note sur 20 (rang : C … GM, voir `rank.dart`).
   final double note;
   final Color color;
-
-  /// Répliques dites par l'annonceur (début de partie, victoire).
-  final List<String> quotes;
-  const Persona(
-      this.id, this.name, this.title, this.note, this.color, this.quotes);
+  const Persona(this.id, this.name, this.title, this.note, this.color);
 
   String get playerId => 'guest-bot-$id';
   String get asset => 'assets/bots/$id.jpg';
+
+  /// Petit son du tour (`assets/sounds/turn/bot_<id>.ogg`,
+  /// `tools/motion_hits/bot_sounds.py`), à la place d'un son de compte.
+  String get sound => 'bot_$id';
 }
 
 const kPersonas = <Persona>[
-  Persona('enzo', 'Enzo', 'le grand débutant', 2, Color(0xFF1EA7FF), [
-    'Euh… on vise où exactement ?',
-    'Elle est passée où, celle-là ?',
-  ]),
-  Persona('chloe', 'Chloé', 'la gauchère timide', 4, Color(0xFFB45CFF), [
-    'Oh… pardon, c\'était un triple ?',
-    'Je… je crois que j\'ai gagné ?',
-  ]),
-  Persona('nico', 'Nico', 'le joueur du dimanche', 6, Color(0xFFFF8A1F), [
-    'Attends, je finis ma bière !',
-    'C\'est dimanche, on s\'en fout !',
-  ]),
-  Persona('karim', 'Karim', 'le créatif', 8, Color(0xFFFF3D5A), [
-    'Je l\'ai lancée en tournant, t\'as vu ?',
-    'Le style d\'abord, les points après.',
-  ]),
-  Persona('antoine', 'Antoine', 'le persévérant', 10, Color(0xFF4FB3D9), [
-    'Je recommence jusqu\'à ce que ça rentre.',
-    'Encore une. Juste une.',
-  ]),
-  Persona('valerie', 'Valérie', 'la compétitrice', 12, Color(0xFFFF8A1F), [
-    'On compte les points, pas les excuses.',
-    'Match point. À moi.',
-  ]),
-  Persona('gege', 'Gégé', 'le vétéran des pubs', 14, Color(0xFFB45CFF), [
-    'Quarante ans de comptoir, petit.',
-    'Le double 16, je le vise les yeux fermés.',
-  ]),
-  Persona('sarah', 'Sarah', 'la machine', 17, Color(0xFF1EA7FF), [
-    'Cent quatre-vingts. Suivant.',
-    'Je ne rate pas. Jamais.',
-  ]),
-  Persona('boss', 'Le Boss', 'le roi du bullseye', 20, Color(0xFFFF2D46), [
-    'Le bull, c\'est chez moi.',
-    'Neuf fléchettes. Comme d\'habitude.',
-  ]),
+  Persona('enzo', 'Enzo', 'le grand débutant', 2, Color(0xFF1EA7FF)),
+  Persona('chloe', 'Chloé', 'la gauchère timide', 4, Color(0xFFB45CFF)),
+  Persona('nico', 'Nico', 'le joueur du dimanche', 6, Color(0xFFFF8A1F)),
+  Persona('karim', 'Karim', 'le créatif', 8, Color(0xFFFF3D5A)),
+  Persona('antoine', 'Antoine', 'le persévérant', 10, Color(0xFF4FB3D9)),
+  Persona('valerie', 'Valérie', 'la compétitrice', 12, Color(0xFFFF8A1F)),
+  Persona('gege', 'Gégé', 'le vétéran des pubs', 14, Color(0xFFB45CFF)),
+  Persona('sarah', 'Sarah', 'la machine', 17, Color(0xFF1EA7FF)),
+  Persona('boss', 'Le Boss', 'le roi du bullseye', 20, Color(0xFFFF2D46)),
 ];
 
 /// Personnage d'un identifiant de joueur (`guest-bot-<id>`), sinon null.

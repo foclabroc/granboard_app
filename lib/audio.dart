@@ -49,9 +49,11 @@ class AudioService extends ChangeNotifier {
     _muted = v;
     if (v) {
       _music?.stop().catchError((_) {});
+      _loop?.stop().catchError((_) {});
       _stopVoice();
-    } else if (_musicWanted) {
-      startMusic();
+    } else {
+      if (_musicWanted) startMusic();
+      _playLoop();
     }
     notifyListeners();
   }
@@ -122,7 +124,8 @@ class AudioService extends ChangeNotifier {
   Future<void> prepareVoiceFiles(void Function(double) progress) async {
     try {
       final index = await rootBundle.loadString('assets/voice/index.json');
-      final files = (jsonDecode(index) as Map).values.map((v) => '$v').toSet().toList();
+      final files =
+          (jsonDecode(index) as Map).values.map((v) => '$v').toSet().toList();
       final base = await getApplicationSupportDirectory();
       final dir = Directory('${base.path}/voice');
       final mark = File('${dir.path}/.ok');
@@ -141,7 +144,8 @@ class AudioService extends ChangeNotifier {
             () async {
               final data = await rootBundle.load('assets/voice/$f');
               await File('${dir.path}/$f').writeAsBytes(
-                  data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+                  data.buffer
+                      .asUint8List(data.offsetInBytes, data.lengthInBytes),
                   flush: false);
             }(),
         ]);
@@ -172,13 +176,15 @@ class AudioService extends ChangeNotifier {
   /// l'autre) ; les suivants attendent leur tour.
   void prepareNames(Iterable<String> names) {
     if (_tts == null) return;
-    final todo = names.map(spokenName).where((n) => n.trim().isNotEmpty).toList();
+    final todo =
+        names.map(spokenName).where((n) => n.trim().isNotEmpty).toList();
     _synthQueue = _synthQueue.then((_) async {
       for (final n in todo) {
         if (_nameFiles.containsKey(n)) continue;
         try {
           final base = await getApplicationSupportDirectory();
-          final dir = Directory('${base.path}/names')..createSync(recursive: true);
+          final dir = Directory('${base.path}/names')
+            ..createSync(recursive: true);
           final f = File('${dir.path}/${_fnv(n).toRadixString(16)}.wav');
           if (!f.existsSync() || f.lengthSync() < 2000) {
             final tts = _tts!;
@@ -191,7 +197,9 @@ class AudioService extends ChangeNotifier {
             await tts
                 .synthesizeToFile(n, tmp.path, true)
                 .timeout(const Duration(seconds: 6));
-            if (tmp.existsSync() && tmp.lengthSync() >= 2000) tmp.renameSync(f.path);
+            if (tmp.existsSync() && tmp.lengthSync() >= 2000) {
+              tmp.renameSync(f.path);
+            }
           }
           if (f.existsSync() && f.lengthSync() >= 2000) _nameFiles[n] = f.path;
         } catch (_) {
@@ -201,7 +209,6 @@ class AudioService extends ChangeNotifier {
       }
     });
   }
-
 
   /// Prononciation choisie pour un pseudo (clé : pseudo en minuscules),
   /// pref `pron_v1` ; envoyée aux écrans TV.
@@ -421,29 +428,76 @@ class AudioService extends ChangeNotifier {
   void setMusic(bool v) {
     music = v;
     _save();
-    if (v && _musicWanted) {
-      startMusic();
-    } else if (!v) {
+    if (v && _musicWanted) startMusic();
+    if (v) _playLoop();
+    if (!v) {
       _music?.stop().catchError((_) {});
+      _loop?.stop().catchError((_) {});
     }
   }
 
   void setMusicVolume(double v) {
     musicVolume = v;
     _music?.setVolume(v).catchError((_) {});
+    _loop?.setVolume((v * _loopVolume).clamp(0.0, 1.0)).catchError((_) {});
     _save();
   }
 
   /// Effet sonore (plusieurs peuvent se superposer).
-  void play(Sfx s) {
-    if (_muted || _background || !effects || _pool.isEmpty) return;
+  void play(Sfx s) =>
+      playFile('sounds/${s.name}.ogg', volume: _volumes[s] ?? 0.8);
+
+  /// Bruitages joués (tests).
+  final playedFiles = <String>[];
+
+  /// Bruitage d'un jeu ([asset] relatif à `assets/`, ex.
+  /// `sounds/zombies/zb_pain.ogg`), même file de lecteurs que [play].
+  void playFile(String asset, {double volume = 0.8}) {
+    if (_muted || _background || !effects) return;
+    playedFiles.add(asset);
+    if (playedFiles.length > 50) playedFiles.removeAt(0);
+    if (_pool.isEmpty) return;
     final p = _pool[_poolIndex];
     _poolIndex = (_poolIndex + 1) % _pool.length;
     () async {
       try {
         await p.stop();
-        await p.play(AssetSource('sounds/${s.name}.ogg'),
-            volume: _volumes[s] ?? 0.8);
+        await p.play(AssetSource(asset), volume: volume);
+      } catch (_) {}
+    }();
+  }
+
+  /// Ambiance en boucle d'un jeu (Zombies) : suit le réglage de la musique
+  /// et son volume, coupée avec le son ou en arrière-plan.
+  AudioPlayer? _loop;
+  String? _loopAsset;
+  String? get loopAsset => _loopAsset;
+  double _loopVolume = 1;
+
+  void startLoop(String asset, {double volume = 1}) {
+    _loopAsset = asset;
+    _loopVolume = volume;
+    _playLoop();
+  }
+
+  void stopLoop() {
+    _loopAsset = null;
+    _loop?.stop().catchError((_) {});
+  }
+
+  /// Faux en test (pas de lecteur audio).
+  static bool loopPlayer = true;
+
+  void _playLoop() {
+    final a = _loopAsset;
+    if (!loopPlayer || a == null || _muted || _background || !music) return;
+    () async {
+      try {
+        final p = _loop ??= AudioPlayer();
+        await p.setReleaseMode(ReleaseMode.loop);
+        await p.play(AssetSource(a),
+            volume: (musicVolume * _loopVolume).clamp(0.0, 1.0),
+            position: Duration.zero);
       } catch (_) {}
     }();
   }
@@ -617,9 +671,11 @@ class AudioService extends ChangeNotifier {
     _background = v;
     if (v) {
       _music?.pause().catchError((_) {});
+      _loop?.pause().catchError((_) {});
       _stopVoice();
-    } else if (_musicWanted) {
-      startMusic();
+    } else {
+      if (_musicWanted) startMusic();
+      if (_loopAsset != null) _loop?.resume().catchError((_) {});
     }
   }
 

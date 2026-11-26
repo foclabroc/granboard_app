@@ -1,14 +1,93 @@
-// Zombies : cimetière la nuit (lune, brume, tombes), 6 couloirs ; les
-// zombies avancent en titubant vers la base, leur cible sur une pancarte ;
-// abattu = giclée verte, morsure = la base tremble et rougit.
+// Zombies : cimetière illustré (fond et 5 zombies fournis par foclabroc,
+// maquette `zombies_illustre.html`). Les zombies sortent de la brume au
+// fond et avancent en perspective vers la barricade, leur cible sur une
+// pancarte ; abattu = flash blanc, recul et giclée ; morsure = la
+// barricade encaisse et l'écran rougit. Ambiance sonore en boucle +
+// grognements, cris, os, bois (sons choisis par foclabroc).
 
+import 'dart:async';
 import 'dart:math';
+import 'dart:ui' as ui;
 
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 
+import '../../audio.dart';
 import '../../game/practice.dart';
 import '../theme.dart';
 import 'common.dart';
+
+/// 5 formes, mélangées d'après l'id du zombie.
+enum ZombieForm { tramp, skeleton, mummy, toxic, chibi }
+
+ZombieForm zombieForm(int id) =>
+    ZombieForm.values[(id * 7 + 3) % ZombieForm.values.length];
+
+/// Images de la scène, chargées une fois (null tant qu'elles ne sont pas
+/// prêtes : décor de secours).
+class ZombieArt {
+  static ui.Image? bg;
+  static final sprites = <ZombieForm, ui.Image>{};
+  static Future<void>? _loading;
+  static bool get ready => bg != null && sprites.length == 5;
+
+  static Future<void> load() => _loading ??= () async {
+        Future<ui.Image> one(String name) async {
+          final data = await rootBundle.load('assets/zombies/$name');
+          final codec =
+              await ui.instantiateImageCodec(data.buffer.asUint8List());
+          return (await codec.getNextFrame()).image;
+        }
+
+        try {
+          for (final f in ZombieForm.values) {
+            sprites[f] = await one('${f.name}.webp');
+          }
+          bg = await one('bg.jpg');
+        } catch (_) {
+          _loading = null;
+        }
+      }();
+}
+
+/// Sons de la scène (`assets/sounds/zombies/`).
+class ZombieSounds {
+  static const dir = 'sounds/zombies';
+  static const music = '$dir/zb_music.ogg';
+}
+
+/// Taille de l'image de fond et points de perspective (pixels de l'image).
+const _bgW = 1376.0, _bgH = 768.0, _farY = 330.0, _nearY = 615.0;
+
+/// Un zombie affiché : position animée [vy] vers [y], apparition, touche.
+class _Z {
+  final int id, lane;
+  final String label;
+  final ZombieForm form;
+  final double ph, spd;
+  int y;
+  double vy, born = 0;
+  double hit = 0; // > 0 : abattu (secondes depuis la touche)
+  bool splat = false;
+  _Z(Zombie z, {bool fresh = true})
+      : id = z.id,
+        lane = z.lane,
+        label = z.label,
+        form = zombieForm(z.id),
+        ph = (z.id * 2.39) % 10,
+        spd = 0.8 + (z.id * 0.37) % 0.6,
+        y = z.y,
+        vy = z.y.toDouble() {
+    if (!fresh) born = 1;
+  }
+}
+
+class _Part {
+  double x, y, vx, vy, r, life;
+  final Color color;
+  _Part(this.x, this.y, this.vx, this.vy, this.r, this.life, this.color);
+}
 
 class ZombiesScene extends StatefulWidget {
   final PracticeGame game;
@@ -19,163 +98,279 @@ class ZombiesScene extends StatefulWidget {
 }
 
 class _ZombiesSceneState extends State<ZombiesScene>
-    with TickerProviderStateMixin, ArcadeEvents, AmbientTicker {
+    with SingleTickerProviderStateMixin, ArcadeEvents {
   @override
   PracticeGame get game => widget.game;
   final _pops = GlobalKey<PopLayerState>();
-  late final AnimationController _kill = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 900));
-  late final AnimationController _bite = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1000));
-  Map<int, Zombie> _last = {};
-  Offset? _splat;
+  final _rnd = Random();
+  final _zs = <int, _Z>{};
+  final _parts = <_Part>[];
+  final _repaint = ValueNotifier<int>(0);
+  late final Ticker _ticker = createTicker(_tick);
+  Duration _lastTick = Duration.zero;
+  double _t = 0, _shake = 0, _red = 0, _barHit = 0;
+  Size _size = const Size(840, 530);
+  int _groan = 0;
+  final _timers = <Timer>[];
 
   @override
   void initState() {
     super.initState();
-    _last = {for (final z in zombiesState(game).$1) z.id: z};
-    startAmbient();
+    for (final z in zombiesState(game).$1) {
+      _zs[z.id] = _Z(z, fresh: false);
+    }
+    if (!ZombieArt.ready) {
+      ZombieArt.load().then((_) {
+        if (mounted) _wake();
+      });
+    }
+    Perf.liteNotifier.addListener(_wake);
+    AudioService.instance.startLoop(ZombieSounds.music, volume: 1.6);
+    _wake();
   }
 
-  /// Décalage dans le couloir (plusieurs zombies dans le même couloir :
-  /// un à gauche, un à droite) ; posé à chaque construction.
-  Map<int, double> _shift = {};
+  @override
+  void dispose() {
+    for (final t in _timers) {
+      t.cancel();
+    }
+    Perf.liteNotifier.removeListener(_wake);
+    AudioService.instance.stopLoop();
+    _ticker.dispose();
+    _repaint.dispose();
+    super.dispose();
+  }
 
-  Offset _frac(Zombie z, [Map<int, double>? shift]) => Offset(
-      (z.lane + 0.5 + ((shift ?? _shift)[z.id] ?? 0)) / kZombieLanes,
-      0.2 + z.y / kZombieReach * 0.6);
+  void _sfx(String name, {double volume = 0.8, int delayMs = 0}) {
+    final path = '${ZombieSounds.dir}/$name.ogg';
+    if (delayMs == 0) {
+      AudioService.instance.playFile(path, volume: volume);
+    } else {
+      _timers.add(Timer(Duration(milliseconds: delayMs),
+          () => AudioService.instance.playFile(path, volume: volume)));
+    }
+  }
 
-  /// Perspective : plus petit au loin, taille pleine près de la base.
-  static double _scale(Zombie z) =>
-      0.72 + 0.28 * (z.y / (kZombieReach - 1)).clamp(0.0, 1.0);
+  /// Quelque chose bouge encore (en mode allégé, le ticker s'arrête quand
+  /// tout est immobile).
+  bool get _busy =>
+      _parts.isNotEmpty ||
+      _shake > 0.3 ||
+      _red > 0.01 ||
+      _barHit > 0.01 ||
+      _zs.values
+          .any((z) => z.hit > 0 || z.born < 1 || (z.vy - z.y).abs() > .01);
 
-  static Map<int, double> _shifts(List<Zombie> horde) {
-    final out = <int, double>{};
-    for (var lane = 0; lane < kZombieLanes; lane++) {
-      final here = [
-        for (final z in horde)
-          if (z.lane == lane) z
-      ]..sort((a, b) => a.y.compareTo(b.y));
-      if (here.length < 2) continue;
-      for (var i = 0; i < here.length; i++) {
-        out[here[i].id] = i.isEven ? -0.17 : 0.17;
+  void _wake() {
+    if (!mounted) return;
+    if (!_ticker.isActive) {
+      _lastTick = Duration.zero;
+      _ticker.start();
+    }
+    _repaint.value++;
+  }
+
+  void _tick(Duration now) {
+    final dt = _lastTick == Duration.zero
+        ? 0.016
+        : min(0.05, (now - _lastTick).inMicroseconds / 1e6);
+    _lastTick = now;
+    _t += dt;
+    for (final z in _zs.values.toList()) {
+      z.vy += (z.y - z.vy) * min(1, dt * 1.6);
+      if ((z.vy - z.y).abs() < .002) z.vy = z.y.toDouble();
+      z.born = min(1, z.born + dt * 1.2);
+      if (z.hit > 0) {
+        z.hit += dt;
+        if (z.hit > .22 && !z.splat) {
+          z.splat = true;
+          final p = _pos(z);
+          _burst(
+              p,
+              z.form == ZombieForm.skeleton
+                  ? const Color(0xFFE9E4D0)
+                  : const Color(0xFF7DFF3A),
+              26);
+        }
+        if (z.hit > .3) _zs.remove(z.id);
       }
     }
-    return out;
+    for (final q in _parts) {
+      q.life -= dt;
+      q.x += q.vx * dt;
+      q.y += q.vy * dt;
+      q.vy += _size.height * 1.7 * dt;
+    }
+    _parts.removeWhere((q) => q.life <= 0);
+    _shake *= pow(0.86, dt * 60);
+    _red *= pow(0.92, dt * 60);
+    _barHit *= pow(0.9, dt * 60);
+    _repaint.value++;
+    if (Perf.lite && !_busy) _ticker.stop();
+  }
+
+  /// Position au sol d'un couloir à l'avancée [y] (0 au fond, reach à la
+  /// barricade) + échelle de perspective.
+  ({double x, double y, double s}) _lanePos(int lane, double y) {
+    final w = _size.width, h = _size.height;
+    final bgS = max(w / _bgW, h / _bgH), bgY = (h - _bgH * bgS) / 2;
+    final far = bgY + _farY * bgS, near = bgY + _nearY * bgS;
+    final p = pow((y / kZombieReach).clamp(0.0, 1.2), 1.2).toDouble();
+    const n = kZombieLanes - 1;
+    final nearX = w * (.12 + lane * .76 / n);
+    final farX = w * (.25 + lane * .5 / n);
+    return (
+      x: farX + (nearX - farX) * p,
+      y: far + 20 * bgS + (near - far - 20 * bgS) * p,
+      s: .3 + .7 * p
+    );
+  }
+
+  ({double x, double y, double s}) _pos(_Z z) {
+    var p = _lanePos(z.lane, z.vy);
+    // 2 zombies dans le même couloir : l'un à gauche, l'autre à droite
+    final mates = [
+      for (final o in _zs.values)
+        if (o.lane == z.lane && o.hit == 0) o
+    ]..sort((a, b) => a.y.compareTo(b.y));
+    if (mates.length > 1 && mates.contains(z)) {
+      final side = mates.indexOf(z).isOdd ? 1 : -1;
+      p = (
+        x: p.x + side * _size.width * .045 * (.5 + p.s * .5),
+        y: p.y,
+        s: p.s
+      );
+    }
+    return p;
+  }
+
+  void _burst(({double x, double y, double s}) p, Color col, int n) {
+    final k = _size.height / 530;
+    for (var i = 0; i < n; i++) {
+      final a = _rnd.nextDouble() * 2 * pi,
+          v = (120 + _rnd.nextDouble() * 380) * k;
+      _parts.add(_Part(
+          p.x,
+          p.y - 120 * p.s * k,
+          cos(a) * v * p.s * 1.5,
+          sin(a) * v * p.s - 200 * p.s * k,
+          (4 + _rnd.nextDouble() * 10) * (p.s + .3) * k,
+          .9 + _rnd.nextDouble() * .5,
+          col));
+    }
+  }
+
+  /// Fait correspondre les zombies affichés à l'état de la partie.
+  void _sync() {
+    final (horde, _) = zombiesState(game);
+    final ev = arcadeEvent(game);
+    final ids = {for (final z in horde) z.id};
+    for (final z in horde) {
+      final s = _zs[z.id];
+      if (s == null) {
+        _zs[z.id] = _Z(z);
+      } else {
+        s.y = z.y;
+      }
+    }
+    for (final s in _zs.values.toList()) {
+      if (ids.contains(s.id) || s.hit > 0) continue;
+      if (ev?['type'] == 'kill' && ev?['id'] == s.id) {
+        s.hit = .001;
+        _shake = 9;
+      } else {
+        // arrivé à la barricade
+        _zs.remove(s.id);
+        _burst(_lanePos(s.lane, kZombieReach.toDouble()),
+            const Color(0xFF7A1010), 18);
+      }
+    }
   }
 
   @override
   void onEvent(Map<String, dynamic> e) {
     switch (e['type']) {
       case 'kill':
-        final z = _last[e['id']];
+        final z = _zs[e['id']];
+        final p = e['p'] as int;
+        final form = z?.form ?? zombieForm(e['id'] as int);
+        if (form == ZombieForm.skeleton) {
+          _sfx('zb_bones', delayMs: 200);
+        } else {
+          _sfx('zb_splat', volume: .7, delayMs: 200);
+          _sfx('zb_pain', volume: .9, delayMs: 200);
+        }
         if (z != null) {
-          _splat = _frac(z);
-          _kill.forward(from: 0);
-          final p = e['p'] as int;
+          final at = _pos(z);
           _pops.currentState?.add(Pop(
-              'ABATTU !', widget.colorOf(p), _splat! - const Offset(0, 0.05),
+              'ABATTU !',
+              widget.colorOf(p),
+              Offset(at.x / _size.width,
+                  (at.y - _size.height * .49 * at.s) / _size.height),
               size: 30));
         }
       case 'bite':
-        _bite.forward(from: 0);
+        _red = 1;
+        _shake = 16;
+        _barHit = 1;
+        _sfx('zb_wood', volume: 1);
+        _sfx('zb_barricade', volume: .5);
         _pops.currentState
             ?.add(Pop('MORSURE !', Tv.red, const Offset(0.5, 0.78), size: 40));
+      case 'advance':
+        _sfx('zb_groan${(_groan++ + _rnd.nextInt(2)) % 3 + 1}', volume: .8);
+        _sfx('zb_wave', volume: .5, delayMs: 700);
     }
-  }
-
-  @override
-  void dispose() {
-    _kill.dispose();
-    _bite.dispose();
-    stopAmbient();
-    super.dispose();
+    _wake();
   }
 
   @override
   Widget build(BuildContext context) {
     checkEvent();
+    _sync();
+    if (_busy) _wake();
     final g = game;
     final (horde, hp) = zombiesState(g);
-    // les zombies vus avant (pour la giclée de celui qui vient de tomber)
-    final shift = _shifts(horde);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _last = {for (final z in horde) z.id: z};
-      _shift = shift;
-    });
-    final wave = g.round;
     final waves = g.settings.goalOrDefault;
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
       child: LayoutBuilder(builder: (context, c) {
-        final zw = c.maxWidth / kZombieLanes * 0.8;
-        final zh = c.maxHeight * 0.3;
-        return AnimatedBuilder(
-          animation: _bite,
-          builder: (context, child) => Transform.translate(
-              offset:
-                  _bite.isAnimating ? shake(_bite.value, amp: 7) : Offset.zero,
-              child: child),
-          child: Stack(children: [
-            Positioned.fill(
-              child: AnimatedBuilder(
-                animation: Listenable.merge([ambient, _kill, _bite]),
-                builder: (context, _) => CustomPaint(
-                  painter: _NightPainter(
-                    t: ambient.value,
-                    hp: hp,
-                    bite: _bite.isAnimating ? _bite.value : 0,
+        _size = Size(c.maxWidth, c.maxHeight);
+        return Stack(children: [
+          Positioned.fill(
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: _ScenePainter(this, _repaint),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              color: Colors.black.withValues(alpha: .55),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Row(children: [
+                Text('VAGUE ${min(g.round, waves)} / $waves',
+                    style: Tv.title(18, color: const Color(0xFF9BFF5A))),
+                const Spacer(),
+                for (var i = 0; i < 5; i++)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: Icon(Icons.favorite,
+                        size: 18,
+                        color:
+                            i < hp ? const Color(0xFFFF3B4A) : Colors.white24),
                   ),
-                ),
-              ),
+                const Spacer(),
+                Text(plural(horde.length, 'ZOMBIE', 'ZOMBIES'),
+                    style: Tv.title(18, color: Colors.white)),
+              ]),
             ),
-            // du plus loin au plus près : le plus proche passe devant
-            for (final z in [...horde]..sort((a, b) => a.y.compareTo(b.y)))
-              AnimatedPositioned(
-                key: ValueKey('z${z.id}'),
-                duration: const Duration(milliseconds: 1200),
-                curve: Curves.easeInOut,
-                left: _frac(z, shift).dx * c.maxWidth - zw * _scale(z) / 2,
-                top: _frac(z, shift).dy * c.maxHeight - zh * _scale(z) * 0.55,
-                width: zw * _scale(z),
-                height: zh * _scale(z),
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: 1),
-                  duration: const Duration(milliseconds: 700),
-                  builder: (context, appear, child) =>
-                      Opacity(opacity: appear, child: child),
-                  child: _ZombieView(
-                      zombie: z,
-                      ambient: ambient,
-                      danger: z.y >= kZombieReach - 1),
-                ),
-              ),
-            Positioned.fill(
-              child: IgnorePointer(
-                child: AnimatedBuilder(
-                  animation: _kill,
-                  builder: (context, _) => CustomPaint(
-                    painter: _SplatPainter(
-                        _splat, _kill.isAnimating ? _kill.value : 0),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 8,
-              left: 10,
-              child: Text('VAGUE ${min(wave, waves)} / $waves',
-                  style: Tv.title(18, color: const Color(0xFFB4FF6A))),
-            ),
-            Positioned(
-              top: 8,
-              right: 10,
-              child: Text(plural(horde.length, 'ZOMBIE', 'ZOMBIES'),
-                  style: Tv.title(18, color: Colors.white70)),
-            ),
-            Positioned.fill(child: PopLayer(key: _pops)),
-          ]),
-        );
+          ),
+          Positioned.fill(child: PopLayer(key: _pops)),
+        ]);
       }),
     );
   }
@@ -183,523 +378,196 @@ class _ZombiesSceneState extends State<ZombiesScene>
 
 String plural(int n, String one, String many) => '$n ${n > 1 ? many : one}';
 
-class _ZombieView extends StatelessWidget {
-  final Zombie zombie;
-  final Animation<double> ambient;
-  final bool danger;
-  const _ZombieView(
-      {required this.zombie, required this.ambient, required this.danger});
+class _ScenePainter extends CustomPainter {
+  final _ZombiesSceneState st;
+  _ScenePainter(this.st, Listenable repaint) : super(repaint: repaint);
 
-  @override
-  Widget build(BuildContext context) {
-    final z = zombie;
-    final plate = switch (z.m) {
-      3 => const Color(0xFFFF5A4A),
-      2 => const Color(0xFFFFB02E),
-      _ => const Color(0xFFB4FF6A),
-    };
-    return AnimatedBuilder(
-      animation: ambient,
-      builder: (context, _) {
-        final ph = ambient.value * 2 * pi * 10 + z.id * 1.7;
-        return Transform.translate(
-          offset: Offset(sin(ph) * 2.5, (sin(ph * 2)).abs() * -3),
-          child: Transform.rotate(
-            angle: sin(ph) * 0.06,
-            child: Column(children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.8),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: danger ? Tv.red : plate, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                        color: plate.withValues(alpha: 0.5), blurRadius: 8)
-                  ],
-                ),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(z.label, style: Tv.title(18, color: plate)),
-                ),
-              ),
-              Expanded(
-                  child: CustomPaint(
-                      painter: _ZombiePainter(ph, zombieForm(z.id), danger),
-                      child: const SizedBox.expand())),
-            ]),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// 5 formes, mélangées d'après l'id du zombie (choix de foclabroc sur la
-/// maquette `zombies_formes.html`) : clochard, squelette, momie, toxique,
-/// chibi. Dessinées les pieds en bas de la boîte, unité `u` ≈ 1/1,85 de la
-/// hauteur.
-enum ZombieForm { tramp, skeleton, mummy, toxic, chibi }
-
-ZombieForm zombieForm(int id) =>
-    ZombieForm.values[(id * 7 + 3) % ZombieForm.values.length];
-
-class _ZombiePainter extends CustomPainter {
-  final double ph;
-  final ZombieForm form;
-  final bool danger;
-  _ZombiePainter(this.ph, this.form, this.danger);
-
-  Color get _skin => danger ? const Color(0xFFB9C46A) : const Color(0xFF7FB069);
-
-  static void _limb(Canvas c, List<Offset> pts, double w, Color col) {
-    final path = Path()..moveTo(pts[0].dx, pts[0].dy);
-    for (final p in pts.skip(1)) {
-      path.lineTo(p.dx, p.dy);
-    }
-    c.drawPath(
-        path,
-        Paint()
-          ..color = col
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = w
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round);
-  }
-
-  /// Bras qui pendent le long du corps et se balancent (en opposition) :
-  /// épaule à ±[spread], main à ±[handX] et à la hauteur [handY].
-  static void _arms(Canvas c, double x, double shoulderY, double spread,
-      double handX, double handY, double w, Color col, double t, double speed) {
-    final len = handY - shoulderY;
-    for (final side in [-1.0, 1.0]) {
-      final sw = sin(t * speed + (side > 0 ? pi : 0)) * len * 0.22;
-      final elbow = Offset(
-          x + side * (spread + (handX - spread) * 0.6) + sw * .4,
-          shoulderY + len * 0.5);
-      _limb(
-          c,
-          [
-            Offset(x + side * spread, shoulderY),
-            elbow,
-            Offset(x + side * handX + sw, handY),
-          ],
-          w,
-          col);
-    }
-  }
-
-  static void _eyes(Canvas c, Offset o, double r, double gap, Color col) {
-    final p = Paint()
-      ..color = col
-      ..maskFilter = MaskFilter.blur(BlurStyle.solid, r * 1.5);
-    c.drawCircle(o + Offset(-gap, 0), r, p);
-    if (gap > 0) c.drawCircle(o + Offset(gap, 0), r, p);
-  }
-
-  static void _shadow(Canvas c, Offset o, double w) => c.drawOval(
-      Rect.fromCenter(center: o, width: w * 2, height: w * 0.44),
-      Paint()..color = Colors.black.withValues(alpha: 0.4));
+  static final _white = Paint()
+    ..colorFilter = const ColorFilter.mode(Colors.white, BlendMode.srcIn);
 
   @override
   void paint(Canvas c, Size s) {
-    final u = min(s.height * 0.96 / 1.9, s.width / 1.7);
-    final x = s.width / 2, y = s.height * 0.96;
-    final t = ph / 3;
-    switch (form) {
-      case ZombieForm.tramp:
-        _tramp(c, x, y, u, t);
-      case ZombieForm.skeleton:
-        _skeleton(c, x, y, u, t);
-      case ZombieForm.mummy:
-        _mummy(c, x, y, u, t);
-      case ZombieForm.toxic:
-        _toxic(c, x, y, u, t);
-      case ZombieForm.chibi:
-        _chibi(c, x, y, u, t);
-    }
-  }
-
-  void _tramp(Canvas c, double x, double y, double u, double t) {
-    final sw = sin(t * 3) * u * .08, tilt = sin(t * 1.5) * .15 + .25;
-    _shadow(c, Offset(x, y), u * .55);
-    const pants = Color(0xFF2C3F5C);
-    _limb(
-        c,
-        [
-          Offset(x - u * .12, y - u * .6),
-          Offset(x - u * .2 + sw, y - u * .3),
-          Offset(x - u * .12 + sw, y)
-        ],
-        u * .15,
-        pants);
-    _limb(
-        c,
-        [
-          Offset(x + u * .12, y - u * .6),
-          Offset(x + u * .22 - sw, y - u * .3),
-          Offset(x + u * .18 - sw, y)
-        ],
-        u * .15,
-        pants);
-    final coat = Path()
-      ..moveTo(x - u * .34, y - u * 1.15)
-      ..lineTo(x + u * .34, y - u * 1.15)
-      ..lineTo(x + u * .38, y - u * .55);
-    for (var i = 0; i < 6; i++) {
-      coat.lineTo(x + u * .38 - i * u * .152, y - u * (i.isOdd ? .48 : .58));
-    }
-    coat.close();
-    c.drawPath(coat, Paint()..color = const Color(0xFF6B4A2F));
-    c.drawCircle(Offset(x + u * .1, y - u * .85), u * .07,
-        Paint()..color = const Color(0xFF5B8A4A));
-    _arms(
-        c, x, y - u * 1.05, u * .3, u * .4, y - u * .42, u * .12, _skin, t, 3);
+    final w = s.width, h = s.height, k = h / 530;
+    final t = st._t, lite = Perf.lite;
     c.save();
-    c.translate(x, y - u * 1.35);
-    c.rotate(tilt);
-    c.drawOval(
-        Rect.fromCenter(center: Offset.zero, width: u * .6, height: u * .68),
-        Paint()..color = _skin);
-    c.drawArc(
-        Rect.fromCircle(center: Offset(-u * .08, -u * .3), radius: u * .18),
-        pi,
-        pi,
-        true,
-        Paint()..color = const Color(0xFF2A1A10));
-    _eyes(c, Offset(0, -u * .02), u * .06, u * .12, const Color(0xFFFFD23B));
-    c.drawLine(
-        Offset(-u * .12, u * .15),
-        Offset(u * .12, u * .12),
-        Paint()
-          ..color = const Color(0xFF2A1A10)
-          ..strokeWidth = u * .04);
-    c.restore();
-  }
-
-  void _skeleton(Canvas c, double x, double y, double u, double t) {
-    final sw = sin(t * 4) * u * .07, j = max(0.0, sin(t * 10)) * u * .05;
-    _shadow(c, Offset(x, y), u * .45);
-    const bone = Color(0xFFE9E4D0);
-    _limb(
-        c,
-        [
-          Offset(x - u * .1, y - u * .6),
-          Offset(x - u * .14 + sw, y - u * .3),
-          Offset(x - u * .12 + sw, y)
-        ],
-        u * .06,
-        bone);
-    _limb(
-        c,
-        [
-          Offset(x + u * .1, y - u * .6),
-          Offset(x + u * .14 - sw, y - u * .3),
-          Offset(x + u * .12 - sw, y)
-        ],
-        u * .06,
-        bone);
-    c.drawOval(
-        Rect.fromCenter(
-            center: Offset(x, y - u * .6), width: u * .36, height: u * .14),
-        Paint()..color = bone);
-    _limb(c, [Offset(x, y - u * .62), Offset(x, y - u * 1.15)], u * .06, bone);
-    final rib = Paint()
-      ..color = bone
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = u * .04;
-    for (var i = 0; i < 4; i++) {
-      c.drawArc(
-          Rect.fromCenter(
-              center: Offset(x, y - u * (.78 + i * .1)),
-              width: (u * .2 - i * u * .01) * 2,
-              height: u * .1),
-          pi * .1,
-          pi * .8,
-          false,
-          rib);
+    if (st._shake > .3) {
+      final r = Random((t * 1000).toInt());
+      c.translate((r.nextDouble() - .5) * st._shake * k,
+          (r.nextDouble() - .5) * st._shake * k);
     }
-    _arms(c, x, y - u * 1.1, u * .2, u * .28, y - u * .6, u * .05, bone, t, 4);
-    final b = Paint()..color = bone;
-    c.drawCircle(Offset(x, y - u * 1.38), u * .26, b);
-    c.drawRect(
-        Rect.fromLTWH(x - u * .14, y - u * 1.22 + j, u * .28, u * .1), b);
-    final hole = Paint()..color = Colors.black;
-    c.drawCircle(Offset(x - u * .1, y - u * 1.4), u * .08, hole);
-    c.drawCircle(Offset(x + u * .1, y - u * 1.4), u * .08, hole);
-    _eyes(c, Offset(x, y - u * 1.4), u * .03, u * .1, const Color(0xFF3BF0FF));
-  }
-
-  void _mummy(Canvas c, double x, double y, double u, double t) {
-    final sw = sin(t * 2.5) * u * .06;
-    _shadow(c, Offset(x, y), u * .5);
-    const ban = Color(0xFFD9CFAE), banD = Color(0xFFB3A77F);
-    _limb(c, [Offset(x - u * .12, y - u * .6), Offset(x - u * .12 + sw, y)],
-        u * .16, ban);
-    _limb(c, [Offset(x + u * .12, y - u * .6), Offset(x + u * .12 - sw, y)],
-        u * .16, ban);
-    c.drawRRect(
-        RRect.fromRectAndRadius(
-            Rect.fromLTWH(x - u * .3, y - u * 1.15, u * .6, u * .62),
-            Radius.circular(u * .15)),
-        Paint()..color = ban);
-    final line = Paint()
-      ..color = banD
-      ..strokeWidth = u * .03;
-    for (var i = 0; i < 7; i++) {
-      c.drawLine(Offset(x - u * .3, y - u * (1.1 - i * .08)),
-          Offset(x + u * .3, y - u * (1.05 - i * .08)), line);
-    }
-    _arms(
-        c, x, y - u * 1.0, u * .28, u * .36, y - u * .5, u * .13, ban, t, 2.5);
-    final hand = Offset(x + u * .36 - sin(t * 2.5) * u * .08, y - u * .5);
-    c.drawPath(
-        Path()
-          ..moveTo(hand.dx, hand.dy)
-          ..quadraticBezierTo(hand.dx + u * .12 + sin(t * 5) * u * .08,
-              hand.dy + u * .15, hand.dx + u * .06, hand.dy + u * .32),
-        Paint()
-          ..color = ban
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = u * .05);
-    c.drawCircle(Offset(x, y - u * 1.38), u * .28, Paint()..color = ban);
-    for (var i = 0; i < 5; i++) {
-      c.drawLine(Offset(x - u * .26, y - u * (1.5 - i * .08)),
-          Offset(x + u * .26, y - u * (1.45 - i * .08)), line);
-    }
-    c.drawRect(Rect.fromLTWH(x - u * .2, y - u * 1.43, u * .4, u * .08),
-        Paint()..color = Colors.black);
-    _eyes(c, Offset(x + u * .08, y - u * 1.39), u * .04, 0,
-        const Color(0xFFFFB020));
-  }
-
-  void _toxic(Canvas c, double x, double y, double u, double t) {
-    final sw = sin(t * 3) * u * .07;
-    _shadow(c, Offset(x, y), u * .55);
-    const tox = Color(0xFF7DFF3A);
-    final glow = Paint()
-      ..color = tox.withValues(alpha: 0.35)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, u * .18);
-    c.drawOval(
-        Rect.fromCenter(
-            center: Offset(x, y - u * 1.0), width: u * 1.2, height: u * 1.8),
-        glow);
-    _limb(c, [Offset(x - u * .12, y - u * .6), Offset(x - u * .14 + sw, y)],
-        u * .15, const Color(0xFF2F5A2A));
-    _limb(c, [Offset(x + u * .12, y - u * .6), Offset(x + u * .14 - sw, y)],
-        u * .15, const Color(0xFF2F5A2A));
-    const suit = Color(0xFFE8D23A);
-    c.drawRRect(
-        RRect.fromRectAndRadius(
-            Rect.fromLTWH(x - u * .34, y - u * 1.1, u * .68, u * .58),
-            Radius.circular(u * .1)),
-        Paint()..color = suit);
-    final sym = Offset(x, y - u * .82);
-    c.drawCircle(sym, u * .12, Paint()..color = const Color(0xFF222222));
-    for (var i = 0; i < 3; i++) {
-      c.drawArc(Rect.fromCircle(center: sym, radius: u * .1),
-          i * 2 * pi / 3 - .5, 1.0, true, Paint()..color = suit);
-    }
-    _arms(c, x, y - u * 1.0, u * .32, u * .42, y - u * .5, u * .13, tox, t, 3);
-    final skin = Paint()..color = tox;
-    c.drawCircle(Offset(x, y - u * 1.35), u * .3, skin);
-    for (var i = 0; i < 3; i++) {
-      final d = (t * .8 + i * .33) % 1;
-      c.drawOval(
-          Rect.fromCenter(
-              center:
-                  Offset(x - u * .15 + i * u * .15, y - u * 1.15 + d * u * .3),
-              width: u * .08,
-              height: u * .14),
-          skin);
-    }
-    _eyes(
-        c, Offset(x, y - u * 1.38), u * .07, u * .12, const Color(0xFFFF2BD6));
-    final bub = Paint()..color = tox.withValues(alpha: 0.6);
-    for (var i = 0; i < 4; i++) {
-      final d = (t * .5 + i * .25) % 1;
-      c.drawCircle(
-          Offset(x + sin(i * 3 + t * 2) * u * .4, y - u * (1.7 + d * .25)),
-          u * (.04 + .03 * (1 - d)),
-          bub);
-    }
-  }
-
-  void _chibi(Canvas c, double x, double y, double u, double t) {
-    final b = (sin(t * 4)).abs() * u * .08;
-    _shadow(c, Offset(x, y), u * .45);
-    const legs = Color(0xFF3A2D4A);
-    _limb(c, [Offset(x - u * .1, y - u * .35), Offset(x - u * .1, y)], u * .13,
-        legs);
-    _limb(c, [Offset(x + u * .1, y - u * .35), Offset(x + u * .1, y)], u * .13,
-        legs);
-    c.drawRRect(
-        RRect.fromRectAndRadius(
-            Rect.fromLTWH(x - u * .22, y - u * .75 - b, u * .44, u * .42),
-            Radius.circular(u * .12)),
-        Paint()..color = const Color(0xFF2F7FBF));
-    _arms(c, x, y - u * .68 - b, u * .2, u * .3, y - u * .38 - b, u * .11,
-        _skin, t, 4);
-    final head = Offset(x, y - u * 1.15 - b);
-    c.drawCircle(head, u * .45, Paint()..color = _skin);
-    c.drawArc(
-        Rect.fromCircle(
-            center: head + Offset(u * .15, -u * .37), radius: u * .17),
-        pi,
-        pi,
-        true,
-        Paint()..color = const Color(0xFFFF9BB5));
-    final white = Paint()..color = Colors.white,
-        black = Paint()..color = Colors.black;
-    c.drawCircle(head + Offset(-u * .17, 0), u * .13, white);
-    c.drawCircle(head + Offset(u * .17, 0), u * .1, white);
-    c.drawCircle(head + Offset(-u * .15, u * .02), u * .06, black);
-    c.drawCircle(head + Offset(u * .18, u * .01), u * .045, black);
-    c.drawPath(
-        Path()
-          ..moveTo(head.dx - u * .12, head.dy + u * .23)
-          ..lineTo(head.dx - u * .04, head.dy + u * .19)
-          ..lineTo(head.dx + u * .04, head.dy + u * .23)
-          ..lineTo(head.dx + u * .12, head.dy + u * .19),
-        Paint()
-          ..color = const Color(0xFF224444)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = u * .03);
-  }
-
-  @override
-  bool shouldRepaint(_ZombiePainter o) =>
-      o.ph != ph || o.form != form || o.danger != danger;
-}
-
-class _NightPainter extends CustomPainter {
-  final double t, bite;
-  final int hp;
-  _NightPainter({required this.t, required this.hp, required this.bite});
-
-  @override
-  void paint(Canvas c, Size s) {
-    final w = s.width, h = s.height;
-    c.drawRect(
-        Offset.zero & s,
-        Paint()
-          ..shader = const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF060B1A), Color(0xFF0E1A12), Color(0xFF1A2414)],
-          ).createShader(Offset.zero & s));
-    // lune
-    final moon = Offset(w * 0.82, h * 0.1);
-    c.drawCircle(moon, h * 0.16,
-        Paint()..color = const Color(0xFFE8F0C8).withValues(alpha: 0.08));
-    c.drawCircle(moon, h * 0.06, Paint()..color = const Color(0xFFE8F0C8));
-    c.drawCircle(moon + Offset(h * 0.02, -h * 0.01), h * 0.055,
-        Paint()..color = const Color(0xFF0A1020));
-    // couloirs
-    for (var i = 1; i < kZombieLanes; i++) {
-      final x = w * i / kZombieLanes;
-      c.drawLine(
-          Offset(x, h * 0.08),
-          Offset(x, h * 0.84),
-          Paint()
-            ..color = Colors.white.withValues(alpha: 0.05)
-            ..strokeWidth = 1);
-    }
-    // tombes au loin
-    final r = Random(5);
-    for (var i = 0; i < 9; i++) {
-      final x = r.nextDouble() * w, y = h * (0.1 + r.nextDouble() * 0.12);
-      final g = RRect.fromRectAndCorners(
-          Rect.fromCenter(center: Offset(x, y), width: 16, height: 22),
-          topLeft: const Radius.circular(8),
-          topRight: const Radius.circular(8));
-      c.drawRRect(g, Paint()..color = const Color(0xFF2A3326));
-    }
-    // brume qui dérive
-    for (var k = 0; k < 4; k++) {
-      final x = ((t * (0.3 + k * 0.1) + k * 0.27) % 1.4 - 0.2) * w;
-      c.drawOval(
-          Rect.fromCenter(
-              center: Offset(x, h * (0.35 + k * 0.12)),
-              width: w * 0.6,
-              height: h * 0.12),
-          Paint()
-            ..color = Colors.white.withValues(alpha: 0.04)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20));
-    }
-    // ligne de danger
-    c.drawLine(
-        Offset(0, h * 0.8),
-        Offset(w, h * 0.8),
-        Paint()
-          ..color = Tv.red.withValues(alpha: 0.35 + 0.2 * sin(t * 2 * pi * 6))
-          ..strokeWidth = 2);
-    // la base : mur de sacs de sable + barbelés
-    final base = Rect.fromLTWH(0, h * 0.86, w, h * 0.14);
-    c.drawRect(base, Paint()..color = const Color(0xFF3A3424));
-    for (var x = 0.0; x < w; x += 26) {
-      for (final row in [0, 1]) {
-        c.drawRRect(
-            RRect.fromRectAndRadius(
-                Rect.fromLTWH(x + (row * 13), base.top + 2 + row * 11, 24, 10),
-                const Radius.circular(5)),
-            Paint()
-              ..color =
-                  row == 0 ? const Color(0xFF8A7A50) : const Color(0xFF7A6A44));
-      }
-    }
-    // vies de la base
-    for (var i = 0; i < 5; i++) {
-      final o = Offset(w / 2 + (i - 2) * 26, base.top + base.height * 0.62);
-      _heart(c, o, 9, i < hp ? const Color(0xFFFF3B4A) : Colors.black54);
-    }
-    if (bite > 0) {
+    final bgS = max(w / _bgW, h / _bgH);
+    final bgX = (w - _bgW * bgS) / 2, bgY = (h - _bgH * bgS) / 2;
+    final bg = ZombieArt.bg;
+    if (bg != null) {
+      c.drawImageRect(
+          bg,
+          const Rect.fromLTWH(0, 0, _bgW, _bgH),
+          Rect.fromLTWH(bgX, bgY, _bgW * bgS, _bgH * bgS),
+          Paint()..filterQuality = FilterQuality.medium);
+    } else {
       c.drawRect(
           Offset.zero & s,
           Paint()
-            ..shader = RadialGradient(
-              colors: [
-                Colors.transparent,
-                Tv.red.withValues(alpha: 0.55 * (1 - bite))
-              ],
-              stops: const [0.5, 1],
+            ..shader = const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF060B1A), Color(0xFF0E1A12), Color(0xFF2A2418)],
             ).createShader(Offset.zero & s));
+    }
+    final farY = bgY + _farY * bgS, nearY = bgY + _nearY * bgS;
+    // lune qui pulse + brume qui dérive
+    if (!lite) {
+      final moon = Offset(bgX + 852 * bgS, bgY + 98 * bgS);
+      c.drawCircle(
+          moon,
+          120 * k,
+          Paint()
+            ..shader = RadialGradient(colors: [
+              const Color(0xFFBEFFDC)
+                  .withValues(alpha: .18 + .08 * sin(t * 1.3)),
+              const Color(0x00BEFFDC),
+            ]).createShader(Rect.fromCircle(center: moon, radius: 120 * k)));
+      for (var i = 0; i < 4; i++) {
+        final x =
+            ((t * (8 + i * 5) * k + i * 260 * k) % (w + 400 * k)) - 200 * k;
+        final o = Offset(x, farY + (10 + i * 34) * k);
+        final r = Rect.fromCenter(center: o, width: 440 * k, height: 240 * k);
+        c.drawOval(
+            r,
+            Paint()
+              ..shader = const RadialGradient(colors: [
+                Color(0x2178E6AA),
+                Color(0x0078E6AA),
+              ]).createShader(r));
+      }
+    }
+    // zombies, du fond vers l'avant
+    final labels = <_Label>[];
+    final art = ZombieArt.ready;
+    final zs = st._zs.values.toList()..sort((a, b) => a.vy.compareTo(b.vy));
+    for (final z in zs) {
+      final p = st._pos(z);
+      final img = ZombieArt.sprites[z.form];
+      var zh = 260 * k * p.s * (z.form == ZombieForm.chibi ? .85 : 1);
+      final zw = img == null ? zh * .6 : zh * img.width / img.height;
+      final ph = (lite ? 0 : t) * 2.6 * z.spd + z.ph, step = sin(ph);
+      final bob = cos(ph).abs() * 6 * k * p.s,
+          rot = step * .055,
+          sq = 1 + step.abs() * .025;
+      final alpha = z.born.clamp(0.0, 1.0);
+      // ombre au sol
+      c.drawOval(
+          Rect.fromCenter(
+              center: Offset(p.x, p.y), width: zw * .76, height: zh * .1),
+          Paint()..color = Colors.black.withValues(alpha: .45 * alpha));
+      c.save();
+      c.translate(p.x, p.y - bob - z.hit * 60 * k * p.s);
+      c.rotate(rot + z.hit * 2);
+      c.scale(1 / sq, sq);
+      final dst = Rect.fromLTWH(-zw / 2, -zh, zw, zh);
+      if (art && img != null) {
+        final src =
+            Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
+        final paint = Paint()
+          ..filterQuality = FilterQuality.medium
+          ..color = Colors.white.withValues(alpha: alpha);
+        c.drawImageRect(img, src, dst, paint);
+        // éclairci au loin (brume)
+        if (p.s < .7) {
+          c.drawImageRect(
+              img,
+              src,
+              dst,
+              Paint()
+                ..colorFilter = ColorFilter.mode(
+                    Colors.white.withValues(alpha: alpha * (.7 - p.s) * .9),
+                    BlendMode.srcIn));
+        }
+        if (z.hit > 0) c.drawImageRect(img, src, dst, _white);
+      } else {
+        c.drawRRect(
+            RRect.fromRectAndRadius(dst, Radius.circular(zw * .3)),
+            Paint()
+              ..color = (z.hit > 0 ? Colors.white : const Color(0xFF5E8A4A))
+                  .withValues(alpha: alpha));
+      }
+      c.restore();
+      if (z.hit == 0) {
+        labels.add(_Label(z, p.x, p.y - zh - 16 * k * p.s - bob,
+            max(14.0, (30 * p.s + 6) * k), p.y - zh));
+      }
+    }
+    // pancartes : les plus proches d'abord ; les autres remontent si elles
+    // en recouvrent une déjà posée (petit trait vers la tête)
+    labels.sort((a, b) => b.z.vy.compareTo(a.z.vy));
+    final placed = <Rect>[];
+    for (final l in labels) {
+      final tp = TextPainter(
+          text: TextSpan(
+              text: l.z.label, style: Tv.title(l.fs, color: Colors.white)),
+          textDirection: TextDirection.ltr)
+        ..layout();
+      final tw = tp.width + l.fs * .7, th = l.fs * 1.24;
+      var y = l.y;
+      bool hits(double y2) => placed.any((q) =>
+          (q.center.dx - l.x).abs() < (q.width + tw) / 2 + 2 &&
+          (q.center.dy - y2).abs() < (q.height + th) / 2 + 2);
+      for (var i = 0; i < 8 && hits(y); i++) {
+        y -= th + 3;
+      }
+      final r = Rect.fromCenter(center: Offset(l.x, y), width: tw, height: th);
+      placed.add(r);
+      if (y < l.y - 2) {
+        c.drawLine(
+            Offset(l.x, y + th / 2),
+            Offset(l.x, l.head),
+            Paint()
+              ..color = const Color(0x999BFF5A)
+              ..strokeWidth = 1.5);
+      }
+      final rr = RRect.fromRectAndRadius(r, const Radius.circular(6));
+      c.drawRRect(rr, Paint()..color = const Color(0xD9080E08));
+      c.drawRRect(
+          rr,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.5
+            ..color = l.z.y >= kZombieReach - 1
+                ? const Color(0xFFFF4A4A)
+                : const Color(0xFF9BFF5A));
+      tp.paint(c, Offset(l.x - tp.width / 2, y - tp.height / 2));
+    }
+    // éclats
+    for (final q in st._parts) {
+      c.drawOval(
+          Rect.fromCenter(
+              center: Offset(q.x, q.y), width: q.r * 2, height: q.r * 1.6),
+          Paint()
+            ..color = q.color.withValues(alpha: (q.life * 2).clamp(0.0, 1.0)));
+    }
+    // barricade qui encaisse
+    if (st._barHit > .01) {
+      c.drawRect(
+          Rect.fromLTRB(0, nearY, w, h),
+          Paint()
+            ..color =
+                const Color(0xFFFF3C28).withValues(alpha: st._barHit * .25));
+    }
+    c.restore();
+    if (st._red > .01) {
+      c.drawRect(
+          Offset.zero & s,
+          Paint()
+            ..color = const Color(0xFFC80000).withValues(alpha: st._red * .35));
     }
   }
 
-  void _heart(Canvas c, Offset o, double s, Color col) {
-    final p = Path()
-      ..moveTo(o.dx, o.dy + s * 0.9)
-      ..cubicTo(o.dx - s * 1.6, o.dy - s * 0.2, o.dx - s * 0.6, o.dy - s * 1.3,
-          o.dx, o.dy - s * 0.4)
-      ..cubicTo(o.dx + s * 0.6, o.dy - s * 1.3, o.dx + s * 1.6, o.dy - s * 0.2,
-          o.dx, o.dy + s * 0.9);
-    c.drawPath(p, Paint()..color = col);
-  }
-
   @override
-  bool shouldRepaint(_NightPainter o) => true;
+  bool shouldRepaint(_ScenePainter o) => false;
 }
 
-class _SplatPainter extends CustomPainter {
-  final Offset? at;
-  final double t;
-  _SplatPainter(this.at, this.t);
-  @override
-  void paint(Canvas c, Size s) {
-    if (at == null || t <= 0) return;
-    Burst(at!, const Color(0xFF8BFF3A), count: 26, speed: 0.7, seed: 11)
-        .paint(c, s, t);
-    final o = Offset(at!.dx * s.width, at!.dy * s.height);
-    c.drawCircle(
-        o,
-        30 * Curves.easeOut.transform(t),
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 4 * (1 - t)
-          ..color = Colors.white.withValues(alpha: 1 - t));
-  }
-
-  @override
-  bool shouldRepaint(_SplatPainter o) => o.t != t || o.at != at;
+class _Label {
+  final _Z z;
+  final double x, y, fs, head;
+  _Label(this.z, this.x, this.y, this.fs, this.head);
 }

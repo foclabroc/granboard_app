@@ -7,6 +7,7 @@ import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'game/personas.dart';
 import 'players.dart';
 import 'server.dart';
 
@@ -86,7 +87,8 @@ class MediaStore extends ChangeNotifier {
   ImageProvider? imageOf(String id) => _media[id]?.image;
 
   /// Son du tour du joueur : '' (aucun), id d'un son fourni ou 'voice'.
-  String soundOf(String id) => _media[id]?.sound ?? '';
+  String soundOf(String id) =>
+      personaOf(id)?.sound ?? _media[id]?.sound ?? '';
   Uint8List? voiceOf(String id) => _media[id]?.voice;
 
   /// Cible choisie par le joueur ('' = style par défaut).

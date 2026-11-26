@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../cast.dart';
 import '../main.dart' show GranBoardAppState;
 import '../server.dart';
 import '../tv_link.dart';
 import 'theme.dart';
+
+/// Bouton CAST : menu « Diffuser l'écran » d'Android ; message si le
+/// téléphone n'en a pas.
+Future<void> castScreen(BuildContext context) async {
+  final ok = await openCast();
+  if (ok || !context.mounted) return;
+  ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(
+      content: Text('Diffusion d\'écran introuvable : ouvre les réglages '
+          'rapides du téléphone (« Diffuser », « Smart View »…)')));
+}
 
 /// Écrans reliés (TV, tablette…) : ajout, retrait, choix du son.
 Future<void> showTvSheet(BuildContext context) =>
@@ -101,91 +112,85 @@ class _TvSheetState extends State<_TvSheet> {
     }
   }
 
+  int _tab = 0; // colonne de droite : 0 = affichage, 1 = caméra
+
   @override
   Widget build(BuildContext context) {
+    final h = MediaQuery.sizeOf(context).height;
     return ListenableBuilder(
       listenable: link,
-      builder: (context, _) => SingleChildScrollView(
+      builder: (context, _) => Padding(
         padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.viewInsetsOf(context).bottom + 16),
+            left: 16,
+            right: 16,
+            bottom: MediaQuery.viewInsetsOf(context).bottom + 12),
+        child: SizedBox(
+          // les 2 colonnes défilent chacune de leur côté
+          height: (h * .8 - MediaQuery.viewInsetsOf(context).bottom)
+              .clamp(200.0, 520.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(flex: 45, child: _devices()),
+              const SizedBox(width: 14),
+              Expanded(
+                  flex: 55, child: link.linked ? _settings() : _howTo(context)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Colonne de gauche : appareils (son de chacun), retrait, ajout.
+  Widget _devices() => SingleChildScrollView(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const TvSection('Écrans', padding: EdgeInsets.only(bottom: 8)),
+            const TvSection('Appareils', padding: EdgeInsets.only(bottom: 8)),
             if (link.error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(link.error!, style: Tv.title(15, color: Tv.red)),
               ),
+            _device(
+              icon: Icons.smartphone,
+              name: 'CE TÉLÉPHONE',
+              code: TvLink.phone,
+            ),
             for (final s in link.screens)
-              Container(
-                margin: const EdgeInsets.only(bottom: 6),
-                padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
-                decoration: BoxDecoration(
-                  color: Tv.panel2,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Tv.line),
-                ),
-                child: Row(
-                  children: [
-                    Icon(s.name == 'TV' ? Icons.tv : Icons.tablet,
-                        color: Tv.green),
-                    const SizedBox(width: 10),
-                    Expanded(
-                        child:
-                            Text(s.label.toUpperCase(), style: Tv.title(20))),
-                    if (link.lanWorks(s))
-                      const Padding(
-                        padding: EdgeInsets.only(right: 6),
-                        child: Tooltip(
-                          message: 'Relié aussi par le Wi-Fi local',
-                          child: Icon(Icons.wifi, color: Tv.green, size: 20),
-                        ),
-                      ),
-                    if (link.soundsOn(s.code))
-                      Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: Icon(Icons.volume_up, color: Tv.gold),
-                      ),
-                    TextButton.icon(
-                      onPressed: () => link.unlink(s.code),
-                      icon: const Icon(Icons.link_off),
-                      label: const Text('DÉCONNECTER'),
-                    ),
-                  ],
-                ),
+              _device(
+                icon: s.name == 'TV' ? Icons.tv : Icons.tablet,
+                name: s.label.toUpperCase(),
+                code: s.code,
+                wifi: link.lanWorks(s),
+                onUnlink: () => link.unlink(s.code),
               ),
+            const SizedBox(height: 10),
+            Text(link.linked ? 'AJOUTER UN ÉCRAN' : 'RELIER UN ÉCRAN',
+                style: Tv.title(15, color: Tv.goldLight)),
             const SizedBox(height: 6),
-            Text(
-                link.linked
-                    ? 'Ajouter un autre écran : entre le code qu\'il affiche'
-                    : 'Allume Foclaboard sur la TV (ou la tablette) et entre le code affiché :',
-                style: Tv.label(14, color: Tv.text)),
-            const SizedBox(height: 8),
             Row(
               children: [
-                SizedBox(
-                  width: 180,
+                Expanded(
                   child: TextField(
                     controller: _code,
                     enabled: !_busy,
                     autofocus: !link.linked,
                     maxLength: 4,
                     textCapitalization: TextCapitalization.characters,
-                    style: Tv.title(30).copyWith(letterSpacing: 10),
+                    style: Tv.title(26).copyWith(letterSpacing: 8),
                     textAlign: TextAlign.center,
                     decoration: const InputDecoration(
                       counterText: '',
-                      hintText: 'ABCD',
+                      hintText: 'CODE',
+                      isDense: true,
                       border: OutlineInputBorder(),
                     ),
                     onSubmitted: (_) => _link(),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 FilledButton.icon(
                   onPressed: _busy ? null : _link,
                   icon: const Icon(Icons.cast),
@@ -196,74 +201,206 @@ class _TvSheetState extends State<_TvSheet> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
-                child: Text(_error!, style: Tv.title(15, color: Tv.red)),
+                child: Text(_error!, style: Tv.title(14, color: Tv.red)),
               ),
-            if (link.linked) ...[
-              const TvSection('Le son sort sur (un ou plusieurs)',
-                  padding: EdgeInsets.only(top: 16, bottom: 8)),
-              const SoundTargetPicker(),
-              SwitchListTile(
-                key: const ValueKey('tv-anim'),
-                contentPadding: EdgeInsets.zero,
-                title: Text('Animations complètes sur l\'écran',
-                    style: Tv.title(17)),
-                subtitle: const Text(
-                    'Fond animé et cible qui pulse. Coupé : '
-                    'plus fluide sur une TV peu puissante (les fléchettes, '
-                    'vidéos et bandeaux restent animés).'),
-                value: link.fullAnim,
-                onChanged: (v) => link.setFullAnim(v),
-              ),
-              SwitchListTile(
-                key: const ValueKey('tv-skia'),
-                contentPadding: EdgeInsets.zero,
-                title: Text('Moteur de rendu Skia (Android TV)',
-                    style: Tv.title(17)),
-                subtitle: const Text(
-                    'Au lieu d\'Impeller : à essayer si l\'écran saccade. '
-                    'L\'écran redémarre tout seul (le moteur actuel est '
-                    'affiché en bas de son écran d\'attente).'),
-                value: link.engine == 'skia',
-                onChanged: (v) =>
-                    link.setGfx(engine: v ? 'skia' : 'impeller'),
-              ),
-              SwitchListTile(
-                key: const ValueKey('tv-video-sw'),
-                contentPadding: EdgeInsets.zero,
-                title: Text('Vidéos en décodage logiciel',
-                    style: Tv.title(17)),
-                subtitle: const Text(
-                    'Coupé : décodeur de la TV, plus léger ; l\'écran passe '
-                    'tout seul au logiciel si une vidéo ne se lit pas. '
-                    'Allumer puis couper pour réessayer le décodeur de la TV.'),
-                value: link.video == 'sw',
-                onChanged: (v) => link.setGfx(video: v ? 'sw' : 'auto'),
-              ),
-              if (link.camScreens.isNotEmpty) const CamPanel(),
-            ] else ...[
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  context
-                      .findAncestorStateOfType<GranBoardAppState>()
-                      ?.setTvMode(true);
-                },
-                icon: const Icon(Icons.connected_tv),
-                label: const Text('CET APPAREIL DEVIENT UN ÉCRAN'),
-              ),
-            ],
+            const SizedBox(height: 12),
+            Text('SANS FOCLABOARD SUR LA TV',
+                style: Tv.title(15, color: Tv.goldLight)),
+            const SizedBox(height: 6),
+            OutlinedButton.icon(
+              key: const ValueKey('tv-cast'),
+              onPressed: () => castScreen(context),
+              icon: const Icon(Icons.cast),
+              label: const Text('CAST : DIFFUSER L\'ÉCRAN DU TÉLÉPHONE'),
+            ),
           ],
         ),
+      );
+
+  /// Une ligne d'appareil : icône, nom, Wi-Fi, haut-parleur (le son sort
+  /// ici, plusieurs possibles), déconnexion.
+  Widget _device(
+      {required IconData icon,
+      required String name,
+      required String code,
+      bool wifi = false,
+      VoidCallback? onUnlink}) {
+    final sound = link.soundsOn(code);
+    return Container(
+      key: ValueKey('device-$code'),
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.fromLTRB(10, 2, 2, 2),
+      decoration: BoxDecoration(
+        color: Tv.panel2,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: sound ? Tv.gold : Tv.line),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: onUnlink == null ? Tv.text : Tv.green, size: 22),
+          const SizedBox(width: 8),
+          Expanded(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(name, style: Tv.title(18)),
+            ),
+          ),
+          if (wifi)
+            const Tooltip(
+              message: 'Relié aussi par le Wi-Fi local',
+              child: Icon(Icons.wifi, color: Tv.green, size: 18),
+            ),
+          IconButton(
+            key: ValueKey('sound-$code'),
+            tooltip: sound ? 'Le son sort ici' : 'Pas de son ici',
+            onPressed: () => link.toggleSound(code),
+            icon: Icon(sound ? Icons.volume_up : Icons.volume_off,
+                color: sound ? Tv.gold : Tv.muted),
+          ),
+          if (onUnlink != null)
+            IconButton(
+              tooltip: 'Déconnecter',
+              onPressed: onUnlink,
+              icon: Icon(Icons.link_off, color: Tv.red.withValues(alpha: .8)),
+            ),
+        ],
       ),
     );
   }
+
+  /// Colonne de droite quand rien n'est relié : marche à suivre.
+  Widget _howTo(BuildContext context) => SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const TvSection('Comment faire',
+                padding: EdgeInsets.only(bottom: 8)),
+            for (final (i, t) in [
+              'Ouvre Foclaboard sur la TV ou la tablette : il affiche un code.',
+              'Entre ce code à gauche puis touche RELIER.',
+              'Les parties s\'affichent sur l\'écran, avec le son si tu veux.',
+            ].indexed)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      radius: 11,
+                      backgroundColor: Tv.gold,
+                      child: Text('${i + 1}',
+                          style: Tv.title(13, color: Colors.black)),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                        child: Text(t, style: Tv.label(15, color: Tv.text))),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                context
+                    .findAncestorStateOfType<GranBoardAppState>()
+                    ?.setTvMode(true);
+              },
+              icon: const Icon(Icons.connected_tv),
+              label: const Text('CET APPAREIL DEVIENT UN ÉCRAN'),
+            ),
+          ],
+        ),
+      );
+
+  /// Colonne de droite quand un écran est relié : onglets AFFICHAGE /
+  /// CAMÉRA (s'il y a de quoi filmer).
+  Widget _settings() {
+    final cam = link.camScreens.isNotEmpty;
+    final tab = cam ? _tab : 0;
+    Widget pill(int i, String label, IconData icon) => Expanded(
+          child: GestureDetector(
+            key: ValueKey('tv-tab-$i'),
+            onTap: () => setState(() => _tab = i),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              decoration: BoxDecoration(
+                color: tab == i ? Tv.gold : Tv.panel2,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child:
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(icon, size: 18, color: tab == i ? Colors.black : Tv.text),
+                const SizedBox(width: 6),
+                Text(label,
+                    style:
+                        Tv.title(15, color: tab == i ? Colors.black : Tv.text)),
+              ]),
+            ),
+          ),
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (cam)
+          Row(children: [
+            pill(0, 'AFFICHAGE', Icons.tune),
+            const SizedBox(width: 6),
+            pill(1, 'CAMÉRA', Icons.videocam),
+          ])
+        else
+          const TvSection('Affichage', padding: EdgeInsets.only(bottom: 4)),
+        const SizedBox(height: 4),
+        Expanded(
+          child: SingleChildScrollView(
+            child: tab == 1 ? const CamPanel(header: false) : _display(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _switch(String key, String title, String help, bool value,
+          ValueChanged<bool> onChanged) =>
+      SwitchListTile(
+        key: ValueKey(key),
+        dense: true,
+        contentPadding: EdgeInsets.zero,
+        title: Text(title, style: Tv.title(16)),
+        subtitle: Text(help, style: Tv.label(12)),
+        value: value,
+        onChanged: onChanged,
+      );
+
+  Widget _display() => Column(children: [
+        _switch(
+            'tv-anim',
+            'Animations complètes',
+            'Fond animé, cible qui pulse. Coupé : plus fluide sur une TV '
+                'peu puissante.',
+            link.fullAnim,
+            (v) => link.setFullAnim(v)),
+        _switch(
+            'tv-skia',
+            'Moteur Skia (Android TV)',
+            'À essayer si l\'écran saccade (il redémarre tout seul).',
+            link.engine == 'skia',
+            (v) => link.setGfx(engine: v ? 'skia' : 'impeller')),
+        _switch(
+            'tv-video-sw',
+            'Vidéos en décodage logiciel',
+            'Si les vidéos ne passent pas sur la TV.',
+            link.video == 'sw',
+            (v) => link.setGfx(video: v ? 'sw' : 'auto')),
+      ]);
 }
 
 /// Caméra d'un écran (tablette) affichée sur un autre (TV) : choix des 2
 /// écrans, allumer / éteindre, caméra avant / arrière, position, taille.
 class CamPanel extends StatefulWidget {
-  const CamPanel({super.key});
+  /// Titre « Caméra sur un écran » au-dessus (pas dans l'onglet CAMÉRA).
+  final bool header;
+  const CamPanel({super.key, this.header = true});
 
   @override
   State<CamPanel> createState() => _CamPanelState();
@@ -346,8 +483,9 @@ class _CamPanelState extends State<CamPanel> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const TvSection('Caméra sur un écran',
-                padding: EdgeInsets.only(top: 16, bottom: 8)),
+            if (widget.header)
+              const TvSection('Caméra sur un écran',
+                  padding: EdgeInsets.only(top: 16, bottom: 8)),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

@@ -369,15 +369,6 @@ class _SetupPageState extends State<SetupPage> {
           ? 'Invité ${id.substring(6)}'
           : store.byId(id)?.name ?? '?');
 
-  /// Joueur virtuel : son niveau suit celui des joueurs humains de la partie.
-  void _addBot() {
-    var n = 1;
-    while (_selected.contains('guest-bot$n')) {
-      n++;
-    }
-    _select('guest-bot$n');
-  }
-
   void _addGuest() {
     var n = 1;
     while (_selected.contains('guest-$n')) {
@@ -580,12 +571,6 @@ class _SetupPageState extends State<SetupPage> {
                           },
                   ),
                   ActionChip(
-                    key: const ValueKey('add-bot'),
-                    avatar: const Icon(Icons.smart_toy_outlined, size: 20),
-                    label: Text('Joueur virtuel', style: Tv.title(16)),
-                    onPressed: full ? null : () => act(_addBot),
-                  ),
-                  ActionChip(
                     key: const ValueKey('add-account'),
                     avatar: const Icon(Icons.person_add, size: 20),
                     label: Text('Nouveau joueur', style: Tv.title(16)),
@@ -596,8 +581,8 @@ class _SetupPageState extends State<SetupPage> {
                   ),
                 ],
               ),
-              const SetupNote('Invités et joueurs virtuels jouent sans stats. '
-                  'Le joueur virtuel prend le niveau de ses adversaires.'),
+              const SetupNote('Invités et adversaires virtuels jouent sans '
+                  'stats. Bats un adversaire pour débloquer le suivant.'),
             ],
           ),
         );
@@ -1620,10 +1605,9 @@ class _SetupPageState extends State<SetupPage> {
                 overflow: TextOverflow.ellipsis, style: Tv.title(18)),
           ),
           // Étiquettes : rognées quand la colonne est étroite (équipes)
-          // (le joueur virtuel a déjà son avatar robot)
-          if (guest && !isBotId(id))
+          if (guest)
             Flexible(
-              child: Text('  INVITÉ',
+              child: Text(isBotId(id) ? '  VIRTUEL' : '  INVITÉ',
                   maxLines: 1,
                   overflow: TextOverflow.clip,
                   softWrap: false,

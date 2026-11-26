@@ -167,7 +167,6 @@ Les 11 jeux « arcade » (v0.6.27) ont chacun leur propre écran animé à la pl
 
 ### Joueurs virtuels et invités
 
-- **Joueur virtuel** : un bot qui vise vraiment (fins conseillées en 01, numéros à fermer au Cricket, cibles des entraînements) avec une précision calée sur le niveau des joueurs humains de la partie. Il joue tout seul quand c'est son tour.
 - **Invité** : joue sans compte et sans stats.
 
 ## Préparer une partie
@@ -187,7 +186,7 @@ Chaque famille de jeux a son propre **thème** (arène pour le 01, ardoise pour 
 - **Cible animée** : fléchettes plantées et numérotées à la couleur du joueur, cases à viser éclairées, effets lumineux sur les numéros (simple, double, triple, bull, bust, victoire).
 - **Fins conseillées** en 01, avec la zone à viser sur la cible.
 - **Bandeau « AU TOUR DE … »** avec la photo et la couleur du joueur, et son **son du tour**.
-- **Adversaires virtuels** : 9 personnages de niveau fixe (du grand débutant au Boss) à battre l'un après l'autre pour débloquer le suivant, en plus du joueur virtuel qui s'adapte.
+- **Adversaires virtuels** : 9 personnages de niveau fixe (du grand débutant au Boss) à battre l'un après l'autre pour débloquer le suivant. Ils visent vraiment (fins conseillées en 01, numéros à fermer au Cricket, cibles des entraînements) et jouent tout seuls quand c'est leur tour ; un petit robot à côté de leur nom les repère.
 - **Intro de chaque partie** façon retransmission TV : jeu, règles, nombre de joueurs et ordre de jeu (désactivable dans les options).
 - **Vidéos** pour les coups (Triple 20, Bull, Double Bull) et les récompenses (Low Ton, High Ton, Ton 80, Hat Trick, 3 in the Black, 3 in a Bed, White Horse), en plusieurs styles tirés au hasard (vidéos d'origine + 3 styles en motion design avec bruitages : Impact, Synth, Or).
 - **Annuler** revient en arrière, **Raté** compte une fléchette hors cible.
