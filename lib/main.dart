@@ -17,6 +17,8 @@ import 'ui/award.dart' show AwardPlayer;
 import 'ui/cricket_view.dart' show CricketStyle;
 import 'ui/dartboard.dart' show BoardSkin;
 import 'ui/ring_anim.dart';
+import 'ui/game_intro.dart';
+import 'game/personas.dart';
 import 'ui/game_page.dart' show AutoNext;
 import 'tv/tv_gfx.dart';
 import 'ui/boot_page.dart';
@@ -66,6 +68,8 @@ Future<void> main() async {
     AudioService.instance.init(),
     BoardSkin.load(),
     RingAnim.load(),
+    GameIntro.load(),
+    PersonaRecords.instance.load(),
     CricketStyle.load(),
     Tv.load(),
     Wallpaper.instance.load(),

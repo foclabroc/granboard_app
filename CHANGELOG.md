@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.29
+
+- **Nouvelles vidéos en motion design, avec bruitages**, ajoutées au tirage au hasard : 3 styles (Impact, Synth, Or) pour les coups (Triple 20, Bull, Double Bull, 1,5 s) et pour les 7 récompenses (Low Ton, High Ton, Ton 80, Hat Trick, 3 in the Black, 3 in a Bed, White Horse, 4 s : compteur ou 3 pastilles, sous-titre, foule). Générées par `tools/motion_hits/make.py`.
+- **Intro des parties** façon retransmission TV (4 s) : bandeau du jeu (famille, nom, règles, nombre de joueurs), joueurs dans l'ordre de jeu à droite, grande cible discrète qui tourne en fond, « GAME ON ! », avec son. Aussi sur l'écran TV ; toucher ou une fléchette = passée ; l'annonce du 1er joueur attend la fin. Options › Intro des parties (OUI / NON).
+- **Adversaires virtuels** : 9 personnages à niveau fixe, du rang C au GM (Enzo le grand débutant, Chloé, Nico, Karim, Antoine, Valérie, Gégé, Sarah la machine, Le Boss), portraits de foclabroc. « Ajouter des joueurs › Adversaires » : galerie avec fiche (moyenne, MPR, réplique, bilan contre toi). Il faut battre un adversaire pour débloquer le suivant ; bilan gardé sur le compte. L'annonceur dit leur réplique au début et quand ils gagnent. Le « Joueur virtuel » qui s'adapte reste là.
+
 ## v0.6.28
 
 - **Serpents et échelles** : plateau quadrillé (traits entre les cases, damier plus contrasté, numéros plus lisibles) qui prend toute la largeur ; scores réduits en une colonne étroite à côté.

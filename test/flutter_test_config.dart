@@ -7,6 +7,7 @@ import 'package:granboard_proto/ui/award.dart';
 import 'package:granboard_proto/ui/boot_page.dart';
 import 'package:granboard_proto/ui/theme.dart';
 import 'package:granboard_proto/ui/turn_banner.dart';
+import 'package:granboard_proto/ui/game_intro.dart';
 import 'package:granboard_proto/ui/wallpaper.dart';
 
 /// Lancé avant chaque fichier de test : pas de lecteur vidéo en test.
@@ -15,6 +16,7 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   BootGate.enabled = false;
   SkinBackground.animate = false;
   TurnBanner.enabled = false;
+  GameIntro.enabled = false; // remis dans intro_test
   Wallpaper.storage = false;
   Lan.enabled = false;
   ScreenCam.enabled = false;

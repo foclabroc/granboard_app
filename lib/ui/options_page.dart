@@ -12,6 +12,7 @@ import 'calibration_page.dart';
 import 'connect_page.dart';
 import 'dartboard.dart';
 import 'ring_anim.dart';
+import 'game_intro.dart';
 import 'diagnostic_page.dart';
 import 'lights_sheet.dart';
 import 'players_page.dart';
@@ -203,6 +204,7 @@ class _OptionsPanel extends StatelessWidget {
           Tv.skin,
           BoardSkin.current,
           RingAnim.current,
+          GameIntro.on,
           SettingsSync.instance
         ]),
         builder: (context, _) => SingleChildScrollView(
@@ -234,6 +236,14 @@ class _OptionsPanel extends StatelessWidget {
                     title: 'Animation du contour',
                     value: RingAnim.current.value.name,
                     onTap: () => showRingAnimSheet(context),
+                  ),
+                  _Item(
+                    id: 'intro',
+                    icon: Icons.live_tv,
+                    title: 'Intro des parties',
+                    value: GameIntro.on.value ? 'OUI' : 'NON',
+                    onTap: () => GameIntro.set(!GameIntro.on.value)
+                        .then((_) => TvLink.instance.refresh()),
                   ),
                   const _Group('SON'),
                   _Item(

@@ -9,6 +9,7 @@ import '../media.dart';
 import '../game/cricket.dart';
 import '../game/darts_game.dart';
 import '../game/match.dart';
+import '../game/personas.dart';
 import '../game/practice.dart';
 import '../game/x01.dart';
 import '../granboard.dart';
@@ -219,12 +220,32 @@ class GameFx {
         : 'Fin à $c. ';
   }
 
-  void start(DartsGame game) {
+  /// [delay] : intro de la partie jouée avant ([GameIntro]) ; l'annonce et
+  /// le bandeau du 1er joueur attendent sa fin (rien si une fléchette est
+  /// déjà partie).
+  void start(DartsGame game, {Duration delay = Duration.zero}) {
     _names(game);
     _leader = null;
-    final title = game is MatchGame
+    var title = game is MatchGame
         ? 'Medley en ${game.settings.legs} legs. Leg 1, ${game.leg.title}'
         : game.title;
+    // 1er adversaire virtuel de la partie : sa réplique d'entrée
+    final rival = [
+      for (final p in game.players)
+        if (personaOf(p.id) case final x?) x
+    ];
+    if (rival.isNotEmpty) {
+      title = '$title. ${rival.first.name} : ${rival.first.quotes[0]}';
+    }
+    if (delay > Duration.zero) {
+      Timer(delay, () {
+        // page fermée (splash démonté) ou fléchette déjà lancée : rien
+        if (game.actionLog.isNotEmpty || splash.currentContext == null) return;
+        _turn(game, '$title. ${game.currentPlayer.name}, à toi.', 0, false);
+        _banner(game);
+      });
+      return;
+    }
     _turn(game, '$title. ${game.currentPlayer.name}, à toi.', 400, false);
     // Bandeau du 1er joueur aussi (après la 1re image : la page n'est pas
     // encore affichée)
@@ -744,6 +765,13 @@ class GameFx {
   }
 
   void win(DartsGame game) {
+    // un adversaire virtuel qui gagne a sa réplique
+    final brag = [
+      for (final i in game.winners)
+        if (personaOf(game.players[i].id) case final p?) '${p.name} : ${p.quotes[1]}'
+    ].take(1).join();
+    void say(String s, int ms) =>
+        audio.sayLater(brag.isEmpty ? s : '$s $brag', ms);
     _haptic(true);
     audio.play(Sfx.win);
     Timer(const Duration(milliseconds: 600), () => audio.play(Sfx.crowd));
@@ -756,7 +784,7 @@ class GameFx {
     if (game is PracticeGame) {
       final names = game.winners.map((i) => game.players[i].name).join(' et ');
       final byGoal = game.endReason == PracticeEnd.goal;
-      audio.sayLater(
+      say(
           game.players.length == 1
               ? 'Fin de l\'entraînement. Score : ${game.scoreText(0)}.'
               : '${byGoal ? 'Objectif atteint ! ' : 'Fin de la partie. '}Victoire de $names !',
@@ -766,7 +794,7 @@ class GameFx {
     }
     if (game is MatchGame) {
       final names = game.winners.map((i) => game.players[i].name).join(' et ');
-      audio.sayLater('Jeu, set et match ! Victoire de $names !', 900);
+      say('Jeu, set et match ! Victoire de $names !', 900);
       _show('MATCH', Tv.gold, big: true);
       return;
     }
@@ -780,10 +808,10 @@ class GameFx {
     };
     if (byClose) {
       final fin = game is X01Game ? _checkoutNote(game) : '';
-      audio.sayLater('${fin}Partie gagnée ! Victoire de $team$names !', 900);
+      say('${fin}Partie gagnée ! Victoire de $team$names !', 900);
       _show('VICTOIRE', Tv.gold, big: true);
     } else {
-      audio.sayLater('Fin de la partie. Victoire de $team$names.', 700);
+      say('Fin de la partie. Victoire de $team$names.', 700);
       _show('FIN', Tv.gold, big: true);
     }
   }

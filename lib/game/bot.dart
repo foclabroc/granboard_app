@@ -13,6 +13,7 @@ import 'cricket.dart';
 import 'darts_game.dart';
 import 'match.dart';
 import 'practice.dart';
+import 'personas.dart';
 import 'x01.dart';
 
 /// Un bot est un invité (pas de stats, pas de compte) au préfixe propre.
@@ -147,6 +148,10 @@ class Bot {
   static (double, double) target(
       DartsGame game, double? Function(String id) ratingOf) {
     final g = game is MatchGame ? game.leg : game;
+    // adversaire virtuel : niveau fixe, celui de sa note
+    if (personaOf(g.players[g.current].id) case final p?) {
+      return (bandValue(p.note, kPprBounds), bandValue(p.note, kMprBounds));
+    }
     final humans = [
       for (var i = 0; i < g.players.length; i++)
         if (!isBotId(g.players[i].id)) i

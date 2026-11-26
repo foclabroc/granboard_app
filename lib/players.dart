@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'game/cricket.dart';
 import 'game/match.dart';
 import 'game/practice.dart';
+import 'game/personas.dart';
 import 'game/x01.dart';
 import 'media.dart';
 import 'server.dart';
@@ -202,6 +203,7 @@ class PlayerStore extends ChangeNotifier {
 
   /// Note sur 20 d'un joueur (null : invité, pas encore de partie, inconnu).
   double? ratingOf(String id) {
+    if (personaOf(id) case final x?) return x.note;
     final p = byId(id);
     return p != null ? p.rating : remoteRatings[id];
   }
@@ -242,7 +244,8 @@ class PlayerStore extends ChangeNotifier {
     final used = <int>{};
     final out = <Color?>[];
     for (final id in ids) {
-      final c = isGuestId(id) ? null : byId(id)?.color ?? remoteColors[id];
+      final c = personaOf(id)?.color ??
+          (isGuestId(id) ? null : byId(id)?.color ?? remoteColors[id]);
       out.add(c != null && used.add(c.toARGB32()) ? c : null);
     }
     return [

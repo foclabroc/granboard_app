@@ -17,6 +17,7 @@ import '../ui/game_page.dart' show NextMatchChip, gameView, resultsPageFor;
 import '../tournament.dart';
 import '../ui/theme.dart';
 import '../ui/turn_banner.dart';
+import '../ui/game_intro.dart';
 import '../ui/game_theme.dart';
 import '../ui/wallpaper.dart';
 import '../ui/tournament_page.dart' show TvTournamentView;
@@ -157,6 +158,7 @@ class _TvHomeState extends State<TvHome> {
         AudioService.instance.hush();
         AwardPlayer.stop();
         TurnBanner.hide();
+        GameIntro.hide();
       }
       _screen = screen;
       if (screen == 'game') {
@@ -505,7 +507,16 @@ class _TvGameState extends State<_TvGame> {
       // photos téléchargées puis décodées d'avance
       warmPlayers(context, _game!.players.map((p) => p.id));
       if (actions.isEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _fx.start(_game!));
+        // intro de la partie (si le téléphone l'a gardée), puis l'annonce
+        final intro = GameIntro.wants(_game!,
+            remoteOn: widget.state['intro'] is bool
+                ? widget.state['intro'] as bool
+                : true);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (intro && mounted) GameIntro.show(context, _game!);
+          _fx.start(_game!,
+              delay: intro ? GameIntro.delay : Duration.zero);
+        });
       }
       return;
     }

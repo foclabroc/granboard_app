@@ -12,7 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'voice.dart';
 
-enum Sfx { hit, double, triple, bull, bust, next, ton, crowd, win }
+enum Sfx { hit, double, triple, bull, bust, next, ton, crowd, win, intro }
 
 /// Effets sonores, musique de menu et annonceur (voix enregistrée de
 /// `assets/voice/` ; synthèse vocale du téléphone pour les pseudos).
@@ -71,6 +71,7 @@ class AudioService extends ChangeNotifier {
     Sfx.ton: 0.8,
     Sfx.crowd: 0.9,
     Sfx.win: 0.9,
+    Sfx.intro: 0.85,
   };
 
   final _pool = <AudioPlayer>[];

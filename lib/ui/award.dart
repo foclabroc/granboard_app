@@ -22,10 +22,12 @@ enum Award {
   final String label;
   const Award(this.slug, this.label);
 
-  /// Styles disponibles (fichiers `assets/awards/<style>_<slug>.mp4`).
+  /// Styles disponibles (fichiers `assets/awards/<style>_<slug>.mp4`) :
+  /// vidéos fournies (glitch, neon, rose) + motion design de
+  /// `tools/motion_hits` (impact, synth, gold), tirés au hasard.
   List<String> get styles => this == Award.threeInABed
-      ? const ['glitch', 'rose']
-      : const ['glitch', 'neon', 'rose'];
+      ? const ['glitch', 'rose', 'impact', 'synth', 'gold']
+      : const ['glitch', 'neon', 'rose', 'impact', 'synth', 'gold'];
 
   /// Une animation au hasard parmi les styles de ce coup.
   String randomAsset([Random? random]) {
@@ -79,8 +81,18 @@ enum HitClip {
   final String slug;
   const HitClip(this.slug);
 
-  /// Fonds disponibles (fichiers `assets/hits/<fond>_<slug>.mp4`).
-  static const styles = ['flame', 'sparks', 'ring', 'nova'];
+  /// Fonds disponibles (fichiers `assets/hits/<fond>_<slug>.mp4`) : vidéos
+  /// Pixabay (flame, sparks, ring, nova) + motion design de
+  /// `tools/motion_hits` (impact, synth, gold), tirés au hasard.
+  static const styles = [
+    'flame',
+    'sparks',
+    'ring',
+    'nova',
+    'impact',
+    'synth',
+    'gold',
+  ];
 
   String randomAsset([Random? random]) {
     final s = styles[(random ?? Award._random).nextInt(styles.length)];

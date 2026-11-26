@@ -35,6 +35,8 @@ import 'setup_page.dart' show kTeamColors, kTeamNames;
 import 'sound_settings.dart';
 import 'theme.dart';
 import 'turn_banner.dart';
+import 'game_intro.dart';
+import '../game/personas.dart';
 import 'boot_page.dart' show warmPlayers;
 import 'widgets.dart';
 import '../format.dart';
@@ -117,10 +119,18 @@ class _GamePageState extends State<GamePage> {
     WidgetsBinding.instance.addPostFrameCallback(
         (_) => mounted ? warmPlayers(context, game.players.map((p) => p.id)) : null);
     PlayerStore.instance.ensureRatings(game.players.map((p) => p.id));
-    _fx.start(game);
+    // Intro « retransmission TV » d'une partie pas commencée (pas en
+    // reprise) : l'annonce du 1er joueur et le joueur virtuel attendent
+    final intro = GameIntro.wants(game);
+    _fx.start(game, delay: intro ? GameIntro.delay : Duration.zero);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (intro && mounted) GameIntro.show(context, game);
       _pushTv();
-      _scheduleBot();
+      if (intro) {
+        _botTimer = Timer(GameIntro.delay, _scheduleBot);
+      } else {
+        _scheduleBot();
+      }
     });
     _loadNext();
     OnlineService.instance.inGame++;
@@ -140,6 +150,7 @@ class _GamePageState extends State<GamePage> {
     AutoNext.on.removeListener(_onAutoChanged);
     AwardPlayer.stop();
     TurnBanner.hide();
+    GameIntro.hide();
     BoardLights.instance.clear();
     _sub.cancel();
     // Partie abandonnée : la musique des menus revient (les résultats la
@@ -423,6 +434,7 @@ class _GamePageState extends State<GamePage> {
   }
 
   void _onEvent(BoardEvent e) {
+    GameIntro.hide(); // une fléchette passe l'intro
     switch (e) {
       case HitEvent(:final hit):
         _dart(hit);
@@ -562,6 +574,7 @@ class _GamePageState extends State<GamePage> {
     // En ligne : « <salle>:<leg> » relie notre partie à celle de l'adversaire
     final room = _room?.id;
     final link = room == null ? null : '$room:0';
+    if (_saving == null) PersonaRecords.instance.record(g);
     return _saving ??= switch (g) {
       X01Game g => PlayerStore.instance.recordX01(g, link: link),
       CricketGame g => PlayerStore.instance.recordCricket(g, link: link),

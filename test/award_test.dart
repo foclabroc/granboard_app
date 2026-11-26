@@ -50,13 +50,13 @@ void main() {
     expect(HitClip.of(null), isNull);
     final used = <String>{};
     for (final c in HitClip.values) {
-      for (var seed = 0; seed < 20; seed++) {
+      for (var seed = 0; seed < 80; seed++) {
         final f = c.randomAsset(Random(seed));
         expect(File(f).existsSync(), isTrue, reason: f);
         used.add(f);
       }
     }
-    expect(used.length, 12); // 4 fonds × 3 coups
+    expect(used.length, 21); // 7 fonds × 3 coups
   });
 
   test('Chaque coup a ses animations dans assets/awards', () {

@@ -1,7 +1,7 @@
 name: granboard_proto
 description: Appli de flechettes pour cible GranBoard
 publish_to: 'none'
-version: 0.6.28+38
+version: 0.6.29+39
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -45,6 +45,7 @@ flutter:
     - assets/music/
     - assets/images/
     - assets/avatars/
+    - assets/bots/
     - assets/awards/
     - assets/hits/
     - assets/voice/

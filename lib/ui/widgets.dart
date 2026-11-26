@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../board_service.dart';
 import '../game/bot.dart';
+import '../game/personas.dart';
 import '../media.dart';
 import '../players.dart';
 import 'theme.dart';
@@ -30,6 +31,21 @@ class PlayerAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (id == null) return _initial();
+    // adversaire virtuel : son portrait
+    if (personaOf(id!) case final p?) {
+      return Container(
+        width: size,
+        height: size,
+        padding: EdgeInsets.all(size > 40 ? 3 : 2),
+        decoration: BoxDecoration(color: p.color, shape: BoxShape.circle),
+        child: ClipOval(
+            child: Image.asset(p.asset,
+                fit: BoxFit.cover,
+                width: size,
+                height: size,
+                errorBuilder: (_, __, ___) => _initial())),
+      );
+    }
     return ListenableBuilder(
       listenable: MediaStore.instance,
       builder: (context, _) {

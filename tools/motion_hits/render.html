@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:B;src:url(BarlowCondensed-ExtraBold.ttf)}
+html,body{margin:0;background:#000}
+</style></head>
+<body><canvas id="c" width="960" height="540"></canvas>
+<script>
+// Vidéos des coups en motion design (T20, bull, double bull), 1,5 s.
+// draw(style, hit, t) dessine l'image au temps t (s) ; le script Python
+// appelle draw pour chaque image puis assemble avec ffmpeg.
+const W = 960, H = 540, CX = W / 2, CY = H / 2, TAU = Math.PI * 2;
+const c = document.getElementById('c').getContext('2d');
+let T0 = 0.14;            // impact
+let X0 = 1.18, X1 = 1.5;  // sortie
+
+// Coups (1,5 s) : compteur « +points ».
+const HITS = {
+  t20:   {big: 'TRIPLE 20', pts: 60, fmt: n => `+${n}`, medal: '60', sub: '60 POINTS', col: '#ff2d46', col2: '#ffb21e', deep: '#3a0610'},
+  bull:  {big: 'BULL', pts: 25, fmt: n => `+${n}`, medal: '25', sub: '25 POINTS', col: '#1fe07a', col2: '#c8ff3a', deep: '#04281a'},
+  dbull: {big: 'DOUBLE BULL', pts: 50, fmt: n => `+${n}`, medal: '50', sub: '50 POINTS', col: '#ff2d46', col2: '#1fe07a', deep: '#2a0414', double: true},
+};
+// Récompenses d'une manche (4 s) : compteur ou 3 pastilles, puis sous-titre.
+const AWARDS = {
+  lowton:           {big: 'LOW TON', pts: 100, fmt: n => `${n}+`, medal: '100', sub: '100 À 150 POINTS', col: '#2f8bff', col2: '#5ff0ff', deep: '#04142e'},
+  highton:          {big: 'HIGH TON', pts: 151, fmt: n => `${n}+`, medal: '151', sub: '151 À 179 POINTS', col: '#ff7a1a', col2: '#ffd23b', deep: '#2e1202'},
+  ton80:            {big: 'TON 80', pts: 180, fmt: n => `${n}`, medal: '180', sub: 'LE MAXIMUM !', col: '#ff2d46', col2: '#ffd23b', deep: '#3a0610', double: true},
+  hat_trick:        {big: 'HAT TRICK', marks: ['BULL', 'BULL', 'BULL'], medal: '3×', sub: '3 BULLS', col: '#1fe07a', col2: '#c8ff3a', deep: '#04281a'},
+  '3_in_the_black': {big: '3 IN THE BLACK', marks: ['50', '50', '50'], medal: '150', sub: '3 DOUBLE BULLS', col: '#ff2d46', col2: '#ffffff', deep: '#1a0206', double: true},
+  '3_in_a_bed':     {big: '3 IN A BED', marks: ['T', 'T', 'T'], medal: '3×', sub: '3 FOIS LE MÊME TRIPLE', col: '#b45cff', col2: '#ff7ae0', deep: '#1c0632'},
+  white_horse:      {big: 'WHITE HORSE', marks: ['T', 'T', 'T'], medal: '3×', sub: '3 TRIPLES DIFFÉRENTS', col: '#dfe8ff', col2: '#8fc4ff', deep: '#0e1626'},
+};
+let AW = false; // récompense (mise en page plus haute, pastilles)
+
+// ── outils ──
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const easeOutExpo = x => x >= 1 ? 1 : 1 - Math.pow(2, -10 * x);
+const easeOutBack = (x, s = 2.2) => 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2);
+const easeInCubic = x => x * x * x;
+const easeInOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+function hexA(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+}
+function font(px) { c.font = `${px}px B`; c.textAlign = 'center'; c.textBaseline = 'middle'; }
+function fitText(txt, max, px) { font(px); const w = c.measureText(txt).width; return w > max ? px * max / w : px; }
+
+// sortie commune : tout s'éloigne et s'efface
+function exitK(t) { return easeInCubic(prog(t, X0, X1)); }
+
+// ════════════════ STYLE 1 : IMPACT ════════════════
+function sparks(seed, n) {
+  const r = rng(seed), a = [];
+  for (let i = 0; i < n; i++) a.push({ang: r() * TAU, sp: 380 + r() * 900, life: .35 + r() * .55, w: 1.5 + r() * 2.5, hot: r() < .35});
+  return a;
+}
+const SPARKS = sparks(7, 90);
+
+function impact(h, t) {
+  const H_ = h, out = exitK(t);
+  // fond
+  c.fillStyle = '#05060a'; c.fillRect(0, 0, W, H);
+  const flash = t >= T0 ? Math.exp(-(t - T0) * 9) : 0;
+  let g = c.createRadialGradient(CX, CY, 0, CX, CY, W * .75);
+  g.addColorStop(0, hexA(H_.col, .55 * (t < T0 ? t / T0 * .4 : 1) * (1 - out)));
+  g.addColorStop(.45, hexA(H_.deep, .9)); g.addColorStop(1, '#000');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  // rayons de vitesse
+  if (t > T0) {
+    c.save(); c.translate(CX, CY); c.rotate(t * .25);
+    const r = rng(3);
+    for (let i = 0; i < 46; i++) {
+      const a = r() * TAU, len = 200 + r() * 500, d0 = AW ? 60 + ((t - T0) * 300 + r() * 600) % 700 : 60 + r() * 120 + (t - T0) * 260;
+      c.strokeStyle = hexA(i % 3 ? H_.col : H_.col2, (.08 + r() * .14) * (1 - out));
+      c.lineWidth = 1 + r() * 3;
+      c.beginPath(); c.moveTo(Math.cos(a) * d0, Math.sin(a) * d0);
+      c.lineTo(Math.cos(a) * (d0 + len), Math.sin(a) * (d0 + len)); c.stroke();
+    }
+    c.restore();
+  }
+  // anneau qui se resserre avant l'impact
+  if (t < T0) {
+    const p = easeInCubic(t / T0), rad = (1 - p) * W * .7 + 20;
+    c.strokeStyle = hexA(H_.col2, .3 + p * .7); c.lineWidth = 2 + p * 10;
+    c.beginPath(); c.arc(CX, CY, rad, 0, TAU); c.stroke();
+  }
+  // ondes de choc
+  const waves = H_.double ? [0, .08, .3, .38] : [0, .09];
+  if (AW && H_.marks) H_.marks.forEach((m, i) => waves.push(.8 + i * .32 - T0));
+  if (AW && H_.pts) waves.push(1.6 - T0, 1.68 - T0);
+  for (const d of waves) {
+    const p = prog(t, T0 + d, T0 + d + .6); if (p <= 0 || p >= 1) continue;
+    const rad = easeOutExpo(p) * W * .62;
+    c.strokeStyle = hexA(d > .2 ? H_.col2 : '#ffffff', (1 - p) * .9);
+    c.lineWidth = 3 + 26 * (1 - p);
+    c.beginPath(); c.ellipse(CX, CY, rad, rad * .62, 0, 0, TAU); c.stroke();
+  }
+  // étincelles (traînées)
+  if (t > T0) for (const s of SPARKS) {
+    const dt = t - T0; if (dt > s.life) continue;
+    const pos = u => { const d = s.sp * (1 - Math.exp(-u * 3.2)) / 3.2; return [CX + Math.cos(s.ang) * d, CY + Math.sin(s.ang) * d * .7 + 140 * u * u]; };
+    const [x1, y1] = pos(dt), [x0, y0] = pos(Math.max(0, dt - .045));
+    c.strokeStyle = s.hot ? hexA('#ffffff', 1 - dt / s.life) : hexA(H_.col2, 1 - dt / s.life);
+    c.lineWidth = s.w; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+  }
+  // texte qui claque
+  if (t >= T0) {
+    const p = prog(t, T0, T0 + .32), sc = (2.4 - 1.4 * easeOutBack(p, 1.6)) * (1 + out * .35);
+    const shake = (1 - prog(t, T0, T0 + .35)) * 18, r = rng(Math.floor(t * 60));
+    const ox = (r() - .5) * shake, oy = (r() - .5) * shake;
+    const px = fitText(H_.big, W * .86, 168);
+    c.save(); c.translate(CX + ox, (AW ? CY - 80 : CY - 18) + oy); c.scale(sc, sc);
+    c.globalAlpha = (1 - out);
+    font(px);
+    const ab = 14 * (1 - prog(t, T0, T0 + .45)) + 2;
+    c.globalCompositeOperation = 'lighter';
+    c.fillStyle = 'rgba(255,0,60,.85)'; c.fillText(H_.big, -ab, 0);
+    c.fillStyle = 'rgba(0,200,255,.85)'; c.fillText(H_.big, ab, 0);
+    c.globalCompositeOperation = 'source-over';
+    c.shadowColor = H_.col; c.shadowBlur = 40;
+    c.lineWidth = 10; c.strokeStyle = H_.col; c.lineJoin = 'round'; c.strokeText(H_.big, 0, 0);
+    c.shadowBlur = 0; c.fillStyle = '#fff'; c.fillText(H_.big, 0, 0);
+    c.restore();
+    extras(H_, t, out, 'impact');
+  }
+  // flash
+  if (flash > 0.01) { c.fillStyle = `rgba(255,255,255,${flash * .9})`; c.fillRect(0, 0, W, H); }
+  if (H_.double) { const f2 = t >= T0 + .3 ? Math.exp(-(t - T0 - .3) * 10) : 0; if (f2 > .01) { c.fillStyle = hexA(H_.col2, f2 * .55); c.fillRect(0, 0, W, H); } }
+  vignette(.65);
+}
+
+// ════════════════ STYLE 2 : NÉON ════════════════
+function neon(h, t) {
+  const H_ = h, out = exitK(t), NY = AW ? CY - 90 : CY - 20, RY = AW ? CY - 90 : CY - 20;
+  c.fillStyle = '#04020c'; c.fillRect(0, 0, W, H);
+  // sol quadrillé en perspective qui défile
+  const hor = CY + 70;
+  let g = c.createLinearGradient(0, hor - 160, 0, hor);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, hexA(H_.col, .35 * (1 - out)));
+  c.fillStyle = g; c.fillRect(0, hor - 160, W, 160);
+  c.save(); c.beginPath(); c.rect(0, hor, W, H - hor); c.clip();
+  c.strokeStyle = hexA(H_.col2, .55 * (1 - out)); c.lineWidth = 1.5;
+  for (let i = -14; i <= 14; i++) { c.beginPath(); c.moveTo(CX + i * 14, hor); c.lineTo(CX + i * 150, H); c.stroke(); }
+  const off = (t * 1.6) % 1;
+  for (let i = 0; i < 10; i++) { const z = (i + off) / 10, y = hor + Math.pow(z, 2.2) * (H - hor); c.globalAlpha = z; c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); }
+  c.restore(); c.globalAlpha = 1;
+  // faisceaux laser
+  for (const s of [-1, 1]) {
+    const a = -Math.PI / 2 + s * (.5 + Math.sin(t * 3) * .35);
+    c.save(); c.translate(CX + s * 380, H + 20); c.rotate(a + Math.PI / 2);
+    g = c.createLinearGradient(0, 0, 0, -700);
+    g.addColorStop(0, hexA(s < 0 ? H_.col : H_.col2, .55 * prog(t, .05, .3) * (1 - out))); g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = g; c.beginPath(); c.moveTo(-3, 0); c.lineTo(-40, -700); c.lineTo(40, -700); c.lineTo(3, 0); c.fill(); c.restore();
+  }
+  // cercles néon qui se tracent
+  const rings = (H_.double ? [150, 118] : [150]).map(v => AW ? v * .75 : v);
+  rings.forEach((rad, i) => {
+    const p = easeInOut(prog(t, .04 + i * .08, .42 + i * .08));
+    glowStroke(() => { c.beginPath(); if (AW) c.ellipse(CX, RY, rad * 2.9, rad * .95, 0, -Math.PI / 2, -Math.PI / 2 + TAU * p); else c.arc(CX, RY, rad, -Math.PI / 2, -Math.PI / 2 + TAU * p); }, i ? H_.col2 : H_.col, 5, 1 - out);
+  });
+  // anneau en pointillés qui tourne
+  c.save(); c.translate(CX, RY); if (!AW) c.rotate(t * 2.2); c.setLineDash([14, 18]); c.lineDashOffset = AW ? -t * 120 : 0;
+  glowStroke(() => { c.beginPath(); if (AW) c.ellipse(0, 0, 360, 130, 0, 0, TAU); else c.arc(0, 0, 190, 0, TAU); }, H_.col2, 2, prog(t, .3, .5) * (1 - out) * .8);
+  c.restore(); c.setLineDash([]);
+  // texte néon qui clignote puis s'allume
+  const r = rng(Math.floor(t * 30) + 11);
+  let on = t < .16 ? 0 : t < .36 ? (r() < .55 ? 1 : .15) : 1;
+  if (t > 1.18) on = r() < (1 - out) ? 1 : 0; // s'éteint en grésillant
+  if (on > 0) {
+    const px = fitText(H_.big, W * (AW ? .64 : .8), AW ? 130 : 150);
+    font(px);
+    c.save(); c.globalAlpha = on;
+    for (const [blur, a] of [[60, .9], [25, 1]]) { c.shadowColor = H_.col; c.shadowBlur = blur; c.lineWidth = 6; c.strokeStyle = hexA(H_.col, a); c.strokeText(H_.big, CX, NY); }
+    c.shadowBlur = 12; c.shadowColor = '#fff'; c.fillStyle = '#fff'; c.fillText(H_.big, CX, NY);
+    c.restore();
+    if (!AW) { const q = prog(t, .5, .62); if (q > 0) { c.save(); c.globalAlpha = q * on; font(56); c.shadowColor = H_.col2; c.shadowBlur = 22; c.fillStyle = H_.col2; c.fillText(H_.sub, CX, CY + 168); c.restore(); } }
+    else extras(H_, t, out, 'neon', on);
+  }
+  // décharge électrique à l'allumage
+  if (t > .14 && t < .4) {
+    const r2 = rng(Math.floor(t * 60));
+    c.save(); c.strokeStyle = '#fff'; c.shadowColor = H_.col2; c.shadowBlur = 20; c.lineWidth = 2;
+    for (let k = 0; k < 3; k++) {
+      let x = CX + (r2() - .5) * 500, y = NY + (r2() - .5) * 200; c.beginPath(); c.moveTo(x, y);
+      for (let j = 0; j < 7; j++) { x += (r2() - .5) * 70; y += (r2() - .5) * 70; c.lineTo(x, y); }
+      c.stroke();
+    }
+    c.restore();
+  }
+  scanlines(); vignette(.7);
+}
+function glowStroke(path, col, w, a) {
+  if (a <= 0) return;
+  c.save(); c.globalAlpha = a; c.lineCap = 'round';
+  path(); c.shadowColor = col; c.shadowBlur = 30; c.strokeStyle = col; c.lineWidth = w * 2.2; c.stroke();
+  path(); c.shadowBlur = 8; c.strokeStyle = '#fff'; c.lineWidth = w * .7; c.stroke();
+  c.restore();
+}
+
+// ════════════════ STYLE 3 : OR (médaille) ════════════════
+const CONFETTI = (() => { const r = rng(21), a = []; for (let i = 0; i < 70; i++) a.push({x: r() * W, d: r() * .4, sp: 180 + r() * 260, rot: r() * TAU, vr: (r() - .5) * 14, w: 6 + r() * 8, gold: r() < .7}); return a; })();
+function gold(h, t) {
+  const H_ = h, out = exitK(t);
+  let g = c.createRadialGradient(CX, CY - 40, 0, CX, CY - 40, W * .7);
+  g.addColorStop(0, '#3a2408'); g.addColorStop(.5, '#140a02'); g.addColorStop(1, '#000');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  // rayons de lumière qui tournent
+  const ra = prog(t, .1, .4) * (1 - out);
+  if (ra > 0) {
+    c.save(); c.translate(CX, CY - 40); c.rotate(t * .5);
+    for (let i = 0; i < 16; i++) {
+      c.rotate(TAU / 16);
+      g = c.createLinearGradient(0, 0, 0, -600); g.addColorStop(0, `rgba(255,214,110,${.32 * ra})`); g.addColorStop(1, 'rgba(255,214,110,0)');
+      c.fillStyle = g; c.beginPath(); c.moveTo(0, 0); c.lineTo(-48, -600); c.lineTo(48, -600); c.fill();
+    }
+    c.restore();
+  }
+  // médaille qui arrive en tournant
+  const p = prog(t, 0, .42), land = easeOutBack(p, 1.2);
+  const flip = Math.cos((1 - easeOutExpo(p)) * Math.PI * 4);
+  const R = (AW ? 92 : 118) * (.3 + .7 * land) * (1 + out * .25), my = (AW ? CY - 110 : CY - 50) - (1 - land) * 40;
+  c.save(); c.translate(CX, my); c.globalAlpha = clamp(p * 3) * (1 - out);
+  c.scale(Math.max(.04, Math.abs(flip)), 1);
+  c.shadowColor = 'rgba(255,190,60,.8)'; c.shadowBlur = 50;
+  g = c.createLinearGradient(-R, -R, R, R);
+  g.addColorStop(0, '#fff3b0'); g.addColorStop(.35, '#ffc83d'); g.addColorStop(.7, '#b77a12'); g.addColorStop(1, '#ffe27a');
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, R, 0, TAU); c.fill(); c.shadowBlur = 0;
+  c.strokeStyle = '#7a4c06'; c.lineWidth = 6; c.beginPath(); c.arc(0, 0, R * .82, 0, TAU); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,.5)'; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, R * .9, 0, TAU); c.stroke();
+  // reflet qui balaie
+  const gl = AW ? (t % 1.4) / 1.4 * 1.6 - .3 : prog(t, .62, .95);
+  if (gl > 0 && gl < 1) {
+    c.save(); c.beginPath(); c.arc(0, 0, R, 0, TAU); c.clip();
+    const x = -R * 1.6 + gl * R * 3.2;
+    g = c.createLinearGradient(x - 40, 0, x + 40, 0); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, 'rgba(255,255,255,.85)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = g; c.rotate(-.5); c.fillRect(-R * 2, -R * 2, R * 4, R * 4); c.restore();
+  }
+  if (flip > 0) { font(R * (H_.medal.length > 2 ? .7 : .95)); c.fillStyle = '#5a3604'; c.fillText(H_.medal, 3, 6); c.fillStyle = '#fff7d6'; c.fillText(H_.medal, 0, 2); }
+  if (H_.double) { c.strokeStyle = H_.col; c.lineWidth = 7; c.beginPath(); c.arc(0, 0, R * .98, 0, TAU); c.stroke(); }
+  c.restore();
+  // lettres qui tombent une à une
+  const txt = H_.big, px = fitText(txt, W * .86, 104);
+  font(px);
+  const total = c.measureText(txt).width;
+  let x = CX - total / 2;
+  for (let i = 0; i < txt.length; i++) {
+    const ch = txt[i], w = c.measureText(ch).width;
+    const q = prog(t, .3 + i * .035, .52 + i * .035);
+    if (q > 0) {
+      const y = (AW ? CY + 40 : CY + 125) - (1 - easeOutBack(q, 2)) * 90;
+      c.save(); c.globalAlpha = clamp(q * 2) * (1 - out); c.translate(x + w / 2, y);
+      g = c.createLinearGradient(0, -px / 2, 0, px / 2); g.addColorStop(0, '#fff6c8'); g.addColorStop(.55, '#ffc83d'); g.addColorStop(1, '#a86a0c');
+      c.lineWidth = 6; c.strokeStyle = '#2a1600'; c.strokeText(ch, 0, 0); c.fillStyle = g; c.fillText(ch, 0, 0);
+      c.restore();
+    }
+    x += w;
+  }
+  if (AW) extras(H_, t, out, 'gold');
+  // confettis dorés
+  for (const f of CONFETTI) {
+    const dt = (AW ? (t - .38) % 2.2 : t - .38) - f.d; if (dt < 0 || t < .38) continue;
+    const y = -20 + dt * f.sp + 60 * dt * dt, xx = f.x + Math.sin(dt * 4 + f.rot) * 20;
+    c.save(); c.globalAlpha = 1 - out; c.translate(xx, y); c.rotate(f.rot + dt * f.vr); c.scale(1, Math.cos(dt * 9 + f.rot));
+    c.fillStyle = f.gold ? (Math.sin(dt * 9 + f.rot) > 0 ? '#ffd65a' : '#b9851a') : H_.col; c.fillRect(-f.w / 2, -f.w / 4, f.w, f.w / 2);
+    c.restore();
+  }
+  // étincelle d'impact
+  const fl = t >= .42 ? Math.exp(-(t - .42) * 10) : 0;
+  if (fl > .01) { c.fillStyle = `rgba(255,236,170,${fl * .6})`; c.fillRect(0, 0, W, H); }
+  vignette(.6);
+}
+
+// Compteur / pastilles / sous-titre (récompenses), compteur seul pour un coup.
+function extras(H_, t, out, style, on = 1) {
+  const col = style === 'gold' ? '#ffd65a' : H_.col2;
+  const y1 = AW ? (style === 'gold' ? CY + 130 : CY + 60) : CY + 118;
+  if (!AW && style !== 'impact') return;
+  if (H_.pts) {
+    const q = AW ? easeOutExpo(prog(t, .7, 1.6)) : easeOutExpo(prog(t, T0 + .18, T0 + .65));
+    if (q > 0) {
+      c.save(); c.globalAlpha = q * (1 - out) * on; font(AW ? 96 : 64);
+      c.fillStyle = col; c.shadowColor = col; c.shadowBlur = 22;
+      const bump = AW ? 1 + .12 * Math.exp(-Math.max(0, t - 1.6) * 8) * (t > 1.6) : 1;
+      c.translate(CX, y1 + (1 - q) * 30); c.scale(bump, bump);
+      c.fillText(H_.fmt(Math.round(H_.pts * q)), 0, 0); c.restore();
+    }
+  }
+  if (H_.marks) {
+    H_.marks.forEach((m, i) => {
+      const p = prog(t, .8 + i * .32, 1.1 + i * .32); if (p <= 0) return;
+      const sc = easeOutBack(p, 2.6), x = CX + (i - 1) * 130;
+      c.save(); c.globalAlpha = (1 - out) * on; c.translate(x, y1); c.scale(sc, sc);
+      const fl = Math.exp(-(t - .8 - i * .32) * 6);
+      // onde à l'arrivée
+      c.strokeStyle = hexA(H_.col2, fl * .8); c.lineWidth = 4; c.beginPath(); c.arc(0, 0, 44 + (1 - fl) * 60, 0, TAU); c.stroke();
+      let g = c.createRadialGradient(-12, -14, 4, 0, 0, 46);
+      g.addColorStop(0, '#ffffff'); g.addColorStop(.35, style === 'gold' ? '#ffd65a' : H_.col2); g.addColorStop(1, style === 'gold' ? '#8a5a08' : H_.col);
+      c.shadowColor = style === 'gold' ? '#ffcf5a' : H_.col; c.shadowBlur = 30;
+      c.fillStyle = g; c.beginPath(); c.arc(0, 0, 44, 0, TAU); c.fill(); c.shadowBlur = 0;
+      c.lineWidth = 4; c.strokeStyle = 'rgba(255,255,255,.85)'; c.stroke();
+      font(m.length > 2 ? 30 : 44); c.fillStyle = '#111'; c.fillText(m, 0, 3);
+      c.restore();
+    });
+  }
+  const s = easeOutExpo(prog(t, 1.9, 2.3));
+  if (s > 0) {
+    c.save(); c.globalAlpha = s * (1 - out) * on; font(40);
+    c.fillStyle = '#ffffff'; c.shadowColor = col; c.shadowBlur = 14;
+    const w = c.measureText(H_.sub).width * s;
+    c.fillText(H_.sub, CX, y1 + 92);
+    c.fillStyle = col; c.fillRect(CX - w / 2, y1 + 118, w, 4);
+    c.restore();
+  }
+}
+
+function vignette(a) {
+  const g = c.createRadialGradient(CX, CY, H * .35, CX, CY, W * .7);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(0,0,0,${a})`);
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+}
+function scanlines() { c.fillStyle = 'rgba(0,0,0,.18)'; for (let y = 0; y < H; y += 3) c.fillRect(0, y, W, 1); }
+
+const STYLES = {impact, neon, gold};
+window.draw = (style, key, t) => {
+  AW = key in AWARDS;
+  const info = AW ? AWARDS[key] : HITS[key];
+  [T0, X0, X1] = AW ? [.3, 3.55, 4.0] : [.14, 1.18, 1.5];
+  c.save(); STYLES[style](info, t); c.restore();
+  return document.getElementById('c').toDataURL('image/png');
+};
+window.ready = document.fonts.load('100px B').then(() => true);
+</script></body></html>

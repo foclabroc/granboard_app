@@ -9,11 +9,13 @@ import '../game/bot.dart';
 import '../game/cricket.dart';
 import '../game/darts_game.dart';
 import '../game/match.dart';
+import '../game/personas.dart';
 import '../game/practice.dart';
 import '../game/x01.dart';
 import '../players.dart';
 import 'account_page.dart';
 import 'game_page.dart';
+import 'persona_sheet.dart';
 import 'rules.dart';
 import 'setup_widgets.dart';
 import 'theme.dart';
@@ -360,11 +362,12 @@ class _SetupPageState extends State<SetupPage> {
 
   int _teamOf(String id) => _team[id] ?? 0;
 
-  String _nameOf(String id) => isBotId(id)
+  String _nameOf(String id) => personaOf(id)?.name ??
+      (isBotId(id)
       ? 'Joueur virtuel ${id.substring(9)}'
       : isGuestId(id)
           ? 'Invité ${id.substring(6)}'
-          : store.byId(id)?.name ?? '?';
+          : store.byId(id)?.name ?? '?');
 
   /// Joueur virtuel : son niveau suit celui des joueurs humains de la partie.
   void _addBot() {
@@ -565,6 +568,18 @@ class _SetupPageState extends State<SetupPage> {
                     onPressed: full ? null : () => act(_addGuest),
                   ),
                   ActionChip(
+                    key: const ValueKey('add-persona'),
+                    avatar: const Icon(Icons.sports_kabaddi, size: 20),
+                    label: Text('Adversaires', style: Tv.title(16)),
+                    onPressed: full
+                        ? null
+                        : () async {
+                            final p = await showPersonaSheet(ctx,
+                                taken: _selected.toSet());
+                            if (p != null && mounted) act(() => _select(p.playerId));
+                          },
+                  ),
+                  ActionChip(
                     key: const ValueKey('add-bot'),
                     avatar: const Icon(Icons.smart_toy_outlined, size: 20),
                     label: Text('Joueur virtuel', style: Tv.title(16)),
@@ -595,7 +610,7 @@ class _SetupPageState extends State<SetupPage> {
   /// ≤ 140 px : 10 joueurs tiennent sur 2 lignes (téléphone en paysage).
   Widget _inPill(int i, String id, Color c, {required VoidCallback onRemove}) {
     final p = store.byId(id);
-    final name = isBotId(id)
+    final name = isBotId(id) && personaOf(id) == null
         ? _nameOf(id).replaceFirst('Joueur virtuel', 'Virtuel')
         : _nameOf(id);
     return Container(

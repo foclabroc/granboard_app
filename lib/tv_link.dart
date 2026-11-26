@@ -16,6 +16,7 @@ import 'ui/wallpaper.dart';
 import 'ui/cricket_view.dart' show CricketStyle;
 import 'ui/dartboard.dart' show BoardSkin, PlayerBoards;
 import 'ui/ring_anim.dart';
+import 'ui/game_intro.dart';
 
 /// Un écran relié (TV, tablette…), un salon par écran sur le serveur.
 class TvScreen {
@@ -424,6 +425,7 @@ class TvLink extends ChangeNotifier {
         // engine : pour les écrans en 0.6.22
         'gfx': {'render': engine, 'engine': engine, 'video': video},
         'tease': AudioService.instance.teasing,
+        'intro': GameIntro.on.value,
         'names': AudioService.instance.turnNames,
         'pron': AudioService.instance.pronunciations,
         'wall': Wallpaper.instance.forTv,
