@@ -2,6 +2,7 @@
 
 ## v0.6.31
 
+- **Fonds illustrés des jeux** : 12 vraies images (01, Cricket, Medley, Entraînement, Party, Bowling, Golf, Football, Chat et Souris, Paint, Contre la montre, Grand Prix) derrière les réglages et les parties, qui glissent et zooment lentement (figées sur l'écran TV allégé).
 - **Accueil plus vivant** : chaque tuile zoome et glisse lentement (décalées d'une tuile à l'autre) et un reflet la balaie toutes les 7 s ; figé sur l'écran TV allégé.
 - Petits textes des tuiles (31 JEUX, X01 · FREEZE…) dans une étiquette sombre, en blanc et plus gros : lisibles sur les images.
 - **Zombies** : l'annonceur ne dit plus « 6 zombies, base 5/5 » à chaque tour (toujours affiché).

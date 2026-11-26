@@ -45,6 +45,7 @@ flutter:
     - assets/sounds/zombies/
     - assets/zombies/
     - assets/tiles/
+    - assets/themes/
     - assets/music/
     - assets/images/
     - assets/avatars/

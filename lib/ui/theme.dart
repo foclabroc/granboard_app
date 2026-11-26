@@ -53,6 +53,10 @@ class AppSkin {
   final Color muted;
   final List<Color> panelColors;
   final SkinFx fx;
+
+  /// Fond illustré (`assets/themes/<x>.jpg`) à la place du décor dessiné
+  /// [fx] (thèmes des jeux).
+  final String? image;
   const AppSkin({
     required this.id,
     required this.name,
@@ -67,6 +71,7 @@ class AppSkin {
     required this.muted,
     required this.panelColors,
     required this.fx,
+    this.image,
   });
 
   static const gold = AppSkin(
@@ -641,9 +646,13 @@ class _SkinBackgroundState extends State<SkinBackground>
       fit: StackFit.expand,
       children: [
         RepaintBoundary(
-          child: skin.fx == SkinFx.wallpaper
-              ? _WallpaperBackground(controller: _c)
-              : CustomPaint(painter: _SkinPainter(skin, _c), isComplex: true),
+          child: skin.image != null
+              ? _ImageBackground(
+                  key: ValueKey(skin.image), asset: skin.image!, controller: _c)
+              : skin.fx == SkinFx.wallpaper
+                  ? _WallpaperBackground(controller: _c)
+                  : CustomPaint(
+                      painter: _SkinPainter(skin, _c), isComplex: true),
         ),
         widget.child,
       ],
@@ -700,6 +709,58 @@ class _WallpaperBackground extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Fond illustré d'un thème de jeu : l'image qui zoome et glisse très
+/// lentement (figée en affichage allégé), légèrement assombrie en bas.
+class _ImageBackground extends StatelessWidget {
+  final String asset;
+  final AnimationController controller;
+  const _ImageBackground(
+      {super.key, required this.asset, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: Colors.black,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          AnimatedBuilder(
+            animation: controller,
+            builder: (context, child) {
+              final a = controller.value * 2 * math.pi;
+              return Transform.translate(
+                offset: Offset(math.sin(a) * 14, math.cos(a * 2) * 6),
+                child: Transform.scale(
+                    scale: 1.06 + 0.03 * math.sin(a), child: child),
+              );
+            },
+            child: Image.asset(asset,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                gaplessPlayback: true,
+                filterQuality: FilterQuality.medium,
+                errorBuilder: (_, __, ___) => const SizedBox.expand()),
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x33000000),
+                  Color(0x40000000),
+                  Color(0x99000000)
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1110,8 +1171,14 @@ class _SkinPainter extends CustomPainter {
             // marques qui apparaissent l'une après l'autre
             final m = ((t.value * 6 + i * 0.37 + side * 0.5) % 1) * 4;
             final cx = x0 + rowH * 1.1, s = rowH * 0.22;
-            if (m > 1) canvas.drawLine(Offset(cx - s, y + s), Offset(cx + s, y - s), chalk);
-            if (m > 2) canvas.drawLine(Offset(cx - s, y - s), Offset(cx + s, y + s), chalk);
+            if (m > 1) {
+              canvas.drawLine(
+                  Offset(cx - s, y + s), Offset(cx + s, y - s), chalk);
+            }
+            if (m > 2) {
+              canvas.drawLine(
+                  Offset(cx - s, y - s), Offset(cx + s, y + s), chalk);
+            }
             if (m > 3) canvas.drawCircle(Offset(cx, y), s * 1.4, chalk);
           }
           canvas.drawLine(Offset(x0 + rowH * 0.8, rowH * 0.4),
@@ -1122,7 +1189,9 @@ class _SkinPainter extends CustomPainter {
           final y = _r(i, 2) * h;
           final s = 8 + 10 * _r(i, 3);
           canvas.drawLine(Offset(x - s, y + s), Offset(x + s, y - s), dim);
-          if (i.isEven) canvas.drawLine(Offset(x - s, y - s), Offset(x + s, y + s), dim);
+          if (i.isEven) {
+            canvas.drawLine(Offset(x - s, y - s), Offset(x + s, y + s), dim);
+          }
         }
         for (var i = 0; i < 6; i++) {
           canvas.drawOval(
@@ -1168,20 +1237,31 @@ class _SkinPainter extends CustomPainter {
           final jit = (k == 12 ? 0 : 1) * 14 * math.sin(a * 30 + k * 2.7);
           bolt.lineTo(top + (bot - top) * p + jit, h * p);
         }
-        for (final (wd, al, bl) in [(14.0, 0.25, 12.0), (5.0, 0.6, 4.0), (2.0, 1.0, 0.0)]) {
+        for (final (wd, al, bl) in [
+          (14.0, 0.25, 12.0),
+          (5.0, 0.6, 4.0),
+          (2.0, 1.0, 0.0)
+        ]) {
           canvas.drawPath(
               bolt,
               Paint()
                 ..style = PaintingStyle.stroke
                 ..strokeWidth = wd
                 ..color = skin.accentLight.withValues(alpha: al)
-                ..maskFilter = bl > 0 ? MaskFilter.blur(BlurStyle.normal, bl) : null);
+                ..maskFilter =
+                    bl > 0 ? MaskFilter.blur(BlurStyle.normal, bl) : null);
         }
         for (var i = 0; i < 40; i++) {
           final p = (_r(i, 1) + t.value * 4) % 1;
-          final x = top + (bot - top) * p + (i.isEven ? -1 : 1) * (10 + 60 * _r(i, 2) * p);
-          canvas.drawCircle(Offset(x, p * h), 1.5 + 1.5 * _r(i, 3),
-              Paint()..color = (i.isEven ? skin.glow : skin.accentLight).withValues(alpha: 0.7));
+          final x = top +
+              (bot - top) * p +
+              (i.isEven ? -1 : 1) * (10 + 60 * _r(i, 2) * p);
+          canvas.drawCircle(
+              Offset(x, p * h),
+              1.5 + 1.5 * _r(i, 3),
+              Paint()
+                ..color = (i.isEven ? skin.glow : skin.accentLight)
+                    .withValues(alpha: 0.7));
         }
       case SkinFx.hud:
         // Entraînement : quadrillage, mire lumineuse, radar, cibles qui
@@ -1221,8 +1301,15 @@ class _SkinPainter extends CustomPainter {
               ).createShader(Rect.fromCircle(center: cc, radius: h * 0.6)));
         for (var i = 0; i < 7; i++) {
           final ping = (t.value * 5 + _r(i, 1)) % 1;
-          final at = cc + Offset(math.cos(i * 2.4), math.sin(i * 2.4)) * h * (0.1 + 0.45 * _r(i, 2));
-          canvas.drawCircle(at, 4, Paint()..color = skin.accentLight.withValues(alpha: 0.9 * (1 - ping)));
+          final at = cc +
+              Offset(math.cos(i * 2.4), math.sin(i * 2.4)) *
+                  h *
+                  (0.1 + 0.45 * _r(i, 2));
+          canvas.drawCircle(
+              at,
+              4,
+              Paint()
+                ..color = skin.accentLight.withValues(alpha: 0.9 * (1 - ping)));
           canvas.drawCircle(
               at,
               4 + 26 * ping,
@@ -1356,17 +1443,26 @@ class _SkinPainter extends CustomPainter {
           // quilles au fond
           for (var q = 0; q < 4; q++) {
             final px = fx0 + (q - 1.5) * w * 0.016;
-            canvas.drawOval(Rect.fromCenter(center: Offset(px, vy - 8), width: 7, height: 16),
+            canvas.drawOval(
+                Rect.fromCenter(
+                    center: Offset(px, vy - 8), width: 7, height: 16),
                 Paint()..color = Colors.white.withValues(alpha: 0.75));
-            canvas.drawRect(Rect.fromCenter(center: Offset(px, vy - 10), width: 6, height: 2),
-                Paint()..color = const Color(0xFFE53935).withValues(alpha: 0.8));
+            canvas.drawRect(
+                Rect.fromCenter(
+                    center: Offset(px, vy - 10), width: 6, height: 2),
+                Paint()
+                  ..color = const Color(0xFFE53935).withValues(alpha: 0.8));
           }
           // boule qui descend la piste (vers le fond)
           final p = ((t.value * 6) + (i + 1) * 0.33) % 1;
           final bx = cx + (fx0 - cx) * p, by = h - (h - vy) * p;
           final br = 18 * (1 - p * 0.75);
-          canvas.drawCircle(Offset(bx, by), br,
-              Paint()..color = (i == 0 ? skin.accent : skin.glow).withValues(alpha: 0.75));
+          canvas.drawCircle(
+              Offset(bx, by),
+              br,
+              Paint()
+                ..color =
+                    (i == 0 ? skin.accent : skin.glow).withValues(alpha: 0.75));
           canvas.drawCircle(Offset(bx - br * 0.3, by - br * 0.35), br * 0.25,
               Paint()..color = Colors.white.withValues(alpha: 0.5));
         }
@@ -1407,7 +1503,10 @@ class _SkinPainter extends CustomPainter {
             hill.lineTo(
                 x,
                 base +
-                    h * 0.06 * math.sin(x / w * math.pi * (2 + i) + i * 1.3 + a * 0.3));
+                    h *
+                        0.06 *
+                        math.sin(
+                            x / w * math.pi * (2 + i) + i * 1.3 + a * 0.3));
           }
           hill
             ..lineTo(w, h)
@@ -1419,9 +1518,12 @@ class _SkinPainter extends CustomPainter {
                     .withValues(alpha: 0.35 + i * 0.15));
         }
         final fx0 = w * 0.8, fy0 = h * 0.62;
-        canvas.drawOval(Rect.fromCenter(center: Offset(fx0, fy0), width: 30, height: 8),
+        canvas.drawOval(
+            Rect.fromCenter(center: Offset(fx0, fy0), width: 30, height: 8),
             Paint()..color = Colors.black.withValues(alpha: 0.5));
-        canvas.drawLine(Offset(fx0, fy0), Offset(fx0, fy0 - h * 0.28),
+        canvas.drawLine(
+            Offset(fx0, fy0),
+            Offset(fx0, fy0 - h * 0.28),
             Paint()
               ..color = Colors.white.withValues(alpha: 0.85)
               ..strokeWidth = 3);
@@ -1429,16 +1531,19 @@ class _SkinPainter extends CustomPainter {
         canvas.drawPath(
             Path()
               ..moveTo(fx0, fy0 - h * 0.28)
-              ..quadraticBezierTo(fx0 + 30, fy0 - h * 0.28 + 8 + wave,
-                  fx0 + 60, fy0 - h * 0.25 + wave)
+              ..quadraticBezierTo(fx0 + 30, fy0 - h * 0.28 + 8 + wave, fx0 + 60,
+                  fy0 - h * 0.25 + wave)
               ..lineTo(fx0, fy0 - h * 0.19)
               ..close(),
             Paint()..color = skin.glow.withValues(alpha: 0.9));
         final q = (t.value * 5) % 1;
-        final ball = Offset(w * (0.05 + 0.75 * q), h * 0.7 - math.sin(q * math.pi) * h * 0.5);
-        canvas.drawCircle(ball, 6, Paint()..color = Colors.white.withValues(alpha: 0.9));
+        final ball = Offset(
+            w * (0.05 + 0.75 * q), h * 0.7 - math.sin(q * math.pi) * h * 0.5);
+        canvas.drawCircle(
+            ball, 6, Paint()..color = Colors.white.withValues(alpha: 0.9));
         for (var i = 0; i < 4; i++) {
-          final x = ((_r(i, 1) + t.value * (0.5 + i * 0.2)) % 1.3) * w * 1.1 - w * 0.2;
+          final x = ((_r(i, 1) + t.value * (0.5 + i * 0.2)) % 1.3) * w * 1.1 -
+              w * 0.2;
           final y = h * (0.06 + 0.12 * _r(i, 2));
           for (var k = 0; k < 3; k++) {
             canvas.drawCircle(
@@ -1456,19 +1561,25 @@ class _SkinPainter extends CustomPainter {
           canvas.drawRect(
               Rect.fromLTWH(w * i / stripes, 0, w / stripes, h),
               Paint()
-                ..color = (i.isEven ? const Color(0xFF2E9E4F) : const Color(0xFF237A3D))
+                ..color = (i.isEven
+                        ? const Color(0xFF2E9E4F)
+                        : const Color(0xFF237A3D))
                     .withValues(alpha: 0.35));
         }
         final line = Paint()
           ..color = Colors.white.withValues(alpha: 0.45)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3;
-        canvas.drawRect(Rect.fromLTWH(w * 0.04, h * 0.06, w * 0.92, h * 0.88), line);
+        canvas.drawRect(
+            Rect.fromLTWH(w * 0.04, h * 0.06, w * 0.92, h * 0.88), line);
         canvas.drawLine(Offset(w / 2, h * 0.06), Offset(w / 2, h * 0.94), line);
         canvas.drawCircle(Offset(w / 2, h / 2), h * 0.17, line);
-        canvas.drawCircle(Offset(w / 2, h / 2), 4, Paint()..color = Colors.white.withValues(alpha: 0.5));
-        canvas.drawRect(Rect.fromLTWH(w * 0.04, h * 0.28, w * 0.11, h * 0.44), line);
-        canvas.drawRect(Rect.fromLTWH(w * 0.85, h * 0.28, w * 0.11, h * 0.44), line);
+        canvas.drawCircle(Offset(w / 2, h / 2), 4,
+            Paint()..color = Colors.white.withValues(alpha: 0.5));
+        canvas.drawRect(
+            Rect.fromLTWH(w * 0.04, h * 0.28, w * 0.11, h * 0.44), line);
+        canvas.drawRect(
+            Rect.fromLTWH(w * 0.85, h * 0.28, w * 0.11, h * 0.44), line);
         for (final x in [0.0, 1.0]) {
           final o = Offset(w * x, 0);
           final flick = 0.85 + 0.15 * math.sin(a * 20 + x * 3);
@@ -1476,8 +1587,10 @@ class _SkinPainter extends CustomPainter {
         }
         final bx = w * (0.1 + 0.8 * (0.5 + 0.5 * math.sin(a)));
         final by = h * (0.5 + 0.32 * math.sin(a * 2));
-        canvas.drawCircle(Offset(bx + 4, by + 6), 12, Paint()..color = Colors.black.withValues(alpha: 0.35));
-        canvas.drawCircle(Offset(bx, by), 12, Paint()..color = Colors.white.withValues(alpha: 0.9));
+        canvas.drawCircle(Offset(bx + 4, by + 6), 12,
+            Paint()..color = Colors.black.withValues(alpha: 0.35));
+        canvas.drawCircle(Offset(bx, by), 12,
+            Paint()..color = Colors.white.withValues(alpha: 0.9));
         canvas.save();
         canvas.translate(bx, by);
         canvas.rotate(a * 12);
@@ -1504,14 +1617,19 @@ class _SkinPainter extends CustomPainter {
               final fade = 1 - (hd - p) * 1.6;
               if (fade <= 0) continue;
               final x = p * (w + 60) - 30;
-              final y = y0 + (i.isEven ? -12.0 : 12.0) * s + 26 * math.sin(p * 6 + who);
+              final y = y0 +
+                  (i.isEven ? -12.0 : 12.0) * s +
+                  26 * math.sin(p * 6 + who);
               final q = Paint()..color = c.withValues(alpha: 0.55 * fade);
               canvas.drawOval(
-                  Rect.fromCenter(center: Offset(x, y), width: 14 * s, height: 12 * s), q);
+                  Rect.fromCenter(
+                      center: Offset(x, y), width: 14 * s, height: 12 * s),
+                  q);
               for (var k = 0; k < 4; k++) {
                 final ang = -0.9 + k * 0.6;
                 canvas.drawCircle(
-                    Offset(x + math.sin(ang) * 11 * s + 6 * s, y - math.cos(ang) * 11 * s),
+                    Offset(x + math.sin(ang) * 11 * s + 6 * s,
+                        y - math.cos(ang) * 11 * s),
                     3 * s,
                     q);
               }
@@ -1522,11 +1640,13 @@ class _SkinPainter extends CustomPainter {
         for (final (ex, ey) in [(0.88, 0.15), (0.08, 0.86)]) {
           for (final dx in [-16.0, 16.0]) {
             final e = Offset(w * ex + dx, h * ey);
-            canvas.drawOval(Rect.fromCenter(center: e, width: 18, height: 26 * blink),
+            canvas.drawOval(
+                Rect.fromCenter(center: e, width: 18, height: 26 * blink),
                 Paint()
                   ..color = const Color(0xFFD4FF3A).withValues(alpha: 0.85)
                   ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
-            canvas.drawOval(Rect.fromCenter(center: e, width: 5, height: 20 * blink),
+            canvas.drawOval(
+                Rect.fromCenter(center: e, width: 5, height: 20 * blink),
                 Paint()..color = Colors.black);
           }
         }
@@ -1548,17 +1668,22 @@ class _SkinPainter extends CustomPainter {
           for (var k = 0; k < 8; k++) {
             final ang = k * 0.8 + i;
             canvas.drawCircle(
-                cc + Offset(math.cos(ang), math.sin(ang)) * rr * (1.15 + 0.5 * _r(i, k + 5)),
+                cc +
+                    Offset(math.cos(ang), math.sin(ang)) *
+                        rr *
+                        (1.15 + 0.5 * _r(i, k + 5)),
                 rr * (0.1 + 0.12 * _r(i, k + 9)),
                 pt);
           }
           // coulures
           for (var k = 0; k < 3; k++) {
             final dx = (k - 1) * rr * 0.5;
-            final len = rr * (0.6 + 1.2 * _r(i, k + 20)) * math.min(1.0, life * 2);
+            final len =
+                rr * (0.6 + 1.2 * _r(i, k + 20)) * math.min(1.0, life * 2);
             canvas.drawRRect(
                 RRect.fromRectAndRadius(
-                    Rect.fromLTWH(cc.dx + dx - rr * 0.08, cc.dy, rr * 0.16, rr * 0.6 + len),
+                    Rect.fromLTWH(cc.dx + dx - rr * 0.08, cc.dy, rr * 0.16,
+                        rr * 0.6 + len),
                     Radius.circular(rr * 0.08)),
                 pt);
           }
@@ -1583,7 +1708,8 @@ class _SkinPainter extends CustomPainter {
               cc + Offset(math.cos(ang), math.sin(ang)) * (rr - len),
               cc + Offset(math.cos(ang), math.sin(ang)) * rr,
               Paint()
-                ..color = skin.accentLight.withValues(alpha: i % 5 == 0 ? 0.6 : 0.25)
+                ..color =
+                    skin.accentLight.withValues(alpha: i % 5 == 0 ? 0.6 : 0.25)
                 ..strokeWidth = i % 5 == 0 ? 4 : 2);
         }
         final hand = a * 10 - math.pi / 2;
@@ -1600,7 +1726,6 @@ class _SkinPainter extends CustomPainter {
                   skin.glow.withValues(alpha: 0),
                   skin.glow.withValues(alpha: 0.35),
                 ],
-                
               ).createShader(Rect.fromCircle(center: cc, radius: rr)));
         canvas.drawLine(
             cc,
@@ -1609,12 +1734,15 @@ class _SkinPainter extends CustomPainter {
               ..color = skin.glow.withValues(alpha: 0.9)
               ..strokeWidth = 4
               ..strokeCap = StrokeCap.round);
-        canvas.drawCircle(cc, 8, Paint()..color = skin.glow.withValues(alpha: 0.9));
+        canvas.drawCircle(
+            cc, 8, Paint()..color = skin.glow.withValues(alpha: 0.9));
         for (var i = 0; i < 14; i++) {
           final p = (_r(i, 1) + t.value * 8) % 1;
           final y = h * _r(i, 2);
           final x = w * (1.2 - p * 1.4);
-          canvas.drawLine(Offset(x, y), Offset(x + w * 0.12, y),
+          canvas.drawLine(
+              Offset(x, y),
+              Offset(x + w * 0.12, y),
               Paint()
                 ..color = skin.accentLight.withValues(alpha: 0.25)
                 ..strokeWidth = 2);
@@ -1637,18 +1765,30 @@ class _SkinPainter extends CustomPainter {
               ..shader = LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [const Color(0xFF2A2D35).withValues(alpha: .9), const Color(0xFF1A1C22).withValues(alpha: .9)],
+                colors: [
+                  const Color(0xFF2A2D35).withValues(alpha: .9),
+                  const Color(0xFF1A1C22).withValues(alpha: .9)
+                ],
               ).createShader(Offset.zero & size));
         for (var i = 0; i < 400; i++) {
-          canvas.drawCircle(Offset(_r(i, 1) * w, _r(i, 2) * h), 0.8,
-              Paint()..color = Colors.white.withValues(alpha: 0.06 + 0.06 * _r(i, 3)));
+          canvas.drawCircle(
+              Offset(_r(i, 1) * w, _r(i, 2) * h),
+              0.8,
+              Paint()
+                ..color =
+                    Colors.white.withValues(alpha: 0.06 + 0.06 * _r(i, 3)));
         }
         const cw = 34.0;
         final off = (t.value * 40 * cw) % (cw * 2);
         for (final y in [0.0, h - 14]) {
           for (var x = -cw * 2 + off; x < w; x += cw) {
-            canvas.drawRect(Rect.fromLTWH(x, y, cw, 14),
-                Paint()..color = (((x - off) / cw).round().isEven ? const Color(0xFFE8242C) : const Color(0xFFF5F5F5)).withValues(alpha: 0.75));
+            canvas.drawRect(
+                Rect.fromLTWH(x, y, cw, 14),
+                Paint()
+                  ..color = (((x - off) / cw).round().isEven
+                          ? const Color(0xFFE8242C)
+                          : const Color(0xFFF5F5F5))
+                      .withValues(alpha: 0.75));
           }
         }
         final dash = Paint()
@@ -1664,7 +1804,9 @@ class _SkinPainter extends CustomPainter {
           final p = (_r(i, 1) + t.value * 9) % 1;
           final y = h * (0.1 + 0.8 * _r(i, 2));
           final x = w * (1.1 - p * 1.3);
-          canvas.drawLine(Offset(x, y), Offset(x + w * 0.14, y),
+          canvas.drawLine(
+              Offset(x, y),
+              Offset(x + w * 0.14, y),
               Paint()
                 ..color = Colors.white.withValues(alpha: 0.22)
                 ..strokeWidth = 2);
@@ -1754,7 +1896,6 @@ class Band {
       color: Colors.white,
       shadows: const [Shadow(color: Color(0x99000000), blurRadius: 3)]);
 }
-
 
 /// Encoche : les bandeaux colorés vont jusqu'aux bords de l'écran (derrière
 /// la caméra), seuls leurs textes et boutons restent dans la zone sûre.

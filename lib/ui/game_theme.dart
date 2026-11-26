@@ -30,6 +30,7 @@ class GameSkins {
     muted: Color(0xFF9C8A8E),
     panelColors: [Color(0xFF221216), Color(0xFF12080A)],
     fx: SkinFx.arena,
+    image: 'assets/themes/x01.jpg',
   );
 
   /// Cricket : tableau noir et craie.
@@ -47,6 +48,7 @@ class GameSkins {
     muted: Color(0xFF8FA69A),
     panelColors: [Color(0xFF16271F), Color(0xFF0B1611)],
     fx: SkinFx.chalk,
+    image: 'assets/themes/cricket.jpg',
   );
 
   /// Medley : duel, deux camps (bleu / rouge), accent violet.
@@ -64,6 +66,7 @@ class GameSkins {
     muted: Color(0xFF928DA8),
     panelColors: [Color(0xFF1A1729), Color(0xFF0C0B14)],
     fx: SkinFx.duel,
+    image: 'assets/themes/match.jpg',
   );
 
   /// Entraînement : viseur, mire et radar, turquoise.
@@ -81,6 +84,7 @@ class GameSkins {
     muted: Color(0xFF85A3A6),
     panelColors: [Color(0xFF102024), Color(0xFF060F11)],
     fx: SkinFx.hud,
+    image: 'assets/themes/practice.jpg',
   );
 
   /// Party : confettis, rose et jaune.
@@ -98,6 +102,7 @@ class GameSkins {
     muted: Color(0xFFA28DA8),
     panelColors: [Color(0xFF24132B), Color(0xFF110815)],
     fx: SkinFx.confetti,
+    image: 'assets/themes/party.jpg',
   );
 
   /// Bowling : pistes en bois et néons.
@@ -115,6 +120,7 @@ class GameSkins {
     muted: Color(0xFF9A8EAE),
     panelColors: [Color(0xFF1C132E), Color(0xFF0D0818)],
     fx: SkinFx.lanes,
+    image: 'assets/themes/bowling.jpg',
   );
 
   /// Golf : collines, drapeau, nuages.
@@ -132,6 +138,7 @@ class GameSkins {
     muted: Color(0xFF8DA592),
     panelColors: [Color(0xFF12241A), Color(0xFF07120B)],
     fx: SkinFx.fairway,
+    image: 'assets/themes/golf.jpg',
   );
 
   /// Football : pelouse rayée et lignes du terrain.
@@ -149,6 +156,7 @@ class GameSkins {
     muted: Color(0xFF8CAA94),
     panelColors: [Color(0xFF12281A), Color(0xFF08150C)],
     fx: SkinFx.pitch,
+    image: 'assets/themes/football.jpg',
   );
 
   /// Le Chat et la Souris : pattes qui traversent, orange chaleureux.
@@ -166,6 +174,7 @@ class GameSkins {
     muted: Color(0xFFA8968A),
     panelColors: [Color(0xFF26180D), Color(0xFF120B06)],
     fx: SkinFx.paws,
+    image: 'assets/themes/cat.jpg',
   );
 
   /// Paint : taches de peinture de toutes les couleurs.
@@ -183,6 +192,7 @@ class GameSkins {
     muted: Color(0xFF9590A0),
     panelColors: [Color(0xFF1C1A21), Color(0xFF0C0B0E)],
     fx: SkinFx.splats,
+    image: 'assets/themes/paint.jpg',
   );
 
   /// Contre la montre : cadran et trotteuse, jaune course.
@@ -200,6 +210,7 @@ class GameSkins {
     muted: Color(0xFFA39C86),
     panelColors: [Color(0xFF1D1A10), Color(0xFF0C0B07)],
     fx: SkinFx.clock,
+    image: 'assets/themes/time.jpg',
   );
 
   /// Grand Prix : circuit, vibreurs et damier, rouge course.
@@ -217,6 +228,7 @@ class GameSkins {
     muted: Color(0xFFA0A6B2),
     panelColors: [Color(0xFF1A1C24), Color(0xFF0C0D12)],
     fx: SkinFx.circuit,
+    image: 'assets/themes/gp.jpg',
   );
 
   static const all = [
@@ -257,8 +269,8 @@ class GameSkins {
   static AppSkin ofGame(DartsGame g) => switch (g) {
         CricketGame() => cricket,
         MatchGame() => match,
-        PracticeGame p => of(p.settings.info.party ? 'party' : 'practice',
-            p.settings.kind),
+        PracticeGame p =>
+          of(p.settings.info.party ? 'party' : 'practice', p.settings.kind),
         _ => x01,
       };
 }
