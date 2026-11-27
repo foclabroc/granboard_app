@@ -71,8 +71,16 @@ class GameIntro {
     );
     _entry = entry;
     overlay.insert(entry);
-    AudioService.instance.play(Sfx.intro);
+    // 2 sons choisis par foclabroc sur Pixabay, tirés au hasard
+    AudioService.instance
+        .playFile(kIntroSounds[_rnd.nextInt(kIntroSounds.length)], volume: .85);
   }
+
+  static final _rnd = Random();
+
+  /// « Energy Stomps Logo » (alexzavesa, 3,3 → 7,4 s) et « Intro Podcast »
+  /// (dariocoiro, dès 0,3 s) : le temps fort tombe sur GAME ON (2,7 s).
+  static const kIntroSounds = ['sounds/intro.ogg', 'sounds/intro2.ogg'];
 
   static void hide() {
     final e = _entry;

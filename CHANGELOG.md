@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.33
+
+- **Nouveau son d'intro des parties** : 2 vrais sons choisis sur Pixabay (« Energy Stomps Logo » et « Intro Podcast »), tirés au hasard, calés pour que leur temps fort tombe sur GAME ON. L'ancien son synthétisé (saturé) est retiré.
+
 ## v0.6.32
 
 - **Icônes illustrées des jeux** : les 62 jeux (01, Freeze, Cricket, Entraînement, Party) ont une vraie icône dans la liste CHOISIR LE JEU, et chaque case prend la couleur de son icône.

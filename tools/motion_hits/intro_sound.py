@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Son de l'intro des parties (assets/sounds/intro.ogg, 4 s) : souffle,
-coup + accord à l'ouverture du bandeau, glissés des joueurs, reflet, puis
-« GAME ON » (coup + accord). usage : python3 tools/motion_hits/intro_sound.py"""
+"""ANCIEN son de l'intro, synthétisé (remplacé en v0.6.33 par « Energy Stomps
+Logo » d'alexzavesa sur Pixabay, choisi par foclabroc : 3,3 → 7,4 s, -2 dB).
+Ne plus lancer : il écraserait assets/sounds/intro.ogg."""
 import subprocess, sys
 from pathlib import Path
 
