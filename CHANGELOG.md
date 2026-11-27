@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.34
+
+- **Nombre de joueurs affiché** dans la colonne JOUEURS (« Se joue à 2 joueurs », « 2-8 joueurs »…), en rouge avec « Ajoute 1 joueur » ou « Retire N joueurs » quand LANCER est grisé pour cette raison ; AJOUTER limité au maximum du jeu.
+- **Mosaïque des jeux** : tuiles centrées en largeur et en hauteur, lignes équilibrées (Cricket en 2 × 4), tuiles plus grandes quand il y a de la place (01), nombre de joueurs sous chaque jeu d'Entraînement et de Party, 301 / 501 / 701 / 901 écrits en grand.
+- **Transparence** : tuiles des jeux et panneaux de réglages en partie transparents, le fond illustré se voit à travers.
+
 ## v0.6.33
 
 - **Nouveau son d'intro des parties** : 2 vrais sons choisis sur Pixabay (« Energy Stomps Logo » et « Intro Podcast »), tirés au hasard, calés pour que leur temps fort tombe sur GAME ON. L'ancien son synthétisé (saturé) est retiré.

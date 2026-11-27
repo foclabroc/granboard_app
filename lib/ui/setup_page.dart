@@ -335,7 +335,57 @@ class _SetupPageState extends State<SetupPage> {
       ? 16
       : _cricketOn
           ? _maxPlayersCricket
-          : _maxPlayersDefault;
+          : _practiceOn && !_online
+              ? (_pInfo.maxPlayers < _maxPlayersDefault
+                  ? _pInfo.maxPlayers
+                  : _maxPlayersDefault)
+              : _maxPlayersDefault;
+
+  int get _minPlayers => _localTournament || _teams
+      ? 2
+      : _practiceOn
+          ? _pInfo.minPlayers
+          : 1;
+
+  /// Rappel du nombre de joueurs du jeu, en rouge quand il n'est pas bon
+  /// (sinon le bouton LANCER grisé n'est pas compris).
+  Widget _playersNeed() {
+    final n = _selected.length, lo = _minPlayers, hi = _maxPlayers;
+    String pl(int k) => '$k joueur${k > 1 ? 's' : ''}';
+    final need = _teams
+        ? '2 équipes de même taille ($hi max)'
+        : lo == hi
+            ? pl(lo)
+            : lo <= 1
+                ? '1 à $hi joueurs'
+                : '$lo à $hi joueurs';
+    final hint = n > hi
+        ? 'Retire ${pl(n - hi)}'
+        : n < lo
+            ? 'Ajoute ${pl(lo - n)}'
+            : null;
+    final c = hint == null ? Tv.muted : Tv.red;
+    return Padding(
+      key: const ValueKey('players-need'),
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
+      child: Row(children: [
+        Icon(Icons.groups, size: 18, color: c),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text.rich(
+            TextSpan(children: [
+              TextSpan(text: 'SE JOUE À ${need.toUpperCase()}'),
+              if (hint != null)
+                TextSpan(
+                    text: '  ·  ${hint.toUpperCase()}',
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+            ]),
+            style: Tv.label(12, color: c),
+          ),
+        ),
+      ]),
+    );
+  }
 
   /// Tournoi à la maison (joueurs du téléphone, matchs sur cette cible).
   bool get _localTournament => widget.tournament && !_online;
@@ -1302,6 +1352,7 @@ class _SetupPageState extends State<SetupPage> {
                       Expanded(
                         child: SetupColumn(
                           title: 'Joueurs (${_selected.length})',
+                          header: _playersNeed(),
                           children: [
                             if (_selected.isNotEmpty)
                               ReorderableListView(

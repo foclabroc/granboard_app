@@ -92,7 +92,7 @@ class TableauPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Tv.panel.withValues(alpha: 0.9),
+        color: Tv.panel.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Tv.line),
       ),

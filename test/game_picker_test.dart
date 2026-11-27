@@ -74,7 +74,11 @@ void main() {
       (tester) async {
     await open(tester, 'party');
     final last = pickItems('party').last.id;
-    expect(find.byKey(ValueKey('pick-$last')), findsNothing);
+    // tout en bas, hors de l'écran au départ
+    expect(
+        tester.getTopLeft(find.byKey(ValueKey('pick-$last'))).dy,
+        greaterThan(
+            tester.view.physicalSize.height / tester.view.devicePixelRatio));
     await tester.scrollUntilVisible(find.byKey(ValueKey('pick-$last')), 300,
         scrollable: find.byType(Scrollable).first);
     await tester.ensureVisible(find.byKey(ValueKey('pick-$last')));

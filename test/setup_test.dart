@@ -15,6 +15,7 @@ import 'fake_server.dart';
 /// Ajoute un joueur virtuel par la fenêtre « Ajouter ».
 Future<void> addGuest(WidgetTester tester) async {
   await tester.ensureVisible(find.byKey(const ValueKey('players-add')));
+  await tester.pumpAndSettle();
   await tester.tap(find.byKey(const ValueKey('players-add')));
   await tester.pumpAndSettle();
   await tester.tap(find.byKey(const ValueKey('add-guest')));
@@ -61,7 +62,8 @@ void main() {
     }
   }
 
-  testWidgets('Ajouter des joueurs : joueurs choisis en pastilles (10 sur 2 lignes)',
+  testWidgets(
+      'Ajouter des joueurs : joueurs choisis en pastilles (10 sur 2 lignes)',
       (tester) async {
     await open(tester, 'cricket');
     await tester.ensureVisible(find.byKey(const ValueKey('players-add')));
@@ -126,7 +128,8 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Freeze avec un nombre impair de joueurs : message, pas d\'écran blanc',
+  testWidgets(
+      'Freeze avec un nombre impair de joueurs : message, pas d\'écran blanc',
       (tester) async {
     await open(tester, 'x01');
     for (final n in [1, 2, 3, 4]) {
@@ -201,7 +204,8 @@ void main() {
       final container = tester.widget<Container>(
           find.descendant(of: panel, matching: find.byType(Container)).first);
       expect((container.decoration! as BoxDecoration).color,
-          skin.panel.withValues(alpha: 0.9), reason: k);
+          skin.panel.withValues(alpha: 0.6),
+          reason: k);
     }
     // page fermée : le thème de l'appli revient
     await tester.pumpWidget(const SizedBox());
@@ -257,7 +261,8 @@ void main() {
       (tester) async {
     await open(tester, 'match');
     // Par défaut : 501, Cricket, 501
-    expect(find.textContaining(RegExp('501-CR-501', caseSensitive: false)), findsWidgets);
+    expect(find.textContaining(RegExp('501-CR-501', caseSensitive: false)),
+        findsWidgets);
     // Leg 1 en 301
     await tester.tap(find.byKey(const ValueKey('mleg-0')));
     await tester.pumpAndSettle();
@@ -268,17 +273,20 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('701').last);
     await tester.pumpAndSettle();
-    expect(find.textContaining(RegExp('301-701-501', caseSensitive: false)), findsWidgets);
+    expect(find.textContaining(RegExp('301-701-501', caseSensitive: false)),
+        findsWidgets);
     // Leg 3 en Cricket
     await tester.tap(find.byKey(const ValueKey('mleg-2')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Cricket').last);
     await tester.pumpAndSettle();
-    expect(find.textContaining(RegExp('301-701-CR', caseSensitive: false)), findsWidgets);
+    expect(find.textContaining(RegExp('301-701-CR', caseSensitive: false)),
+        findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Encoche à gauche ou à droite : même écran, bandeaux jusqu\'aux bords',
+  testWidgets(
+      'Encoche à gauche ou à droite : même écran, bandeaux jusqu\'aux bords',
       (tester) async {
     Future<(Rect, Rect)> place(FakeViewPadding pad) async {
       tester.view.physicalSize = const Size(2340, 1080);

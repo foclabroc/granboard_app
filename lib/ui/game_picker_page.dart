@@ -44,7 +44,7 @@ List<PickItem> pickItems(String kind) {
             kPracticeInfo[k]!.name,
             practiceArt(k),
             artTint(practiceArt(k)) ?? Band.at(i, ks.length),
-            party ? _players(kPracticeInfo[k]!) : ''),
+            _players(kPracticeInfo[k]!)),
     ];
   }
   return [
@@ -56,7 +56,7 @@ List<PickItem> pickItems(String kind) {
 }
 
 String _players(PracticeInfo i) => i.minPlayers == i.maxPlayers
-    ? '${i.minPlayers} joueurs'
+    ? '${i.minPlayers} joueur${i.minPlayers > 1 ? 's' : ''}'
     : '${i.minPlayers}-${i.maxPlayers} joueurs';
 
 class GamePickerPage extends StatelessWidget {
@@ -86,26 +86,60 @@ class GamePickerPage extends StatelessWidget {
               SetupBand(title: _title, sub: '${items.length} jeux'),
               Expanded(
                 child: SidePad(
-                  child: GridView.builder(
-                    key: const ValueKey('pick-grid'),
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
-                    gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 130,
-                            mainAxisSpacing: 10,
-                            crossAxisSpacing: 10,
-                            childAspectRatio: .82),
-                    itemCount: items.length,
-                    itemBuilder: (context, i) => _PickTile(
-                      item: items[i],
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) =>
-                                SetupPage(kind: kind, game: items[i].id)),
+                  // tuiles en lignes centrées (une rangée incomplète
+                  // reste au milieu)
+                  child: LayoutBuilder(builder: (context, c) {
+                    const gap = 10.0, pad = 12.0;
+                    final w = c.maxWidth - 2 * pad;
+                    final h = c.maxHeight - 26;
+                    final n = items.length;
+                    // rangées équilibrées (8 jeux = 2 × 4, pas 7 + 1)
+                    final cols0 = ((w + gap) / (130 + gap)).ceil().clamp(1, 99);
+                    final rows = (n / cols0).ceil().clamp(1, 99);
+                    final cols = (n / rows).ceil();
+                    var tw = ((w - (cols - 1) * gap) / cols).clamp(0.0, 210.0);
+                    // tout tient en hauteur : tuiles aussi grandes que
+                    // possible, sinon on fait défiler
+                    final fitH = (h - (rows - 1) * gap) / rows * .82;
+                    if (fitH >= (w - (cols0 - 1) * gap) / cols0) {
+                      tw = tw.clamp(0.0, fitH);
+                    }
+                    final rowW = cols * tw + (cols - 1) * gap;
+                    return SingleChildScrollView(
+                      key: const ValueKey('pick-grid'),
+                      padding: const EdgeInsets.fromLTRB(pad, 10, pad, 16),
+                      // centré en hauteur quand tout tient dans l'écran
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minHeight: h),
+                        child: Center(
+                          child: SizedBox(
+                            width: rowW + .5,
+                            child: Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: gap,
+                              runSpacing: gap,
+                              children: [
+                                for (final it in items)
+                                  SizedBox(
+                                    width: tw,
+                                    height: tw / .82,
+                                    child: _PickTile(
+                                      item: it,
+                                      onTap: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (_) => SetupPage(
+                                                kind: kind, game: it.id)),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  }),
                 ),
               ),
             ],
@@ -122,8 +156,13 @@ class _PickTile extends StatelessWidget {
   const _PickTile({required this.item, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      LayoutBuilder(builder: (context, box) => _build(box.maxWidth));
+
+  Widget _build(double w) {
     final c = item.tint;
+    // Bandeau et nom qui grandissent avec la tuile (01 : 5 grandes tuiles)
+    final k = w.isFinite ? (w / 130).clamp(1.0, 1.6) : 1.0;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -133,11 +172,14 @@ class _PickTile extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: c, width: 1.5),
+            border: Border.all(color: c.withValues(alpha: .85), width: 1.5),
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color.lerp(Colors.black, c, .35)!, Colors.black],
+              colors: [
+                Color.lerp(Colors.black, c, .35)!.withValues(alpha: .3),
+                Colors.black.withValues(alpha: .2),
+              ],
             ),
             boxShadow: [
               BoxShadow(color: c.withValues(alpha: .25), blurRadius: 8),
@@ -150,18 +192,21 @@ class _PickTile extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(11)),
-                  child: Image.asset(item.image,
-                      fit: BoxFit.cover,
-                      filterQuality: FilterQuality.medium,
-                      errorBuilder: (_, __, ___) => const SizedBox()),
+                  child: Opacity(
+                    opacity: .72,
+                    child: Image.asset(item.image,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.medium,
+                        errorBuilder: (_, __, ___) => const SizedBox()),
+                  ),
                 ),
               ),
               // Même hauteur pour toutes les tuiles (avec ou sans sous-titre)
               Container(
-                height: 40,
+                height: 40 * k,
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 decoration: BoxDecoration(
-                  color: c,
+                  color: c.withValues(alpha: .55),
                   borderRadius:
                       const BorderRadius.vertical(bottom: Radius.circular(11)),
                 ),
@@ -172,13 +217,16 @@ class _PickTile extends StatelessWidget {
                       fit: BoxFit.scaleDown,
                       child: Text(item.label.toUpperCase(),
                           maxLines: 1,
-                          style: Band.text(Tv.title(15, color: Colors.white))),
+                          style: Band.text(Tv.title(
+                              15 * k * (item.label.length <= 4 ? 1.7 : 1),
+                              color: Colors.white))),
                     ),
                     if (item.sub.isNotEmpty)
                       Text(item.sub.toUpperCase(),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Tv.label(9, color: Colors.white70)),
+                          style: Tv.label(9 * k.clamp(1.0, 1.2),
+                              color: Colors.white70)),
                   ],
                 ),
               ),
