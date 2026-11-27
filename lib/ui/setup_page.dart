@@ -130,6 +130,8 @@ class _SetupPageState extends State<SetupPage> {
           _freeze = false;
           _start = int.tryParse(g) ?? _start;
         }
+      case 'match':
+        _mLegs = int.tryParse(g) ?? _mLegs;
       case 'cricket':
         _variant = CricketVariant.values
             .firstWhere((v) => v.name == g, orElse: () => _variant);

@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../game/cricket.dart';
 import '../game/practice.dart';
 import 'theme.dart';
+import 'tile_fx.dart';
 
 /// Bandeau doré en biseau en haut de page : retour, titre, actions.
 class SetupBand extends StatelessWidget {
@@ -169,50 +170,56 @@ class SetupItem extends StatelessWidget {
 
   Widget _band(Color t) => Padding(
         padding: const EdgeInsets.only(top: 4),
-        child: Material(
-          color: Colors.transparent,
-          child: Ink(
-            decoration: Band.deco(t, selected: selected, r: 8),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: onTap,
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 38),
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                child: Row(
-                  children: [
-                    if (image != null) ...[
-                      gameArt(image!, 30),
-                      const SizedBox(width: 8),
-                    ] else if (icon != null) ...[
-                      Icon(icon, size: 18, color: Colors.white),
-                      const SizedBox(width: 8),
-                    ],
-                    Expanded(
-                      child: Text(label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Band.text(Tv.title(16))),
-                    ),
-                    if (value != null)
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 120),
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 4),
-                          child: Text(value!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.right,
-                              style: Band.text(Tv.title(15)).copyWith(
-                                  color: selected
-                                      ? Colors.white
-                                      : Colors.white70)),
-                        ),
+        child: TileFx(
+          seed: label,
+          radius: 8,
+          shine: .16,
+          child: Material(
+            color: Colors.transparent,
+            child: Ink(
+              decoration: Band.deco(t, selected: selected, r: 8),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: onTap,
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 38),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  child: Row(
+                    children: [
+                      if (image != null) ...[
+                        gameArt(image!, 30),
+                        const SizedBox(width: 8),
+                      ] else if (icon != null) ...[
+                        Icon(icon, size: 18, color: Colors.white),
+                        const SizedBox(width: 8),
+                      ],
+                      Expanded(
+                        child: Text(label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Band.text(Tv.title(16))),
                       ),
-                    if (trailing != null) trailing!,
-                    if (selected && value == null && trailing == null)
-                      const Icon(Icons.check, size: 17, color: Colors.white),
-                  ],
+                      if (value != null)
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 120),
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: Text(value!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.right,
+                                style: Band.text(Tv.title(15)).copyWith(
+                                    color: selected
+                                        ? Colors.white
+                                        : Colors.white70)),
+                          ),
+                        ),
+                      if (trailing != null) trailing!,
+                      if (selected && value == null && trailing == null)
+                        const Icon(Icons.check, size: 17, color: Colors.white),
+                    ],
+                  ),
                 ),
               ),
             ),

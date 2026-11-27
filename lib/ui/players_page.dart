@@ -11,6 +11,7 @@ import 'account_page.dart';
 import 'dartboard.dart';
 import 'media_editor.dart';
 import 'theme.dart';
+import 'tile_fx.dart';
 import 'widgets.dart';
 import '../format.dart';
 import '../rank.dart';
@@ -423,8 +424,8 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
         const SizedBox(height: 12),
         FilledButton.icon(
           key: const ValueKey('open-stats'),
-          onPressed: () => openPlayerStats(context,
-              id: p.key, name: p.name, color: p.color),
+          onPressed: () =>
+              openPlayerStats(context, id: p.key, name: p.name, color: p.color),
           icon: const Icon(Icons.insights),
           label: const Text('RANG DÉTAILLÉ, COURBE, PPR / MPR'),
         ),
@@ -441,59 +442,62 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
     Widget? value,
     VoidCallback? onTap,
   }) =>
-      Material(
-        color: Colors.transparent,
-        child: Ink(
-          decoration: Band.deco(tint, r: 12),
-          child: InkWell(
-            key: key,
-            borderRadius: BorderRadius.circular(12),
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(
-                    flex: 3,
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      IconTheme(
-                          data: const IconThemeData(
-                              color: Colors.white, size: 20),
-                          child: icon),
-                      const SizedBox(width: 10),
+      TileFx(
+          seed: title,
+          shine: .16,
+          child: Material(
+            color: Colors.transparent,
+            child: Ink(
+              decoration: Band.deco(tint, r: 12),
+              child: InkWell(
+                key: key,
+                borderRadius: BorderRadius.circular(12),
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
                       Flexible(
-                        child: Text(title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Band.text(Tv.title(15))),
+                        flex: 3,
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          IconTheme(
+                              data: const IconThemeData(
+                                  color: Colors.white, size: 20),
+                              child: icon),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Text(title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Band.text(Tv.title(15))),
+                          ),
+                        ]),
                       ),
-                    ]),
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    flex: 2,
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const SizedBox(width: 8),
                       Flexible(
-                        child: DefaultTextStyle(
-                          style: Band.text(Tv.label(14))
-                              .copyWith(color: Colors.white),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          child: value ?? const SizedBox(),
-                        ),
+                        flex: 2,
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Flexible(
+                            child: DefaultTextStyle(
+                              style: Band.text(Tv.label(14))
+                                  .copyWith(color: Colors.white),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              child: value ?? const SizedBox(),
+                            ),
+                          ),
+                          if (onTap != null)
+                            const Icon(Icons.chevron_right,
+                                color: Colors.white70, size: 20),
+                        ]),
                       ),
-                      if (onTap != null)
-                        const Icon(Icons.chevron_right,
-                            color: Colors.white70, size: 20),
-                    ]),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
-      );
+          ));
 
   Widget _perso() {
     final owner = store.isOwner(p);

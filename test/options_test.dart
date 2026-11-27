@@ -51,7 +51,7 @@ void main() {
     expect(find.text('JOUEURS (2)'), findsOneWidget);
     expect(find.text('FOC'), findsOneWidget);
     expect(find.text('CED'), findsOneWidget);
-    expect(find.text('Thème de l\'appli'), findsOneWidget);
+    expect(find.text('Style de la cible'), findsOneWidget);
 
     // Un joueur : sa fiche
     await tester.tap(find.text('CED'));
@@ -60,10 +60,8 @@ void main() {
     Navigator.of(tester.element(find.byType(PlayerDetailPage))).pop();
     await frames(tester);
 
-    // Thème : la fenêtre de choix s'ouvre
-    await tester.tap(find.byKey(const ValueKey('opt-theme')));
-    await frames(tester);
-    expect(find.text('THÈME DE L\'APPLI'), findsWidgets);
+    // Plus de choix du thème de l'appli (v0.6.35)
+    expect(find.byKey(const ValueKey('opt-theme')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -99,7 +97,7 @@ void main() {
         MaterialApp(theme: Tv.theme(), home: const OptionsPage()));
     await frames(tester);
     expect(find.text('JOUEURS (1)'), findsOneWidget);
-    expect(find.byKey(const ValueKey('opt-theme')), findsOneWidget);
+    expect(find.byKey(const ValueKey('opt-theme')), findsNothing);
     expect(find.byKey(const ValueKey('opt-board')), findsOneWidget);
     await tester.ensureVisible(find.byKey(const ValueKey('opt-settings')));
     expect(find.byKey(const ValueKey('opt-settings')), findsOneWidget);

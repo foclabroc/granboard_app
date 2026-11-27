@@ -8,6 +8,7 @@ import 'package:granboard_proto/ui/award.dart';
 import 'package:granboard_proto/ui/boot_page.dart';
 import 'package:granboard_proto/ui/theme.dart';
 import 'package:granboard_proto/ui/turn_banner.dart';
+import 'package:granboard_proto/ui/tile_fx.dart';
 import 'package:granboard_proto/ui/game_intro.dart';
 import 'package:granboard_proto/ui/wallpaper.dart';
 
@@ -18,6 +19,7 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   BootGate.enabled = false;
   SkinBackground.animate = false;
   TurnBanner.enabled = false;
+  TileFx.enabled = false;
   GameIntro.enabled = false; // remis dans intro_test
   Wallpaper.storage = false;
   Lan.enabled = false;

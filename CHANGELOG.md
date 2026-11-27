@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.6.35
+
+- **Fonds illustrés des menus** : Tournois (salle de finale), En ligne (cibles reliées), Options (atelier) et un bar à fléchettes pour Joueurs, Classements, Stats, l'accueil et l'écran d'attente de la TV.
+- **Plus de choix du thème de l'appli** : les menus restent en noir et or, chaque jeu garde son thème illustré (le thème « Fond d'écran » disparaît avec).
+- **Tuiles** : reflet lumineux qui passe sur les tuiles (en vague) et petit enfoncement au toucher, dans les mosaïques, les réglages, les Options et la fiche joueur ; icônes des jeux plus vives.
+- **Mosaïques** : Party en 5 tuiles par ligne (jamais un jeu seul en bas), Medley en tuiles (3 à 13 legs) sur 2 lignes.
+- **En ligne** : la barre du titre va jusqu'au bord de l'écran comme les autres pages.
+
 ## v0.6.34
 
 - **Nombre de joueurs affiché** dans la colonne JOUEURS (« Se joue à 2 joueurs », « 2-8 joueurs »…), en rouge avec « Ajoute 1 joueur » ou « Retire N joueurs » quand LANCER est grisé pour cette raison ; AJOUTER limité au maximum du jeu.

@@ -10,6 +10,7 @@ import 'package:granboard_proto/ui/cricket_view.dart';
 import 'package:granboard_proto/ui/game_page.dart';
 import 'package:granboard_proto/ui/home_page.dart';
 import 'package:granboard_proto/ui/options_page.dart';
+import 'package:granboard_proto/ui/dartboard.dart';
 import 'package:granboard_proto/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -21,6 +22,7 @@ Future<void> newPhone(FakeServer server, {bool login = true}) async {
   await PlayerStore.instance.load();
   await SettingsSync.instance.load();
   await Tv.load();
+  await BoardSkin.load();
   await CricketStyle.load();
   await AutoNext.load();
   await AudioService.instance.reloadSettings();
@@ -58,12 +60,12 @@ void main() {
     expect(await sync.check(), isNull);
     expect(sync.linked, isTrue);
 
-    await Tv.choose(AppSkin.neon);
+    await BoardSkin.choose(BoardSkin.neon);
     await AutoNext.set(true);
     expect(await sync.save(), isTrue);
     final id = PlayerStore.instance.owner!.id;
     expect(server.settings[id]!['v'], 1);
-    expect(server.settings[id]!['data']['app_skin'], 'neon');
+    expect(server.settings[id]!['data']['board_skin'], 'neon');
     expect(server.settings[id]!['data']['auto_next_v1'], true);
     expect(sync.savedAt, isNotNull);
 
@@ -75,7 +77,7 @@ void main() {
   test('Nouveau téléphone : la sauvegarde est proposée, reprise ou refusée',
       () async {
     await sync.check();
-    await Tv.choose(AppSkin.sakura);
+    await BoardSkin.choose(BoardSkin.sakura);
     await CricketStyle.choose(CricketStyle.columns);
     await AutoNext.set(true);
     AudioService.instance.setTeasing(false);
@@ -84,14 +86,14 @@ void main() {
     await sync.save();
 
     await newPhone(server);
-    expect(Tv.skin.value, isNot(AppSkin.sakura));
+    expect(BoardSkin.current.value, isNot(BoardSkin.sakura));
     expect(sync.linked, isFalse);
     // pas lié : ce téléphone tout neuf n'écrase pas la sauvegarde
     expect(await sync.save(), isFalse);
     final saved = await sync.check();
     expect(saved, isNotNull);
     await sync.apply(saved!);
-    expect(Tv.skin.value, AppSkin.sakura);
+    expect(BoardSkin.current.value, BoardSkin.sakura);
     expect(CricketStyle.current.value, CricketStyle.columns);
     expect(AutoNext.on.value, isTrue);
     expect(AudioService.instance.teasing, isFalse);
@@ -102,20 +104,20 @@ void main() {
     await newPhone(server);
     expect(await sync.check(), isNotNull);
     await sync.decline();
-    await Tv.choose(AppSkin.ember);
+    await BoardSkin.choose(BoardSkin.ember);
     expect(await sync.save(), isTrue);
     final id = PlayerStore.instance.owner!.id;
-    expect(server.settings[id]!['data']['app_skin'], 'ember');
+    expect(server.settings[id]!['data']['board_skin'], 'ember');
   });
 
-  testWidgets('Accueil d\'un nouveau téléphone : « REPRENDRE » applique le thème',
+  testWidgets('Accueil d\'un nouveau téléphone : « REPRENDRE » applique le style de cible',
       (tester) async {
     tester.view.physicalSize = const Size(785, 392);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.runAsync(() async {
       await sync.check();
-      await Tv.choose(AppSkin.neon);
+      await BoardSkin.choose(BoardSkin.neon);
       await sync.save();
       await newPhone(server);
       await PlayerStore.instance.setWelcomed();
@@ -129,7 +131,7 @@ void main() {
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }
-    expect(Tv.skin.value, AppSkin.neon);
+    expect(BoardSkin.current.value, BoardSkin.neon);
     expect(sync.linked, isTrue);
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));

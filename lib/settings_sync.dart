@@ -36,7 +36,6 @@ class SettingsSync extends ChangeNotifier {
   /// Préférences sauvegardées (pas les comptes, la cible Bluetooth, les
   /// écrans reliés ni les parties en cours : propres à chaque téléphone).
   static const keys = [
-    'app_skin',
     'board_skin',
     'ring_anim_v1',
     'game_intro_v1',

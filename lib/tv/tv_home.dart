@@ -125,10 +125,6 @@ class _TvHomeState extends State<TvHome> {
     if (s?['cricket'] is String) {
       CricketStyle.current.value = CricketStyle.fix(s!['cricket']);
     }
-    // … et le thème de l'appli
-    if (s?['theme'] is String && s!['theme'] != Tv.skin.value.id) {
-      Tv.choose(AppSkin.byId(s['theme']));
-    }
     if (s?['wall'] is String) Wallpaper.instance.applyFromPhone(s!['wall']);
     if (s?['calls'] is bool) AudioService.instance.dartCalls = s!['calls'];
     // animations complètes ou allégées (choix du téléphone ; allégées tant

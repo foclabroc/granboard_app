@@ -88,6 +88,9 @@ class AppSkin {
     muted: Color(0xFF8D8D9C),
     panelColors: [Color(0xFF1D1D26), Color(0xFF0E0E13)],
     fx: SkinFx.spotlight,
+    // v0.6.35 : bar à fléchettes illustré (Joueurs, Classements, Stats,
+    // accueil, écran d'attente TV)
+    image: 'assets/themes/menu.jpg',
   );
 
   static const neon = AppSkin(
@@ -301,11 +304,10 @@ class Tv {
 
   static AppSkin get _s => current;
 
+  /// v0.6.35 : plus de choix du thème (les jeux ont chacun le leur) ;
+  /// les menus restent en « Retransmission », l'ancien choix est ignoré.
   static Future<void> load() async {
-    try {
-      final p = await SharedPreferences.getInstance();
-      skin.value = AppSkin.byId(p.getString(prefKey));
-    } catch (_) {}
+    skin.value = AppSkin.gold;
   }
 
   static Future<void> choose(AppSkin s) async {

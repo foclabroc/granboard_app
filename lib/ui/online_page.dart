@@ -16,6 +16,7 @@ import 'lobby_page.dart';
 import 'players_page.dart' show RatingBadge;
 import 'setup_page.dart';
 import 'setup_widgets.dart';
+import 'game_theme.dart';
 import 'theme.dart';
 import 'widgets.dart';
 import 'stats_page.dart';
@@ -420,14 +421,20 @@ class _OnlinePageState extends State<OnlinePage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => GameThemeScope(
+      skin: GameSkins.online, child: Builder(builder: _menuBuild));
+
+  Widget _menuBuild(BuildContext context) {
     return Scaffold(
       body: SafeArea(
+        left: false,
+        right: false,
         child: Column(
           children: [
             const SetupBand(title: 'En ligne', sub: 'Configuration'),
             Expanded(
-              child: TvBackground(
+              child: SidePad(
+                  child: TvBackground(
                 child: ListenableBuilder(
                   listenable: Listenable.merge([online, PlayerStore.instance]),
                   builder: (context, _) {
@@ -471,7 +478,7 @@ class _OnlinePageState extends State<OnlinePage> {
                     );
                   },
                 ),
-              ),
+              )),
             ),
           ],
         ),

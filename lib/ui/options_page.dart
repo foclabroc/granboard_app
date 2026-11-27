@@ -19,7 +19,9 @@ import 'players_page.dart';
 import 'share_sheet.dart';
 import 'setup_widgets.dart';
 import 'sound_settings.dart';
+import 'game_theme.dart';
 import 'theme.dart';
+import 'tile_fx.dart';
 import 'tv_sheet.dart';
 import 'wallpaper.dart';
 import 'wallpaper_picker.dart';
@@ -31,7 +33,10 @@ class OptionsPage extends StatelessWidget {
   const OptionsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => GameThemeScope(
+      skin: GameSkins.options, child: Builder(builder: _menuBuild));
+
+  Widget _menuBuild(BuildContext context) {
     return const Scaffold(
       body: SafeArea(
         left: false,
@@ -217,13 +222,6 @@ class _OptionsPanel extends StatelessWidget {
                     children: _ramp([
                   const _Group('AFFICHAGE'),
                   _Item(
-                    id: 'theme',
-                    icon: Icons.palette,
-                    title: 'Thème de l\'appli',
-                    value: Tv.skin.value.name,
-                    onTap: () => showThemeSheet(context),
-                  ),
-                  _Item(
                     id: 'skin',
                     icon: Icons.track_changes,
                     title: 'Style de la cible',
@@ -374,8 +372,11 @@ class _Item extends StatelessWidget {
       id: id, icon: icon, title: title, onTap: onTap, value: value, tint: c);
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(top: 5),
+  Widget build(BuildContext context) => TileFx(
+        margin: const EdgeInsets.only(top: 5),
+        seed: id,
+        radius: 9,
+        shine: .16,
         child: Material(
           color: Colors.transparent,
           child: Ink(

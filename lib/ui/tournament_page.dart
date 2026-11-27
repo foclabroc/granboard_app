@@ -15,6 +15,7 @@ import 'online_page.dart' show waitForAnswer;
 import 'setup_page.dart';
 import 'setup_widgets.dart';
 import 'stats_page.dart' show openPlayerStats;
+import 'game_theme.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -125,7 +126,10 @@ class _TournamentsPageState extends State<TournamentsPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => GameThemeScope(
+      skin: GameSkins.tournament, child: Builder(builder: _menuBuild));
+
+  Widget _menuBuild(BuildContext context) {
     final me = _me;
     return Scaffold(
       body: SafeArea(
@@ -669,7 +673,10 @@ class _TournamentPageState extends State<TournamentPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => GameThemeScope(
+      skin: GameSkins.tournament, child: Builder(builder: _menuBuild));
+
+  Widget _menuBuild(BuildContext context) {
     final t = _t;
     final owner = t != null && t.owner == _myId;
     return Scaffold(
@@ -1275,7 +1282,10 @@ class _LocalTournamentPageState extends State<LocalTournamentPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => GameThemeScope(
+      skin: GameSkins.tournament, child: Builder(builder: _menuBuild));
+
+  Widget _menuBuild(BuildContext context) {
     final lt = _lt;
     if (lt == null) {
       return const Scaffold(body: Center(child: Text('Tournoi introuvable')));

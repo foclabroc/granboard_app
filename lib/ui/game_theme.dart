@@ -15,6 +15,62 @@ import 'theme.dart';
 class GameSkins {
   GameSkins._();
 
+  // Menus sans jeu (v0.6.35) : couleurs « Retransmission » + fond illustré.
+
+  /// Tournois : salle de finale, trophée, tableau lumineux.
+  static const tournament = AppSkin(
+    id: 'm-tournament',
+    name: 'Tournois',
+    bg: Color(0xFF07070A),
+    panel: Color(0xFF121218),
+    panel2: Color(0xFF1B1B23),
+    line: Color(0xFF2A2A35),
+    accent: Color(0xFFE8B63C),
+    accentLight: Color(0xFFFFD877),
+    accentDark: Color(0xFF8C6716),
+    glow: Color(0xFFD7262F),
+    muted: Color(0xFF8D8D9C),
+    panelColors: [Color(0xFF1D1D26), Color(0xFF0E0E13)],
+    fx: SkinFx.spotlight,
+    image: 'assets/themes/tournament.jpg',
+  );
+
+  /// En ligne : cibles reliées par des faisceaux.
+  static const online = AppSkin(
+    id: 'm-online',
+    name: 'En ligne',
+    bg: Color(0xFF07070A),
+    panel: Color(0xFF121218),
+    panel2: Color(0xFF1B1B23),
+    line: Color(0xFF2A2A35),
+    accent: Color(0xFFE8B63C),
+    accentLight: Color(0xFFFFD877),
+    accentDark: Color(0xFF8C6716),
+    glow: Color(0xFFD7262F),
+    muted: Color(0xFF8D8D9C),
+    panelColors: [Color(0xFF1D1D26), Color(0xFF0E0E13)],
+    fx: SkinFx.spotlight,
+    image: 'assets/themes/online.jpg',
+  );
+
+  /// Options : atelier de réglages.
+  static const options = AppSkin(
+    id: 'm-options',
+    name: 'Options',
+    bg: Color(0xFF07070A),
+    panel: Color(0xFF121218),
+    panel2: Color(0xFF1B1B23),
+    line: Color(0xFF2A2A35),
+    accent: Color(0xFFE8B63C),
+    accentLight: Color(0xFFFFD877),
+    accentDark: Color(0xFF8C6716),
+    glow: Color(0xFFD7262F),
+    muted: Color(0xFF8D8D9C),
+    panelColors: [Color(0xFF1D1D26), Color(0xFF0E0E13)],
+    fx: SkinFx.spotlight,
+    image: 'assets/themes/options.jpg',
+  );
+
   /// 01 : arène, rouge et or, anneaux d'une cible géante.
   static const x01 = AppSkin(
     id: 'g-x01',

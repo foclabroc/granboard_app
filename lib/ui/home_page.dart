@@ -29,6 +29,7 @@ import 'setup_page.dart';
 import 'sound_settings.dart';
 import 'options_page.dart';
 import 'theme.dart';
+import 'tile_fx.dart';
 import 'tile_art.dart';
 import 'tv_sheet.dart';
 import 'welcome_page.dart';
@@ -410,7 +411,8 @@ class _HomePageState extends State<HomePage>
                             title: 'MEDLEY',
                             image: 'match',
                             icon: Icons.emoji_events,
-                            onTap: () => _open(const SetupPage(kind: 'match')),
+                            onTap: () =>
+                                _open(const GamePickerPage(kind: 'match')),
                           ),
                           _Tile(
                             tint: const Color(0xFF3BA7FF),
@@ -528,192 +530,207 @@ class _Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: Ink(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color.lerp(tint, Colors.black, 0.50)!,
-                Color.lerp(tint, Colors.black, 0.86)!,
-              ]),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: tint.withValues(alpha: 0.55), width: 1.5),
-          boxShadow: [
-            BoxShadow(color: tint.withValues(alpha: 0.22), blurRadius: 14),
-          ],
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: onTap,
-          child: LayoutBuilder(builder: (context, c) {
-            final boardSize = c.maxHeight * 0.95;
-            return ClipRRect(
+    // enfoncement au toucher (le reflet est déjà dessiné plus bas)
+    return TileFx(
+        seed: title,
+        shine: 0,
+        child: Material(
+          color: Colors.transparent,
+          child: Ink(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color.lerp(tint, Colors.black, 0.50)!,
+                    Color.lerp(tint, Colors.black, 0.86)!,
+                  ]),
               borderRadius: BorderRadius.circular(18),
-              child: Stack(
-                children: [
-                  if (image != null) ...[
-                    Positioned.fill(
-                      child: AnimatedBuilder(
-                        animation: anim,
-                        // zoom + panoramique lents, décalés d'une tuile à
-                        // l'autre (figés en affichage allégé)
-                        builder: (context, child) {
-                          if (Perf.lite) {
-                            return Transform.scale(scale: 1.06, child: child);
-                          }
-                          final t = anim.value * 90 + _phase;
-                          return Transform.translate(
-                            offset: Offset(sin(t * .35) * c.maxWidth * .035,
-                                cos(t * .27) * c.maxHeight * .03),
-                            child: Transform.scale(
-                                scale: 1.12 + 0.06 * sin(t * .22),
-                                child: child),
-                          );
-                        },
-                        child: Image.asset('assets/tiles/$image.jpg',
-                            fit: BoxFit.cover,
-                            filterQuality: FilterQuality.medium,
-                            errorBuilder: (context, e, s) => const SizedBox()),
-                      ),
-                    ),
-                    // reflet qui balaie la tuile toutes les 7 s
-                    if (!Perf.lite)
-                      Positioned.fill(
-                        child: IgnorePointer(
+              border:
+                  Border.all(color: tint.withValues(alpha: 0.55), width: 1.5),
+              boxShadow: [
+                BoxShadow(color: tint.withValues(alpha: 0.22), blurRadius: 14),
+              ],
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: onTap,
+              child: LayoutBuilder(builder: (context, c) {
+                final boardSize = c.maxHeight * 0.95;
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Stack(
+                    children: [
+                      if (image != null) ...[
+                        Positioned.fill(
                           child: AnimatedBuilder(
                             animation: anim,
-                            builder: (context, _) {
-                              final k = ((anim.value * 90 + _phase) % 7) / 1.4;
-                              if (k > 1) return const SizedBox();
-                              final x = -1.6 + k * 3.2;
-                              return DecoratedBox(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment(x - .5, -1),
-                                    end: Alignment(x + .5, 1),
-                                    colors: [
-                                      Colors.white.withValues(alpha: 0),
-                                      Colors.white.withValues(alpha: .22),
-                                      Colors.white.withValues(alpha: 0),
-                                    ],
-                                    stops: const [.3, .5, .7],
-                                  ),
-                                ),
+                            // zoom + panoramique lents, décalés d'une tuile à
+                            // l'autre (figés en affichage allégé)
+                            builder: (context, child) {
+                              if (Perf.lite) {
+                                return Transform.scale(
+                                    scale: 1.06, child: child);
+                              }
+                              final t = anim.value * 90 + _phase;
+                              return Transform.translate(
+                                offset: Offset(sin(t * .35) * c.maxWidth * .035,
+                                    cos(t * .27) * c.maxHeight * .03),
+                                child: Transform.scale(
+                                    scale: 1.12 + 0.06 * sin(t * .22),
+                                    child: child),
                               );
                             },
+                            child: Image.asset('assets/tiles/$image.jpg',
+                                fit: BoxFit.cover,
+                                filterQuality: FilterQuality.medium,
+                                errorBuilder: (context, e, s) =>
+                                    const SizedBox()),
                           ),
                         ),
-                      ),
-                    // dégradé sombre en bas pour lire le titre
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              stops: const [0, 0.25, 0.55, 1],
-                              colors: [
-                                Colors.black.withValues(alpha: 0.55),
-                                Colors.black.withValues(alpha: 0),
-                                Colors.black.withValues(alpha: 0.05),
-                                Color.lerp(tint, Colors.black, 0.75)!
-                                    .withValues(alpha: 0.92),
-                              ],
+                        // reflet qui balaie la tuile toutes les 7 s
+                        if (!Perf.lite)
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: AnimatedBuilder(
+                                animation: anim,
+                                builder: (context, _) {
+                                  final k =
+                                      ((anim.value * 90 + _phase) % 7) / 1.4;
+                                  if (k > 1) return const SizedBox();
+                                  final x = -1.6 + k * 3.2;
+                                  return DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment(x - .5, -1),
+                                        end: Alignment(x + .5, 1),
+                                        colors: [
+                                          Colors.white.withValues(alpha: 0),
+                                          Colors.white.withValues(alpha: .22),
+                                          Colors.white.withValues(alpha: 0),
+                                        ],
+                                        stops: const [.3, .5, .7],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        // dégradé sombre en bas pour lire le titre
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  stops: const [0, 0.25, 0.55, 1],
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.55),
+                                    Colors.black.withValues(alpha: 0),
+                                    Colors.black.withValues(alpha: 0.05),
+                                    Color.lerp(tint, Colors.black, 0.75)!
+                                        .withValues(alpha: 0.92),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ] else if (spin != null)
+                        Positioned(
+                          right: -boardSize * 0.22,
+                          bottom: -boardSize * 0.22,
+                          child: Opacity(
+                            opacity: 0.55,
+                            child: RotationTransition(
+                              turns: spin!,
+                              child:
+                                  Dartboard(size: boardSize, showNumbers: true),
+                            ),
+                          ),
+                        )
+                      else if (art != null)
+                        Positioned.fill(
+                          child: RepaintBoundary(
+                            child: CustomPaint(
+                                painter: TileArtPainter(
+                                    art!,
+                                    Color.lerp(tint, Colors.white, 0.35)!,
+                                    anim)),
+                          ),
+                        ),
+                      // Reflet en haut de la tuile
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: 0,
+                        height: c.maxHeight * 0.45,
+                        child: IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.white.withValues(alpha: 0.10),
+                                  Colors.white.withValues(alpha: 0),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ] else if (spin != null)
-                    Positioned(
-                      right: -boardSize * 0.22,
-                      bottom: -boardSize * 0.22,
-                      child: Opacity(
-                        opacity: 0.55,
-                        child: RotationTransition(
-                          turns: spin!,
-                          child: Dartboard(size: boardSize, showNumbers: true),
+                      Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.62),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                    color: tint.withValues(alpha: 0.7),
+                                    width: 1),
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(kicker,
+                                    maxLines: 1,
+                                    style: Tv.title(13, color: Colors.white)),
+                              ),
+                            ),
+                            const Spacer(),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(title,
+                                  style: Tv.title(38,
+                                          color: gold
+                                              ? Tv.goldLight
+                                              : Colors.white)
+                                      .copyWith(shadows: [
+                                    Shadow(
+                                        color:
+                                            Colors.black.withValues(alpha: 0.7),
+                                        blurRadius: 8),
+                                  ])),
+                            ),
+                          ],
                         ),
                       ),
-                    )
-                  else if (art != null)
-                    Positioned.fill(
-                      child: RepaintBoundary(
-                        child: CustomPaint(
-                            painter: TileArtPainter(art!,
-                                Color.lerp(tint, Colors.white, 0.35)!, anim)),
-                      ),
-                    ),
-                  // Reflet en haut de la tuile
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                    height: c.maxHeight * 0.45,
-                    child: IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.white.withValues(alpha: 0.10),
-                              Colors.white.withValues(alpha: 0),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.62),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                                color: tint.withValues(alpha: 0.7), width: 1),
-                          ),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text(kicker,
-                                maxLines: 1,
-                                style: Tv.title(13, color: Colors.white)),
-                          ),
-                        ),
-                        const Spacer(),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(title,
-                              style: Tv.title(38,
-                                      color: gold ? Tv.goldLight : Colors.white)
-                                  .copyWith(shadows: [
-                                Shadow(
-                                    color: Colors.black.withValues(alpha: 0.7),
-                                    blurRadius: 8),
-                              ])),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ),
-      ),
-    );
+                );
+              }),
+            ),
+          ),
+        ));
   }
 }
 
