@@ -8,6 +8,7 @@
 - **Mosaïques** : Party en 5 tuiles par ligne (jamais un jeu seul en bas), Medley en tuiles (3 à 13 legs) sur 2 lignes.
 - **En ligne** : la barre du titre va jusqu'au bord de l'écran comme les autres pages.
 - **Bouton Menu principal** (maison) sur tous les écrans, à côté du retour ; en partie il demande d'abord d'abandonner.
+- **01 : historique barré** dans le panneau du joueur en cours (reste avant chaque tour barré, points du tour à droite : or dès 100, orange dès 140, 180 entouré, BUST en rouge).
 - **Fight Club illustré** : ring dans un entrepôt et 4 boxeurs détourés (garde / coup de poing), un par joueur ; coup = le boxeur frappe et l'autre recule en rouge, soin en vert, onde de choc du bull, le boxeur K.O. tombe ; étiquettes des combattants en haut (PV, numéros).
 
 ## v0.6.34

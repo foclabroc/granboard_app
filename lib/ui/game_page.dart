@@ -1245,11 +1245,20 @@ class _CurrentPanel extends StatelessWidget {
             ],
           ),
           Expanded(
-            child: FittedBox(
-              fit: BoxFit.contain,
-              alignment: Alignment.centerLeft,
-              child: Text('${st.remaining}',
-                  style: Tv.title(110, color: Colors.white)),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    alignment: Alignment.centerLeft,
+                    child: Text('${st.remaining}',
+                        style: Tv.title(110, color: Colors.white)),
+                  ),
+                ),
+                // restes des tours précédents barrés + points de chaque tour
+                _VisitHistory(game: game, player: game.current),
+              ],
             ),
           ),
           if (routes.isNotEmpty)
@@ -1296,6 +1305,84 @@ class _CurrentPanel extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Tours précédents du joueur (façon feuille de score) : reste avant le
+/// tour barré, points du tour à droite (100+ en or, 140+ en orange, 180
+/// entouré, BUST en rouge). Les plus récents en bas, autant qu'il en tient.
+class _VisitHistory extends StatelessWidget {
+  final X01Game game;
+  final int player;
+  const _VisitHistory({required this.game, required this.player});
+
+  @override
+  Widget build(BuildContext context) {
+    final cur = game.currentTurn;
+    final past = [
+      for (final t in game.turns)
+        if (t.player == player && !identical(t, cur)) t
+    ];
+    if (past.isEmpty) return const SizedBox.shrink();
+    return LayoutBuilder(builder: (context, c) {
+      const rowH = 22.0;
+      final fit = max(1, (c.maxHeight / rowH).floor());
+      final shown = past.length > fit ? past.sublist(past.length - fit) : past;
+      return Padding(
+        padding: const EdgeInsets.only(left: 6),
+        child: Column(
+          key: const ValueKey('visit-history'),
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (final t in shown)
+              SizedBox(height: rowH, child: _visit(t, t == shown.last)),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _visit(Turn t, bool last) {
+    final v = t.total;
+    final c = t.isBust
+        ? Tv.red
+        : v >= 140
+            ? const Color(0xFFFF9F1C)
+            : v >= 100
+                ? Tv.gold
+                : Tv.muted;
+    final score = t.isBust ? 'BUST' : '$v';
+    final opacity = last ? 1.0 : .75;
+    return Opacity(
+      opacity: opacity,
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        SizedBox(
+          width: 42,
+          child: Text('${t.scoreBefore}',
+              textAlign: TextAlign.right,
+              style: Tv.title(17, color: Tv.text.withValues(alpha: .55))
+                  .copyWith(
+                      decoration: TextDecoration.lineThrough,
+                      decorationColor: Tv.text.withValues(alpha: .8),
+                      decorationThickness: 2)),
+        ),
+        const SizedBox(width: 6),
+        Container(
+          width: 38,
+          alignment: Alignment.center,
+          decoration: v == 180 && !t.isBust
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Tv.gold, width: 1.6))
+              : null,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(score, style: Tv.title(16, color: c)),
+          ),
+        ),
+      ]),
     );
   }
 }
