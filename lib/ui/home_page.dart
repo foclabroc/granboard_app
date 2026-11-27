@@ -236,250 +236,305 @@ class _HomePageState extends State<HomePage>
     // Petit téléphone : barre du haut resserrée (icônes, profil en avatar)
     final compact = MediaQuery.sizeOf(context).width < 720;
     return Scaffold(
-      body: TvBackground(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 6, 10, 10),
-            child: Column(
-              children: [
-                // ─── Barre du haut ───
-                SizedBox(
-                  height: 52,
-                  child: Row(
-                    children: [
-                      // Largeur bornée : le titre rétrécit au lieu de pousser
-                      // la pastille de la cible hors de la barre
-                      ConstrainedBox(
-                        constraints:
-                            BoxConstraints(maxWidth: compact ? 130 : 190),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: ShaderMask(
-                            shaderCallback: (r) =>
-                                Tv.goldGradient.createShader(r),
-                            child: Text('FOCLABOARD',
-                                style: Tv.title(30, color: Colors.white)
-                                    .copyWith(letterSpacing: 2)),
+      body: Stack(children: [
+        // Fond de l'accueil : grande salle de fléchettes (v0.6.35), zoom et
+        // glissement lents (figés en affichage allégé)
+        Positioned.fill(child: _HomeBackground(anim: _spin)),
+        TvBackground(
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 6, 10, 10),
+              child: Column(
+                children: [
+                  // ─── Barre du haut ───
+                  SizedBox(
+                    height: 52,
+                    child: Row(
+                      children: [
+                        // Largeur bornée : le titre rétrécit au lieu de pousser
+                        // la pastille de la cible hors de la barre
+                        ConstrainedBox(
+                          constraints:
+                              BoxConstraints(maxWidth: compact ? 130 : 190),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: ShaderMask(
+                              shaderCallback: (r) =>
+                                  Tv.goldGradient.createShader(r),
+                              child: Text('FOCLABOARD',
+                                  style: Tv.title(30, color: Colors.white)
+                                      .copyWith(letterSpacing: 2)),
+                            ),
                           ),
                         ),
-                      ),
-                      SizedBox(width: compact ? 6 : 12),
-                      // Cible : pastille étroite à gauche (état + outils)
-                      // (prend la place libre : les boutons restent à droite)
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Flexible(
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                    maxWidth: compact ? 170 : 200),
-                                child: ListenableBuilder(
-                                  listenable: board,
-                                  builder: (context, _) => _BoardPill(
-                                    board: board,
-                                    onChoose: () => _open(const ConnectPage()),
-                                    onDiagnostic: () =>
-                                        _open(const DiagnosticPage()),
-                                    onCalibrate: () =>
-                                        _open(const CalibrationPage()),
+                        SizedBox(width: compact ? 6 : 12),
+                        // Cible : pastille étroite à gauche (état + outils)
+                        // (prend la place libre : les boutons restent à droite)
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                      maxWidth: compact ? 170 : 200),
+                                  child: ListenableBuilder(
+                                    listenable: board,
+                                    builder: (context, _) => _BoardPill(
+                                      board: board,
+                                      onChoose: () =>
+                                          _open(const ConnectPage()),
+                                      onDiagnostic: () =>
+                                          _open(const DiagnosticPage()),
+                                      onCalibrate: () =>
+                                          _open(const CalibrationPage()),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            const _NetPill(),
-                          ],
+                              const _NetPill(),
+                            ],
+                          ),
                         ),
-                      ),
-                      ListenableBuilder(
-                        listenable: PlayerStore.instance,
-                        builder: (context, _) => _BarButton(
-                          key: const ValueKey('bar-players'),
-                          icon: const Icon(Icons.group_add, size: 24),
-                          label: '${PlayerStore.instance.players.length}',
-                          onTap: () => _open(const PlayersPage()),
+                        ListenableBuilder(
+                          listenable: PlayerStore.instance,
+                          builder: (context, _) => _BarButton(
+                            key: const ValueKey('bar-players'),
+                            icon: const Icon(Icons.group_add, size: 24),
+                            label: '${PlayerStore.instance.players.length}',
+                            onTap: () => _open(const PlayersPage()),
+                          ),
                         ),
-                      ),
-                      _BarButton(
-                        key: const ValueKey('bar-stats'),
-                        icon: const Icon(Icons.leaderboard, size: 24),
-                        label: 'STATS',
-                        onTap: () => _open(const RankingPage()),
-                      ),
-                      ListenableBuilder(
-                        listenable: TvLink.instance,
-                        builder: (context, _) => _BarButton(
-                          key: const ValueKey('bar-tv'),
-                          icon: Icon(
-                              TvLink.instance.linked
-                                  ? Icons.connected_tv
-                                  : Icons.tv,
-                              size: 24,
-                              color: TvLink.instance.linked ? Tv.green : null),
-                          label: 'TV',
-                          onTap: () => showTvSheet(context),
+                        _BarButton(
+                          key: const ValueKey('bar-stats'),
+                          icon: const Icon(Icons.leaderboard, size: 24),
+                          label: 'STATS',
+                          onTap: () => _open(const RankingPage()),
                         ),
-                      ),
-                      _BarButton(
-                        key: const ValueKey('bar-cast'),
-                        icon: const Icon(Icons.cast, size: 24),
-                        label: 'CAST',
-                        onTap: () => castScreen(context),
-                      ),
-                      _BarButton(
-                        key: const ValueKey('bar-sound'),
-                        icon: const Icon(Icons.volume_up, size: 24),
-                        label: 'SON',
-                        onTap: () => showSoundSettings(context),
-                      ),
-                      ListenableBuilder(
-                        listenable: PlayerStore.instance,
-                        builder: (context, _) {
-                          final me = PlayerStore.instance.owner;
-                          return _BarButton(
-                            key: const ValueKey('me-chip'),
-                            icon: _MeChip(me: me),
-                            label: me == null ? 'JOUEURS' : 'PROFIL',
-                            onTap: () => _open(me == null
-                                ? const PlayersPage()
-                                : PlayerDetailPage(player: me)),
-                          );
-                        },
-                      ),
-                    ],
+                        ListenableBuilder(
+                          listenable: TvLink.instance,
+                          builder: (context, _) => _BarButton(
+                            key: const ValueKey('bar-tv'),
+                            icon: Icon(
+                                TvLink.instance.linked
+                                    ? Icons.connected_tv
+                                    : Icons.tv,
+                                size: 24,
+                                color:
+                                    TvLink.instance.linked ? Tv.green : null),
+                            label: 'TV',
+                            onTap: () => showTvSheet(context),
+                          ),
+                        ),
+                        _BarButton(
+                          key: const ValueKey('bar-cast'),
+                          icon: const Icon(Icons.cast, size: 24),
+                          label: 'CAST',
+                          onTap: () => castScreen(context),
+                        ),
+                        _BarButton(
+                          key: const ValueKey('bar-sound'),
+                          icon: const Icon(Icons.volume_up, size: 24),
+                          label: 'SON',
+                          onTap: () => showSoundSettings(context),
+                        ),
+                        ListenableBuilder(
+                          listenable: PlayerStore.instance,
+                          builder: (context, _) {
+                            final me = PlayerStore.instance.owner;
+                            return _BarButton(
+                              key: const ValueKey('me-chip'),
+                              icon: _MeChip(me: me),
+                              label: me == null ? 'JOUEURS' : 'PROFIL',
+                              onTap: () => _open(me == null
+                                  ? const PlayersPage()
+                                  : PlayerDetailPage(player: me)),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                // ─── Tuiles (4 + 4) ───
-                Expanded(
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: _row([
-                          _Tile(
-                            tint: Tv.gold,
-                            anim: _spin,
-                            kicker: 'X01 · FREEZE',
-                            title: '$_start',
-                            image: 'x01',
-                            gold: true,
-                            spin: _spin,
-                            onTap: () =>
-                                _open(const GamePickerPage(kind: 'x01')),
-                          ),
-                          _Tile(
-                            tint: const Color(0xFF21C46B),
-                            anim: _spin,
-                            art: TileArt.cricket,
-                            kicker: '8 VARIANTES',
-                            title: 'CRICKET',
-                            image: 'cricket',
-                            icon: Icons.grid_view_rounded,
-                            onTap: () =>
-                                _open(const GamePickerPage(kind: 'cricket')),
-                          ),
-                          _Tile(
-                            tint: const Color(0xFFB45CFF),
-                            anim: _spin,
-                            art: TileArt.party,
-                            kicker: '$_partyCount JEUX',
-                            title: 'PARTY',
-                            image: 'party',
-                            icon: Icons.celebration,
-                            onTap: () =>
-                                _open(const GamePickerPage(kind: 'party')),
-                          ),
-                          _Tile(
-                            tint: const Color(0xFFFF9F1C),
-                            anim: _spin,
-                            art: TileArt.tournament,
-                            kicker: 'ÉLIMINATION · EN LIGNE',
-                            title: 'TOURNOIS',
-                            image: 'tournament',
-                            icon: Icons.account_tree,
-                            onTap: () => _open(const TournamentsPage()),
-                          ),
-                        ]),
-                      ),
-                      const SizedBox(height: 10),
-                      Expanded(
-                        child: _row([
-                          _Tile(
-                            tint: const Color(0xFFFF4D4D),
-                            anim: _spin,
-                            art: TileArt.match,
-                            kicker: '01 + CRICKET',
-                            title: 'MEDLEY',
-                            image: 'match',
-                            icon: Icons.emoji_events,
-                            onTap: () =>
-                                _open(const GamePickerPage(kind: 'match')),
-                          ),
-                          _Tile(
-                            tint: const Color(0xFF3BA7FF),
-                            anim: _spin,
-                            art: TileArt.practice,
-                            kicker: '$_practiceCount JEUX',
-                            title: 'ENTRAÎNEMENT',
-                            image: 'practice',
-                            icon: Icons.fitness_center,
-                            onTap: () =>
-                                _open(const GamePickerPage(kind: 'practice')),
-                          ),
-                          ListenableBuilder(
-                            listenable: _online,
-                            builder: (context, _) {
-                              final n = _online.players.length;
-                              return _Tile(
-                                tint: const Color(0xFF22D3C5),
-                                anim: _spin,
-                                art: TileArt.online,
-                                kicker: _online.resumeRoom != null
-                                    ? 'PARTIE À REPRENDRE'
-                                    : _online.lobbyInvites.isNotEmpty
-                                        ? 'INVITATION DANS UN SALON'
-                                        : _online.lobby != null
-                                            ? 'TON SALON EST OUVERT'
-                                            : _online.wants.isNotEmpty
-                                                ? '${_online.wants.first.name.toUpperCase()}'
-                                                    ' VEUT JOUER'
-                                                : _online.asks.isNotEmpty
-                                                    ? '${_online.asks.length} DEMANDE'
-                                                        '${_online.asks.length > 1 ? 'S' : ''}'
-                                                        ' D\'AMI'
-                                                    : n == 0
-                                                        ? '1 CONTRE 1 · SALONS · VIDÉO'
-                                                        : '$n JOUEUR${n > 1 ? 'S' : ''} EN LIGNE',
-                                title: 'EN LIGNE',
-                                image: 'online',
-                                icon: Icons.public,
-                                onTap: () => _open(const OnlinePage()),
-                              );
-                            },
-                          ),
-                          ListenableBuilder(
-                            listenable: PlayerStore.instance,
-                            builder: (context, _) => _Tile(
-                              key: const ValueKey('tile-options'),
-                              tint: const Color(0xFF8A93A6),
+                  const SizedBox(height: 8),
+                  // ─── Tuiles (4 + 4) ───
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: _row([
+                            _Tile(
+                              tint: Tv.gold,
                               anim: _spin,
-                              art: TileArt.options,
-                              kicker:
-                                  '${PlayerStore.instance.players.length} JOUEUR${PlayerStore.instance.players.length > 1 ? 'S' : ''} · RÉGLAGES',
-                              title: 'OPTIONS',
-                              image: 'options',
-                              icon: Icons.tune,
-                              onTap: () => _open(const OptionsPage()),
+                              kicker: 'X01 · FREEZE',
+                              title: '$_start',
+                              image: 'x01',
+                              gold: true,
+                              spin: _spin,
+                              onTap: () =>
+                                  _open(const GamePickerPage(kind: 'x01')),
                             ),
-                          ),
-                        ]),
-                      ),
-                    ],
+                            _Tile(
+                              tint: const Color(0xFF21C46B),
+                              anim: _spin,
+                              art: TileArt.cricket,
+                              kicker: '8 VARIANTES',
+                              title: 'CRICKET',
+                              image: 'cricket',
+                              icon: Icons.grid_view_rounded,
+                              onTap: () =>
+                                  _open(const GamePickerPage(kind: 'cricket')),
+                            ),
+                            _Tile(
+                              tint: const Color(0xFFB45CFF),
+                              anim: _spin,
+                              art: TileArt.party,
+                              kicker: '$_partyCount JEUX',
+                              title: 'PARTY',
+                              image: 'party',
+                              icon: Icons.celebration,
+                              onTap: () =>
+                                  _open(const GamePickerPage(kind: 'party')),
+                            ),
+                            _Tile(
+                              tint: const Color(0xFFFF9F1C),
+                              anim: _spin,
+                              art: TileArt.tournament,
+                              kicker: 'ÉLIMINATION · EN LIGNE',
+                              title: 'TOURNOIS',
+                              image: 'tournament',
+                              icon: Icons.account_tree,
+                              onTap: () => _open(const TournamentsPage()),
+                            ),
+                          ]),
+                        ),
+                        const SizedBox(height: 10),
+                        Expanded(
+                          child: _row([
+                            _Tile(
+                              tint: const Color(0xFFFF4D4D),
+                              anim: _spin,
+                              art: TileArt.match,
+                              kicker: '01 + CRICKET',
+                              title: 'MEDLEY',
+                              image: 'match',
+                              icon: Icons.emoji_events,
+                              onTap: () =>
+                                  _open(const GamePickerPage(kind: 'match')),
+                            ),
+                            _Tile(
+                              tint: const Color(0xFF3BA7FF),
+                              anim: _spin,
+                              art: TileArt.practice,
+                              kicker: '$_practiceCount JEUX',
+                              title: 'ENTRAÎNEMENT',
+                              image: 'practice',
+                              icon: Icons.fitness_center,
+                              onTap: () =>
+                                  _open(const GamePickerPage(kind: 'practice')),
+                            ),
+                            ListenableBuilder(
+                              listenable: _online,
+                              builder: (context, _) {
+                                final n = _online.players.length;
+                                return _Tile(
+                                  tint: const Color(0xFF22D3C5),
+                                  anim: _spin,
+                                  art: TileArt.online,
+                                  kicker: _online.resumeRoom != null
+                                      ? 'PARTIE À REPRENDRE'
+                                      : _online.lobbyInvites.isNotEmpty
+                                          ? 'INVITATION DANS UN SALON'
+                                          : _online.lobby != null
+                                              ? 'TON SALON EST OUVERT'
+                                              : _online.wants.isNotEmpty
+                                                  ? '${_online.wants.first.name.toUpperCase()}'
+                                                      ' VEUT JOUER'
+                                                  : _online.asks.isNotEmpty
+                                                      ? '${_online.asks.length} DEMANDE'
+                                                          '${_online.asks.length > 1 ? 'S' : ''}'
+                                                          ' D\'AMI'
+                                                      : n == 0
+                                                          ? '1 CONTRE 1 · SALONS · VIDÉO'
+                                                          : '$n JOUEUR${n > 1 ? 'S' : ''} EN LIGNE',
+                                  title: 'EN LIGNE',
+                                  image: 'online',
+                                  icon: Icons.public,
+                                  onTap: () => _open(const OnlinePage()),
+                                );
+                              },
+                            ),
+                            ListenableBuilder(
+                              listenable: PlayerStore.instance,
+                              builder: (context, _) => _Tile(
+                                key: const ValueKey('tile-options'),
+                                tint: const Color(0xFF8A93A6),
+                                anim: _spin,
+                                art: TileArt.options,
+                                kicker:
+                                    '${PlayerStore.instance.players.length} JOUEUR${PlayerStore.instance.players.length > 1 ? 'S' : ''} · RÉGLAGES',
+                                title: 'OPTIONS',
+                                image: 'options',
+                                icon: Icons.tune,
+                                onTap: () => _open(const OptionsPage()),
+                              ),
+                            ),
+                          ]),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
+      ]),
+    );
+  }
+}
+
+/// Fond de l'accueil (`assets/themes/home.jpg`) : zoom et glissement lents
+/// sur la boucle de 90 s, voile sombre pour garder les tuiles lisibles.
+class _HomeBackground extends StatelessWidget {
+  final Animation<double> anim;
+  const _HomeBackground({required this.anim});
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: ColoredBox(
+        color: Colors.black,
+        child: Stack(fit: StackFit.expand, children: [
+          AnimatedBuilder(
+            animation: anim,
+            builder: (context, child) {
+              if (Perf.lite) return Transform.scale(scale: 1.06, child: child);
+              final a = anim.value * 2 * pi * 2;
+              return Transform.translate(
+                offset: Offset(sin(a) * 16, cos(a * 1.5) * 7),
+                child: Transform.scale(
+                    scale: 1.08 + 0.04 * sin(a * .5), child: child),
+              );
+            },
+            child: Image.asset('assets/themes/home.jpg',
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                filterQuality: FilterQuality.medium,
+                errorBuilder: (_, __, ___) => const SizedBox.expand()),
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x88000000),
+                  Color(0x33000000),
+                  Color(0x88000000)
+                ],
+              ),
+            ),
+          ),
+        ]),
       ),
     );
   }
@@ -542,8 +597,9 @@ class _Tile extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color.lerp(tint, Colors.black, 0.50)!,
-                    Color.lerp(tint, Colors.black, 0.86)!,
+                    Color.lerp(tint, Colors.black, 0.50)!
+                        .withValues(alpha: .45),
+                    Color.lerp(tint, Colors.black, 0.86)!.withValues(alpha: .4),
                   ]),
               borderRadius: BorderRadius.circular(18),
               border:
@@ -581,11 +637,16 @@ class _Tile extends StatelessWidget {
                                     child: child),
                               );
                             },
-                            child: Image.asset('assets/tiles/$image.jpg',
-                                fit: BoxFit.cover,
-                                filterQuality: FilterQuality.medium,
-                                errorBuilder: (context, e, s) =>
-                                    const SizedBox()),
+                            // un peu transparente : le fond de l'accueil
+                            // passe au travers
+                            child: Opacity(
+                              opacity: .78,
+                              child: Image.asset('assets/tiles/$image.jpg',
+                                  fit: BoxFit.cover,
+                                  filterQuality: FilterQuality.medium,
+                                  errorBuilder: (context, e, s) =>
+                                      const SizedBox()),
+                            ),
                           ),
                         ),
                         // reflet qui balaie la tuile toutes les 7 s

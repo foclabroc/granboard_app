@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.36
+
+- **Fond de l'accueil** : grande salle de finale illustrée (cible géante au-dessus de la scène, projecteurs, foule), zoom et glissement lents ; tuiles de l'accueil en partie transparentes pour voir la salle derrière.
+
 ## v0.6.35
 
 - **Fonds illustrés des menus** : Tournois (salle de finale), En ligne (cibles reliées), Options (atelier) et un bar à fléchettes pour Joueurs, Classements, Stats, l'accueil et l'écran d'attente de la TV.
