@@ -218,11 +218,15 @@ class _GamePageState extends State<GamePage> {
     _botTimer?.cancel();
     if (!_botTurn) return;
     final g = game;
-    final wait = g.turnOver || (g is MatchGame && g.betweenLegs)
-        ? 1800
-        : g.turnHits.isEmpty
-            ? 1500
-            : 1100;
+    // 3 s après le tour du joueur virtuel : on a le temps de voir ses
+    // fléchettes avant de passer au joueur suivant
+    final wait = g.turnOver
+        ? 3000
+        : g is MatchGame && g.betweenLegs
+            ? 1800
+            : g.turnHits.isEmpty
+                ? 1500
+                : 1100;
     _botTimer = Timer(Duration(milliseconds: wait), _botPlay);
   }
 
@@ -1325,6 +1329,9 @@ class _VisitHistory extends StatelessWidget {
         if (t.player == player && !identical(t, cur)) t
     ];
     if (past.isEmpty) return const SizedBox.shrink();
+    // + le tour en cours (reste de départ non barré) : la chaîne se lit
+    // jusqu'au grand nombre (285 − 17 → 268 − 2 → 266)
+    if (cur.player == player) past.add(cur);
     return LayoutBuilder(builder: (context, c) {
       const rowH = 22.0;
       final fit = max(1, (c.maxHeight / rowH).floor());
@@ -1345,6 +1352,7 @@ class _VisitHistory extends StatelessWidget {
   }
 
   Widget _visit(Turn t, bool last) {
+    final live = identical(t, game.currentTurn);
     final v = t.total;
     final c = t.isBust
         ? Tv.red
@@ -1353,7 +1361,11 @@ class _VisitHistory extends StatelessWidget {
             : v >= 100
                 ? Tv.gold
                 : Tv.muted;
-    final score = t.isBust ? 'BUST' : '$v';
+    final score = t.isBust
+        ? 'BUST'
+        : live && t.darts.isEmpty
+            ? '…'
+            : '$v';
     final opacity = last ? 1.0 : .75;
     return Opacity(
       opacity: opacity,
@@ -1362,11 +1374,13 @@ class _VisitHistory extends StatelessWidget {
           width: 42,
           child: Text('${t.scoreBefore}',
               textAlign: TextAlign.right,
-              style: Tv.title(17, color: Tv.text.withValues(alpha: .55))
-                  .copyWith(
-                      decoration: TextDecoration.lineThrough,
-                      decorationColor: Tv.text.withValues(alpha: .8),
-                      decorationThickness: 2)),
+              style: live
+                  ? Tv.title(17, color: Colors.white)
+                  : Tv.title(17, color: Tv.text.withValues(alpha: .55))
+                      .copyWith(
+                          decoration: TextDecoration.lineThrough,
+                          decorationColor: Tv.text.withValues(alpha: .8),
+                          decorationThickness: 2)),
         ),
         const SizedBox(width: 6),
         Container(

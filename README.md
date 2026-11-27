@@ -244,7 +244,7 @@ Installe le même APK sur l'Android TV, ou passe une tablette en « mode écran 
 
 | | |
 |---|---|
-| **11 thèmes** : Retransmission, Néon, Sakura, Braise, Glace, Pub, Synthwave, Abysses, Galaxie, Carbone, et **Fond d'écran** (9 images fournies, au hasard, ou tes photos). Fonds animés, appliqués partout, TV comprise. | ![Thèmes](docs/screenshots/themes.jpg) |
+| **Fonds illustrés partout** (plus de choix de thème depuis la v0.6.35) : chaque jeu a le sien (01, Cricket, Medley, Entraînement, Party, Bowling, Golf, Football, Chat et Souris, Paint, Contre la montre, Grand Prix), les menus aussi (accueil = grande salle de finale, Tournois, En ligne, Options, et un bar à fléchettes pour Joueurs / Classements / Stats / écran d'attente TV). Fonds animés (zoom lent), figés sur la TV en affichage allégé. | ![Thèmes](docs/screenshots/themes.jpg) |
 | **9 cibles** : Réaliste, Classique, Pub en bois, Électro, Néon, Or noir, Glace, Sakura, Braise. Une cible générale, et une cible par joueur qui le suit sur tous les téléphones, la TV et en ligne. | ![Cibles](docs/screenshots/cibles.jpg) |
 
 ## Son et annonceur

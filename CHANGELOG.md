@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.37
+
+- **01 : historique** : le tour en cours apparaît en dernière ligne (reste de départ non barré + points du tour), la chaîne se lit jusqu'au grand nombre.
+- **Joueur virtuel** : 3 secondes d'attente après son tour avant de passer au joueur suivant.
+- Docs de reprise : `docs/REPRISE.md` et `.github/copilot-instructions.md`.
+
 ## v0.6.36
 
 - **Fond de l'accueil** : grande salle de finale illustrée (cible géante au-dessus de la scène, projecteurs, foule), zoom et glissement lents ; tuiles de l'accueil en partie transparentes pour voir la salle derrière.
