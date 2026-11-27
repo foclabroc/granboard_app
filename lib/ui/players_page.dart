@@ -25,7 +25,8 @@ class PlayersPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final store = PlayerStore.instance;
     return Scaffold(
-      appBar: AppBar(title: const Text('JOUEURS')),
+      appBar:
+          AppBar(title: const Text('JOUEURS'), actions: const [HomeButton()]),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showAccountPage(context),
         icon: const Icon(Icons.person_add),
@@ -246,7 +247,8 @@ class _PlayerDetailPageState extends State<PlayerDetailPage> {
     return ListenableBuilder(
       listenable: store,
       builder: (context, _) => Scaffold(
-        appBar: AppBar(title: Text(p.name.toUpperCase())),
+        appBar: AppBar(
+            title: Text(p.name.toUpperCase()), actions: const [HomeButton()]),
         body: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

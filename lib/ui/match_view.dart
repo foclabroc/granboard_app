@@ -73,10 +73,10 @@ class _MatchResultsPageState extends State<MatchResultsPage> {
     final legWinners = m.legWinners;
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 46,
-        automaticallyImplyLeading: false,
-        title: Text('RÉSULTATS · MATCH ${m.settings.legs} LEGS'),
-      ),
+          toolbarHeight: 46,
+          automaticallyImplyLeading: false,
+          title: Text('RÉSULTATS · MATCH ${m.settings.legs} LEGS'),
+          actions: const [HomeButton()]),
       body: TvBackground(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

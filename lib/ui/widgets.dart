@@ -134,8 +134,7 @@ class RankChip extends StatelessWidget {
               children: [
                 // adversaire virtuel : petit robot devant son rang
                 if (isBotId(id)) ...[
-                  Icon(Icons.smart_toy,
-                      size: size * 1.1, color: rank.color),
+                  Icon(Icons.smart_toy, size: size * 1.1, color: rank.color),
                   SizedBox(width: size * 0.25),
                 ],
                 Text(rank.label, style: Tv.title(size, color: rank.color)),
@@ -336,6 +335,30 @@ class BoardBanner extends StatelessWidget {
             ],
           ),
         );
+      },
+    );
+  }
+}
+
+/// Bouton « Menu principal » : revient à l'accueil depuis n'importe quel
+/// écran (rien sur l'accueil lui-même). [confirm] : demande avant de partir
+/// (partie en cours).
+class HomeButton extends StatelessWidget {
+  final Color? color;
+  final Future<bool> Function()? confirm;
+  const HomeButton({super.key, this.color, this.confirm});
+
+  @override
+  Widget build(BuildContext context) {
+    if (ModalRoute.of(context)?.isFirst ?? true) return const SizedBox.shrink();
+    return IconButton(
+      key: const ValueKey('home'),
+      tooltip: 'Menu principal',
+      icon: Icon(Icons.home_rounded, color: color ?? Tv.gold),
+      onPressed: () async {
+        if (confirm != null && !await confirm!()) return;
+        if (!context.mounted) return;
+        Navigator.of(context).popUntil((r) => r.isFirst);
       },
     );
   }

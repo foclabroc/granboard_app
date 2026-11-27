@@ -481,10 +481,10 @@ class _PracticeResultsPageState extends State<PracticeResultsPage> {
     };
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 46,
-        automaticallyImplyLeading: false,
-        title: Text('RÉSULTATS · ${g.title.toUpperCase()}'),
-      ),
+          toolbarHeight: 46,
+          automaticallyImplyLeading: false,
+          title: Text('RÉSULTATS · ${g.title.toUpperCase()}'),
+          actions: const [HomeButton()]),
       body: TvBackground(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),

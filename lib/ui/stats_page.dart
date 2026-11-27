@@ -122,6 +122,7 @@ class _PlayerStatsPageState extends State<PlayerStatsPage> {
             label: const Text('TABLEAU DES RANGS'),
           ),
           const SizedBox(width: 8),
+          const HomeButton(),
         ],
       ),
       body: d == null
@@ -423,7 +424,8 @@ extension on _PlayerStatsPageState {
         if (o['won'] == true) '${o['pseudo']}'
     ];
     final right = switch (kind) {
-      'practice' => 'SCORE ${practiceScoreText('${g['variant']}', (g['points'] as num?) ?? 0)}',
+      'practice' =>
+        'SCORE ${practiceScoreText('${g['variant']}', (g['points'] as num?) ?? 0)}',
       'cricket' => 'MPR ${(g['mpr'] as num?)?.fr(2) ?? '–'}',
       _ => 'MOY ${(g['avg'] as num?)?.fr(1) ?? '–'}'
           '${g['checkout'] == null ? '' : ' · FIN ${g['checkout']}'}',

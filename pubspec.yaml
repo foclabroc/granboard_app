@@ -44,6 +44,7 @@ flutter:
     - assets/sounds/turn/
     - assets/sounds/zombies/
     - assets/zombies/
+    - assets/fight/
     - assets/tiles/
     - assets/themes/
     - assets/icons/

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import '../board_service.dart';
+import 'widgets.dart';
 import '../vdarts.dart';
 
 /// Recherche des cibles Bluetooth à proximité.
@@ -78,13 +79,13 @@ class _ConnectPageState extends State<ConnectPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Choisir une cible'),
-        bottom: _scanning
-            ? const PreferredSize(
-                preferredSize: Size.fromHeight(4),
-                child: LinearProgressIndicator())
-            : null,
-      ),
+          title: const Text('Choisir une cible'),
+          bottom: _scanning
+              ? const PreferredSize(
+                  preferredSize: Size.fromHeight(4),
+                  child: LinearProgressIndicator())
+              : null,
+          actions: const [HomeButton()]),
       floatingActionButton: _scanning
           ? null
           : FloatingActionButton.extended(

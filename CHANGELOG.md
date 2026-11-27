@@ -7,6 +7,8 @@
 - **Tuiles** : reflet lumineux qui passe sur les tuiles (en vague) et petit enfoncement au toucher, dans les mosaïques, les réglages, les Options et la fiche joueur ; icônes des jeux plus vives.
 - **Mosaïques** : Party en 5 tuiles par ligne (jamais un jeu seul en bas), Medley en tuiles (3 à 13 legs) sur 2 lignes.
 - **En ligne** : la barre du titre va jusqu'au bord de l'écran comme les autres pages.
+- **Bouton Menu principal** (maison) sur tous les écrans, à côté du retour ; en partie il demande d'abord d'abandonner.
+- **Fight Club illustré** : ring dans un entrepôt et 4 boxeurs détourés (garde / coup de poing), un par joueur ; coup = le boxeur frappe et l'autre recule en rouge, soin en vert, onde de choc du bull, le boxeur K.O. tombe ; étiquettes des combattants en haut (PV, numéros).
 
 ## v0.6.34
 

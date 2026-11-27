@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../board_service.dart';
+import 'widgets.dart';
 
 /// Trames brutes reçues de la cible (pour déboguer).
 class DiagnosticPage extends StatefulWidget {
@@ -46,6 +47,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
             icon: const Icon(Icons.delete_sweep),
             onPressed: () => setState(_log.clear),
           ),
+          const HomeButton(),
         ],
       ),
       body: Column(

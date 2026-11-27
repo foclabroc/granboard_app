@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../players.dart';
 import '../server.dart';
 import 'theme.dart';
+import 'widgets.dart';
 
 /// Connexion ou création d'un compte (pseudo + code PIN à 4 chiffres).
 /// Renvoie le compte mémorisé sur le téléphone, ou null.
@@ -112,7 +113,8 @@ class _AccountPageState extends State<AccountPage> {
 
     return Scaffold(
       appBar: AppBar(
-          title: Text(_create ? 'NOUVEAU JOUEUR' : 'CONNEXION D\'UN JOUEUR')),
+          title: Text(_create ? 'NOUVEAU JOUEUR' : 'CONNEXION D\'UN JOUEUR'),
+          actions: const [HomeButton()]),
       body: SafeArea(
         child: Row(
           children: [

@@ -699,6 +699,7 @@ class _TournamentPageState extends State<TournamentPage> {
               onPressed: _delete,
               icon: const Icon(Icons.delete_outline),
             ),
+          const HomeButton(),
         ],
       ),
       body: t == null
@@ -1308,6 +1309,7 @@ class _LocalTournamentPageState extends State<LocalTournamentPage> {
             onPressed: _delete,
             icon: const Icon(Icons.delete_outline),
           ),
+          const HomeButton(),
         ],
       ),
       body: Column(

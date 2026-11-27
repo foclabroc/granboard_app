@@ -68,10 +68,10 @@ class _ResultsPageState extends State<ResultsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 46,
-        automaticallyImplyLeading: false,
-        title: Text('RÉSULTATS · ${game.settings.name.toUpperCase()}'),
-      ),
+          toolbarHeight: 46,
+          automaticallyImplyLeading: false,
+          title: Text('RÉSULTATS · ${game.settings.name.toUpperCase()}'),
+          actions: const [HomeButton()]),
       body: TvBackground(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -116,8 +116,8 @@ class _GamePageState extends State<GamePage> {
     PlayerStore.instance.setGameColors([for (final p in game.players) p.id]);
     audio.stopMusic();
     // photos téléchargées puis décodées d'avance
-    WidgetsBinding.instance.addPostFrameCallback(
-        (_) => mounted ? warmPlayers(context, game.players.map((p) => p.id)) : null);
+    WidgetsBinding.instance.addPostFrameCallback((_) =>
+        mounted ? warmPlayers(context, game.players.map((p) => p.id)) : null);
     PlayerStore.instance.ensureRatings(game.players.map((p) => p.id));
     // Intro « retransmission TV » d'une partie pas commencée (pas en
     // reprise) : l'annonce du 1er joueur et le joueur virtuel attendent
@@ -667,8 +667,8 @@ class _GamePageState extends State<GamePage> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      GameThemeScope(skin: GameSkins.ofGame(game), child: _themedBuild(context));
+  Widget build(BuildContext context) => GameThemeScope(
+      skin: GameSkins.ofGame(game), child: _themedBuild(context));
 
   Widget _themedBuild(BuildContext context) {
     final limit = game.roundLimit;
@@ -758,6 +758,7 @@ class _GamePageState extends State<GamePage> {
               icon: const Icon(Icons.volume_up),
               onPressed: () => showSoundSettings(context),
             ),
+            HomeButton(confirm: _confirmQuit),
           ],
         ),
         body: Column(

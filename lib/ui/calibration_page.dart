@@ -7,6 +7,7 @@ import '../board_service.dart';
 import '../granboard.dart';
 import 'dartboard.dart';
 import 'theme.dart';
+import 'widgets.dart';
 
 /// Une zone à viser pendant la calibration.
 class CalTarget {
@@ -164,7 +165,10 @@ class _CalibrationPageState extends State<CalibrationPage> {
     final skipped = _codes.where((c) => c == null).length;
 
     return Scaffold(
-      appBar: AppBar(toolbarHeight: 46, title: const Text('CALIBRATION')),
+      appBar: AppBar(
+          toolbarHeight: 46,
+          title: const Text('CALIBRATION'),
+          actions: const [HomeButton()]),
       body: ListenableBuilder(
         listenable: board,
         builder: (context, _) => Row(

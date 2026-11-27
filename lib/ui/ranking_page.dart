@@ -108,6 +108,7 @@ class _RankingPageState extends State<RankingPage> {
                 ),
               ),
             ),
+            const HomeButton(),
           ],
           bottom: TabBar(
             isScrollable: true,

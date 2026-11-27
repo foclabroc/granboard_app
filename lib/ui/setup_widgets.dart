@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../game/cricket.dart';
 import '../game/practice.dart';
 import 'theme.dart';
+import 'widgets.dart';
 import 'tile_fx.dart';
 
 /// Bandeau doré en biseau en haut de page : retour, titre, actions.
@@ -42,6 +43,7 @@ class SetupBand extends StatelessWidget {
                       icon: const Icon(Icons.arrow_back, color: Colors.black),
                       onPressed: () => Navigator.maybePop(context),
                     ),
+                    const HomeButton(color: Colors.black),
                     Flexible(
                       child: FittedBox(
                         fit: BoxFit.scaleDown,

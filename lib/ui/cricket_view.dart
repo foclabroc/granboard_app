@@ -1167,10 +1167,10 @@ class _CricketResultsPageState extends State<CricketResultsPage> {
             : 'PARTIE ARRÊTÉE';
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 46,
-        automaticallyImplyLeading: false,
-        title: Text('RÉSULTATS · ${g.title.toUpperCase()}'),
-      ),
+          toolbarHeight: 46,
+          automaticallyImplyLeading: false,
+          title: Text('RÉSULTATS · ${g.title.toUpperCase()}'),
+          actions: const [HomeButton()]),
       body: TvBackground(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
