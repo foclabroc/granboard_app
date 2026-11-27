@@ -3,6 +3,7 @@
 ## v0.6.33
 
 - **Nouveau son d'intro des parties** : 2 vrais sons choisis sur Pixabay (« Energy Stomps Logo » et « Intro Podcast »), tirés au hasard, calés pour que leur temps fort tombe sur GAME ON. L'ancien son synthétisé (saturé) est retiré.
+- **Mosaïque des jeux** : les tuiles 01, Cricket, Entraînement et Party de l'accueil ouvrent une mosaïque de tuiles illustrées (une par jeu, défilement vers le bas) ; toucher un jeu ouvre directement ses réglages (règles et joueurs). Freeze : choix du score de départ dans les règles. Medley et Tournois inchangés.
 - **Nouveaux sons des vidéos motion design** (impact, synth, gold) : vrais sons Pixabay à la place des sons synthétisés qui saturaient. Coups : épée, whoosh métal, power up, dague, et cloche « winner bell » sur le Double Bull. Récompenses : fanfare de trompettes + foule qui applaudit (plus fort sur Ton 80 et 3 in the Black).
 
 ## v0.6.32

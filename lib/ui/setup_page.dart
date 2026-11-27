@@ -51,9 +51,15 @@ class SetupPage extends StatefulWidget {
   /// renvoie le JSON de la partie avec « label » et « order »
   /// (fixed = maisons en alternance, random = au hasard).
   final bool salon;
+
+  /// Jeu choisi dans la mosaïque (`GamePickerPage`) : 501, freeze, nom d'une
+  /// variante de Cricket ou d'un `PracticeKind`. La colonne « Choisir le
+  /// jeu » est alors masquée.
+  final String? game;
   const SetupPage(
       {super.key,
       this.kind,
+      this.game,
       this.online,
       this.tournament = false,
       this.salon = false});
@@ -109,6 +115,34 @@ class _SetupPageState extends State<SetupPage> {
   /// Ouvert depuis une tuile de l'accueil : le choix du jeu est masqué.
   bool get _fixed => widget.kind != null && !_online;
 
+  /// Jeu déjà choisi dans la mosaïque : pas de colonne « Choisir le jeu ».
+  bool get _picked => _fixed && widget.game != null;
+
+  /// Applique le jeu choisi dans la mosaïque (après les derniers réglages).
+  void _applyGame() {
+    final g = widget.game;
+    if (!_picked || g == null) return;
+    switch (_kind) {
+      case 'x01':
+        if (g == 'freeze') {
+          _freeze = true;
+        } else {
+          _freeze = false;
+          _start = int.tryParse(g) ?? _start;
+        }
+      case 'cricket':
+        _variant = CricketVariant.values
+            .firstWhere((v) => v.name == g, orElse: () => _variant);
+      case 'practice' || 'party':
+        final k = PracticeKind.values.where((k) => k.name == g);
+        if (k.isNotEmpty) {
+          _curKind = k.first;
+          _pRounds = null;
+          _pGoal = null;
+        }
+    }
+  }
+
   String get _familyName => switch (_kind) {
         'cricket' => 'CRICKET',
         'match' => 'MEDLEY',
@@ -129,12 +163,18 @@ class _SetupPageState extends State<SetupPage> {
   }
 
   Future<void> _load() async {
-    if (widget.kind != null) setState(() => _kind = widget.kind!);
+    if (widget.kind != null) {
+      setState(() {
+        _kind = widget.kind!;
+        _applyGame();
+      });
+    }
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     final raw = prefs.getString(_prefKey);
     if (raw == null) {
       if (_double) setState(() => _kind = 'x01');
+      setState(_applyGame);
       return _selectOwner();
     }
     try {
@@ -153,6 +193,7 @@ class _SetupPageState extends State<SetupPage> {
             for (final e in (j['teams'] as Map? ?? const {}).entries)
               e.key as String: e.value as int
           });
+        _applyGame();
       });
     } catch (_) {}
     if (_double && _kind != 'x01' && _kind != 'cricket' && mounted) {
@@ -1078,6 +1119,14 @@ class _SetupPageState extends State<SetupPage> {
       ];
     }
     return [
+      if (_picked && _freeze)
+        SetupPick<int>(
+            key: const ValueKey('freeze-start'),
+            label: 'Départ',
+            value: _start,
+            values: kStartScores,
+            text: (n) => '$n',
+            onChanged: (v) => setState(() => _start = v)),
       ...x01,
       SetupPick<int?>(
           label: 'Manches',
@@ -1120,7 +1169,9 @@ class _SetupPageState extends State<SetupPage> {
                   : _online && !widget.tournament
                       ? 'contre ${widget.online![1].name}'
                           '${_double ? ' en double' : ''}'
-                      : 'Configuration',
+                      : _picked
+                          ? _gameName
+                          : 'Configuration',
               actions: [RulesButton(title: _gameName, text: _rulesText)],
             ),
             if (_online)
@@ -1173,68 +1224,71 @@ class _SetupPageState extends State<SetupPage> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: SetupColumn(
-                        title: 'Choisir le jeu',
-                        children: [
-                          if (!_fixed)
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(6, 2, 6, 2),
-                              child: Wrap(
-                                spacing: 4,
-                                runSpacing: 4,
-                                children: [
-                                  for (final (v, l) in [
-                                    ('x01', '01'),
-                                    ('cricket', 'CRICKET'),
-                                    if (!_double) ('match', 'MEDLEY'),
-                                    if (!widget.tournament && !_double) ...[
-                                      ('practice', 'ENTRAÎN.'),
-                                      ('party', 'PARTY'),
-                                    ],
-                                  ])
-                                    ChoiceChip(
-                                      visualDensity: VisualDensity.compact,
-                                      showCheckmark: false,
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 2),
-                                      labelPadding: const EdgeInsets.symmetric(
-                                          horizontal: 6),
-                                      label: Text(l,
-                                          style: Tv.title(15,
-                                              color: _kind == v
-                                                  ? Colors.black
-                                                  : Tv.text)),
-                                      selected: _kind == v,
-                                      onSelected: (_) =>
-                                          setState(() => _kind = v),
-                                    ),
-                                ],
+                    if (!_picked) ...[
+                      Expanded(
+                        child: SetupColumn(
+                          title: 'Choisir le jeu',
+                          children: [
+                            if (!_fixed)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(6, 2, 6, 2),
+                                child: Wrap(
+                                  spacing: 4,
+                                  runSpacing: 4,
+                                  children: [
+                                    for (final (v, l) in [
+                                      ('x01', '01'),
+                                      ('cricket', 'CRICKET'),
+                                      if (!_double) ('match', 'MEDLEY'),
+                                      if (!widget.tournament && !_double) ...[
+                                        ('practice', 'ENTRAÎN.'),
+                                        ('party', 'PARTY'),
+                                      ],
+                                    ])
+                                      ChoiceChip(
+                                        visualDensity: VisualDensity.compact,
+                                        showCheckmark: false,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 2),
+                                        labelPadding:
+                                            const EdgeInsets.symmetric(
+                                                horizontal: 6),
+                                        label: Text(l,
+                                            style: Tv.title(15,
+                                                color: _kind == v
+                                                    ? Colors.black
+                                                    : Tv.text)),
+                                        selected: _kind == v,
+                                        onSelected: (_) =>
+                                            setState(() => _kind = v),
+                                      ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          if (_localTournament)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: TextField(
-                                key: const ValueKey('tn-name'),
-                                controller: _tnName,
-                                maxLength: 40,
-                                textCapitalization:
-                                    TextCapitalization.sentences,
-                                decoration: const InputDecoration(
-                                    labelText: 'Nom du tournoi',
-                                    hintText: 'Tournoi du samedi',
-                                    counterText: '',
-                                    isDense: true,
-                                    border: OutlineInputBorder()),
-                                onChanged: (_) => setState(() {}),
+                            if (_localTournament)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: TextField(
+                                  key: const ValueKey('tn-name'),
+                                  controller: _tnName,
+                                  maxLength: 40,
+                                  textCapitalization:
+                                      TextCapitalization.sentences,
+                                  decoration: const InputDecoration(
+                                      labelText: 'Nom du tournoi',
+                                      hintText: 'Tournoi du samedi',
+                                      counterText: '',
+                                      isDense: true,
+                                      border: OutlineInputBorder()),
+                                  onChanged: (_) => setState(() {}),
+                                ),
                               ),
-                            ),
-                          ..._gameItems(),
-                        ],
+                            ..._gameItems(),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
+                      const SizedBox(width: 8),
+                    ],
                     Expanded(
                       child: SetupColumn(
                         title: 'Règles',

@@ -24,6 +24,7 @@ import 'lobby_page.dart' show showLobbyInviteDialog;
 import 'online_page.dart';
 import 'players_page.dart';
 import 'ranking_page.dart';
+import 'game_picker_page.dart';
 import 'setup_page.dart';
 import 'sound_settings.dart';
 import 'options_page.dart';
@@ -361,7 +362,8 @@ class _HomePageState extends State<HomePage>
                             image: 'x01',
                             gold: true,
                             spin: _spin,
-                            onTap: () => _open(const SetupPage(kind: 'x01')),
+                            onTap: () =>
+                                _open(const GamePickerPage(kind: 'x01')),
                           ),
                           _Tile(
                             tint: const Color(0xFF21C46B),
@@ -372,7 +374,7 @@ class _HomePageState extends State<HomePage>
                             image: 'cricket',
                             icon: Icons.grid_view_rounded,
                             onTap: () =>
-                                _open(const SetupPage(kind: 'cricket')),
+                                _open(const GamePickerPage(kind: 'cricket')),
                           ),
                           _Tile(
                             tint: const Color(0xFFB45CFF),
@@ -382,7 +384,8 @@ class _HomePageState extends State<HomePage>
                             title: 'PARTY',
                             image: 'party',
                             icon: Icons.celebration,
-                            onTap: () => _open(const SetupPage(kind: 'party')),
+                            onTap: () =>
+                                _open(const GamePickerPage(kind: 'party')),
                           ),
                           _Tile(
                             tint: const Color(0xFFFF9F1C),
@@ -418,7 +421,7 @@ class _HomePageState extends State<HomePage>
                             image: 'practice',
                             icon: Icons.fitness_center,
                             onTap: () =>
-                                _open(const SetupPage(kind: 'practice')),
+                                _open(const GamePickerPage(kind: 'practice')),
                           ),
                           ListenableBuilder(
                             listenable: _online,
