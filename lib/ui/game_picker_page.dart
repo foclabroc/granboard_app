@@ -112,10 +112,13 @@ class GamePickerPage extends StatelessWidget {
                     final w = c.maxWidth - 2 * pad;
                     final h = c.maxHeight - 26;
                     final n = items.length;
+                    // Medley : tuiles de la taille de celles du Cricket
+                    final sizeN =
+                        kind == 'match' ? pickItems('cricket').length : n;
                     // rangées équilibrées (8 jeux = 2 × 4, pas 7 + 1)
                     final cols0 = ((w + gap) / (130 + gap)).ceil().clamp(1, 99);
-                    final rows = (n / cols0).ceil().clamp(1, 99);
-                    final cols = (n / rows).ceil();
+                    final rows = (sizeN / cols0).ceil().clamp(1, 99);
+                    final cols = (sizeN / rows).ceil();
                     var tw = ((w - (cols - 1) * gap) / cols).clamp(0.0, 210.0);
                     // tout tient en hauteur : tuiles aussi grandes que
                     // possible, sinon on fait défiler
@@ -126,15 +129,14 @@ class GamePickerPage extends StatelessWidget {
                     // Party : 5 par ligne au plus, même taille de tuile.
                     // Lignes réparties (31 = 5,5,5,4,4,4,4 : jamais un
                     // jeu tout seul en bas)
-                    // Party : 5 par ligne ; Medley : 2 lignes de 3 ; même
-                    // taille de tuile (5 dans la largeur)
-                    final wide = kind == 'party' || kind == 'match';
+                    // Party : 5 par ligne (5 dans la largeur) ; Medley :
+                    // 2 lignes de 3, tuiles du Cricket
                     final perRow = kind == 'party'
                         ? math.min(cols, 5)
                         : kind == 'match'
                             ? 3
                             : cols;
-                    if (wide) {
+                    if (kind == 'party') {
                       tw = ((w - 4 * gap) / 5).clamp(0.0, 210.0);
                     }
                     final nRows = (n / perRow).ceil();

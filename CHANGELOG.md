@@ -4,6 +4,7 @@
 
 - **01 : historique** : le tour en cours apparaît en dernière ligne (reste de départ non barré + points du tour), la chaîne se lit jusqu'au grand nombre.
 - **Joueur virtuel** : 3 secondes d'attente après son tour avant de passer au joueur suivant.
+- **Medley** : tuiles de la même taille que celles du Cricket (2 lignes de 3, sans défilement).
 - Docs de reprise : `docs/REPRISE.md` et `.github/copilot-instructions.md`.
 
 ## v0.6.36
