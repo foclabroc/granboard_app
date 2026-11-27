@@ -3,7 +3,8 @@
 1,5 s) et récompenses d'une manche (assets/awards/<style>_<slug>.mp4, 4 s).
 
 Images : render.html (canvas) dessinée image par image par Playwright.
-Son : synthétisé ici (numpy), calé sur l'impact de chaque style.
+Son : sons Pixabay de hit_sounds.py (l'ancien son synthétisé, sound() et
+award_sound() ici, saturait : plus utilisé).
 usage : python3 tools/motion_hits/make.py <sortie> [hits|awards] [style ...]
         styles : impact neon gold (tous par défaut) ; sortie/hits et sortie/awards
 Sortie : 960 × 540, 30 i/s, 1,5 s, H.264 Main 3.1, AAC 128k (comme les
@@ -14,6 +15,9 @@ from pathlib import Path
 
 import numpy as np
 from playwright.sync_api import sync_playwright
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hit_sounds  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 FONT = HERE.parent.parent / 'assets/fonts/BarlowCondensed-ExtraBold.ttf'
@@ -244,7 +248,10 @@ def main():
                     url = pg.evaluate('([s, h, t]) => draw(s, h, t)', [st, h, i / FPS])
                     (fr / f'{i:03d}.png').write_bytes(base64.b64decode(url.split(',', 1)[1]))
                 wav = work / f'{st}_{h}.wav'
-                write_wav(wav, sound(st, h) if kind == 'hits' else award_sound(st, h))
+                if kind == 'hits':   # sons Pixabay de foclabroc (le son synthétisé saturait)
+                    hit_sounds.write_wav(wav, hit_sounds.track(OUTNAME[st], h))
+                else:
+                    hit_sounds.write_wav(wav, hit_sounds.award_track(OUTNAME[st], h))
                 dst = out / kind / f'{OUTNAME[st]}_{h}.mp4'
                 subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-y', '-framerate', str(FPS),
                                 '-i', str(fr / '%03d.png'), '-i', str(wav),
